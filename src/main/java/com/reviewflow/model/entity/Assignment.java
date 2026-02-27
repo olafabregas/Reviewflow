@@ -1,0 +1,53 @@
+package com.reviewflow.model.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "assignments")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Assignment {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "course_id", nullable = false)
+    private Course course;
+
+    @Column(nullable = false, length = 255)
+    private String title;
+
+    @Column(length = 2000)
+    private String description;
+
+    @Column(name = "due_at")
+    private Instant dueAt;
+
+    @Column(name = "max_team_size")
+    @Builder.Default
+    private Integer maxTeamSize = 1;
+
+    @Column(name = "is_published", nullable = false)
+    @Builder.Default
+    private Boolean isPublished = false;
+
+    @Column(name = "team_lock_at")
+    private Instant teamLockAt;
+
+    @Column(name = "created_at")
+    private Instant createdAt;
+
+    @OneToMany(mappedBy = "assignment", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("displayOrder ASC")
+    @Builder.Default
+    private List<RubricCriterion> rubricCriteria = new ArrayList<>();
+}
