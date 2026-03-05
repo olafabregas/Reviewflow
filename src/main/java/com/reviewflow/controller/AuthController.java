@@ -1,16 +1,7 @@
 package com.reviewflow.controller;
 
-import com.reviewflow.model.dto.request.LoginRequest;
-import com.reviewflow.model.dto.response.ApiResponse;
-import com.reviewflow.model.dto.response.AuthUserResponse;
-import com.reviewflow.security.ReviewFlowUserDetails;
-import com.reviewflow.service.AuthService;
-import com.reviewflow.service.AuthService.LoginResult;
-import com.reviewflow.service.AuthService.RefreshResult;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,10 +10,21 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.reviewflow.model.dto.request.LoginRequest;
+import com.reviewflow.model.dto.response.ApiResponse;
+import com.reviewflow.model.dto.response.AuthUserResponse;
+import com.reviewflow.security.ReviewFlowUserDetails;
+import com.reviewflow.service.AuthService;
+import com.reviewflow.service.AuthService.LoginResult;
+import com.reviewflow.service.AuthService.RefreshResult;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-
-import java.util.Map;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -40,15 +42,18 @@ public class AuthController {
 
     @Operation(summary = "Login", description = "Authenticate with email and password. Sets HTTP-only cookies for access and refresh tokens.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Login successful"),
-            @ApiResponse(responseCode = "401", description = "Invalid credentials"),
-            @ApiResponse(responseCode = "403", description = "Account deactivated")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Login successful"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Invalid credentials"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Account deactivated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "Too many failed attempts")
     })
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthUserResponse>> login(
             @Valid @RequestBody LoginRequest request,
+            HttpServletRequest servletRequest,
             HttpServletResponse response) {
-        LoginResult result = authService.login(request.getEmail(), request.getPassword());
+        String ipAddress = getClientIpAddress(servletRequest);
+        LoginResult result = authService.login(request.getEmail(), request.getPassword(), ipAddress);
 
         addCookie(response, ACCESS_COOKIE, result.accessToken(), authService.getAccessExpirationMs() / 1000);
         addCookie(response, REFRESH_COOKIE, result.refreshToken(), authService.getRefreshExpirationMs() / 1000);
@@ -58,8 +63,8 @@ public class AuthController {
 
     @Operation(summary = "Refresh token", description = "Issue new access token using refresh cookie. Optionally rotates refresh token.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Token refreshed"),
-            @ApiResponse(responseCode = "401", description = "Invalid or expired refresh token")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Token refreshed"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Invalid or expired refresh token")
     })
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<Map<String, String>>> refresh(
@@ -75,7 +80,7 @@ public class AuthController {
     }
 
     @Operation(summary = "Logout", description = "Revoke refresh token and clear cookies. Requires valid access token.")
-    @ApiResponses(@ApiResponse(responseCode = "200", description = "Logged out successfully"))
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Logged out successfully"))
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Map<String, String>>> logout(
             @AuthenticationPrincipal ReviewFlowUserDetails user,
@@ -92,11 +97,16 @@ public class AuthController {
 
     @Operation(summary = "Current user", description = "Return the authenticated user's profile. Used by frontend on app load.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "User profile"),
-            @ApiResponse(responseCode = "401", description = "Not authenticated")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "User profile"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated")
     })
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<AuthUserResponse>> me(@AuthenticationPrincipal ReviewFlowUserDetails user) {
+        if (user == null) {
+            return ResponseEntity.status(401)
+                    .body(ApiResponse.error("UNAUTHORIZED", "Not authenticated"));
+        }
+        
         AuthUserResponse data = AuthUserResponse.builder()
                 .userId(user.getUserId())
                 .email(user.getUsername())
@@ -125,5 +135,13 @@ public class AuthController {
             if (name.equals(c.getName())) return c.getValue();
         }
         return null;
+    }
+
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }

@@ -5,7 +5,6 @@ import com.reviewflow.model.dto.response.ApiResponse;
 import com.reviewflow.model.dto.response.AuthUserResponse;
 import com.reviewflow.model.entity.User;
 import com.reviewflow.model.entity.UserRole;
-import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +13,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
