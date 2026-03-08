@@ -32,22 +32,34 @@ public class JwtService {
     }
 
     public String generateAccessToken(UserDetails userDetails) {
+        return generateAccessToken(userDetails, null);
+    }
+
+    public String generateAccessToken(UserDetails userDetails, String userAgent) {
         if (userDetails instanceof ReviewFlowUserDetails details) {
-            return Jwts.builder()
+            var builder = Jwts.builder()
                     .subject(userDetails.getUsername())
                     .claim("userId", details.getUserId())
                     .claim("role", details.getRole().name())
                     .issuedAt(new Date())
-                    .expiration(new Date(System.currentTimeMillis() + accessExpirationMs))
-                    .signWith(secretKey)
-                    .compact();
+                    .expiration(new Date(System.currentTimeMillis() + accessExpirationMs));
+            
+            if (userAgent != null) {
+                builder.claim("userAgent", userAgent);
+            }
+            
+            return builder.signWith(secretKey).compact();
         }
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(userDetails.getUsername())
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + accessExpirationMs))
-                .signWith(secretKey)
-                .compact();
+                .expiration(new Date(System.currentTimeMillis() + accessExpirationMs));
+        
+        if (userAgent != null) {
+            builder.claim("userAgent", userAgent);
+        }
+        
+        return builder.signWith(secretKey).compact();
     }
 
     public String generateRefreshToken() {
@@ -66,6 +78,11 @@ public class JwtService {
     public String extractRole(String token) {
         Object role = extractClaims(token).get("role");
         return role != null ? role.toString() : null;
+    }
+
+    public String extractClaim(String token, String claimKey) {
+        Object claim = extractClaims(token).get(claimKey);
+        return claim != null ? claim.toString() : null;
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {

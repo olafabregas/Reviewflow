@@ -1,5 +1,7 @@
 package com.reviewflow.service;
 
+import com.reviewflow.event.TeamInviteEvent;
+import com.reviewflow.event.TeamLockedEvent;
 import com.reviewflow.exception.AccessDeniedException;
 import com.reviewflow.exception.BusinessRuleException;
 import com.reviewflow.exception.DuplicateResourceException;
@@ -7,6 +9,7 @@ import com.reviewflow.exception.ResourceNotFoundException;
 import com.reviewflow.model.entity.*;
 import com.reviewflow.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +27,8 @@ public class TeamService {
     private final CourseEnrollmentRepository courseEnrollmentRepository;
     private final CourseInstructorRepository courseInstructorRepository;
     private final UserRepository userRepository;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final AdminStatsService adminStatsService;
 
     @Transactional
     public Team createTeam(Long assignmentId, String teamName, Long creatorId) {
@@ -74,6 +78,7 @@ public class TeamService {
                 .status(TeamMemberStatus.ACCEPTED)
                 .build();
         teamMemberRepository.save(member);
+        adminStatsService.evictStats();
         return team;
     }
 
@@ -200,10 +205,15 @@ public class TeamService {
                 .build();
         TeamMember saved = teamMemberRepository.save(member);
         
-        notificationService.create(invitee.getId(), "TEAM_INVITE",
-                "Team Invite",
-                inviter.getFirstName() + " " + inviter.getLastName() + " invited you to join " + team.getName(),
-                "/teams/" + teamId);
+        eventPublisher.publishEvent(new TeamInviteEvent(
+                invitee.getId(),
+                team.getId(),
+                team.getName(),
+                inviter.getFirstName(),
+                assignment.getId(),
+                assignment.getTitle()
+        ));
+        
         return saved;
     }
 
@@ -295,13 +305,20 @@ public class TeamService {
         
         team.setIsLocked(true);
         Team saved = teamRepository.save(team);
-        team.getMembers().stream()
+        
+        List<Long> memberIds = team.getMembers().stream()
                 .filter(m -> m.getStatus() == TeamMemberStatus.ACCEPTED)
-                .forEach(m -> notificationService.create(
-                        m.getUser().getId(), "TEAM_LOCKED",
-                        "Team Locked",
-                        "Your team \"" + team.getName() + "\" has been locked.",
-                        "/teams/" + teamId));
+                .map(m -> m.getUser().getId())
+                .toList();
+        
+        eventPublisher.publishEvent(new TeamLockedEvent(
+                memberIds,
+                team.getId(),
+                team.getName(),
+                team.getAssignment().getId(),
+                team.getAssignment().getTitle()
+        ));
+        
         return saved;
     }
 

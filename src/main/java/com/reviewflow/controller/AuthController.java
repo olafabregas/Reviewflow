@@ -117,6 +117,26 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok(data));
     }
 
+    @Operation(summary = "Get access token value for WebSocket authentication")
+    @GetMapping("/token")
+    public ResponseEntity<ApiResponse<Map<String, String>>> getTokenForWebSocket(
+            HttpServletRequest request,
+            @AuthenticationPrincipal ReviewFlowUserDetails user) {
+
+        if (user == null) {
+            return ResponseEntity.status(401)
+                    .body(ApiResponse.error("UNAUTHORIZED", "Not authenticated"));
+        }
+
+        String token = getCookieValue(request, ACCESS_COOKIE);
+        if (token == null) {
+            return ResponseEntity.status(401)
+                    .body(ApiResponse.error("UNAUTHORIZED", "Access token not found"));
+        }
+
+        return ResponseEntity.ok(ApiResponse.ok(Map.of("token", token)));
+    }
+
     private void addCookie(HttpServletResponse response, String name, String value, long maxAgeSeconds) {
         String cookie = name + "=" + value + "; Path=" + COOKIE_PATH + "; Max-Age=" + maxAgeSeconds
                 + "; HttpOnly; SameSite=Lax"

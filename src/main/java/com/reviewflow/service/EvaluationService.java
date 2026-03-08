@@ -1,5 +1,6 @@
 package com.reviewflow.service;
 
+import com.reviewflow.event.EvaluationPublishedEvent;
 import com.reviewflow.exception.AccessDeniedException;
 import com.reviewflow.exception.BusinessRuleException;
 import com.reviewflow.exception.DuplicateResourceException;
@@ -10,6 +11,7 @@ import com.reviewflow.model.entity.*;
 import com.reviewflow.pdf.PdfGenerationService;
 import com.reviewflow.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,7 +31,7 @@ public class EvaluationService {
     private final RubricCriterionRepository rubricCriterionRepository;
     private final UserRepository userRepository;
     private final TeamMemberRepository teamMemberRepository;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final PdfGenerationService pdfGenerationService;
 
     @Transactional
@@ -221,13 +223,26 @@ public class EvaluationService {
         
         // Notify all accepted team members
         Long teamId = evaluation.getSubmission().getTeam().getId();
-        teamMemberRepository.findByTeam_Id(teamId).stream()
+        Assignment assignment = evaluation.getSubmission().getAssignment();
+        
+        List<Long> memberIds = teamMemberRepository.findByTeam_Id(teamId).stream()
                 .filter(m -> m.getStatus() == TeamMemberStatus.ACCEPTED)
-                .forEach(m -> notificationService.create(
-                        m.getUser().getId(), "FEEDBACK_PUBLISHED",
-                        "Feedback Published",
-                        "Feedback for your team's submission has been published.",
-                        "/evaluations/" + evalId));
+                .map(m -> m.getUser().getId())
+                .toList();
+        
+        int maxPossibleScore = assignment.getRubricCriteria().stream()
+                .mapToInt(RubricCriterion::getMaxScore)
+                .sum();
+        
+        eventPublisher.publishEvent(new EvaluationPublishedEvent(
+                memberIds,
+                evaluation.getId(),
+                assignment.getId(),
+                assignment.getTitle(),
+                evaluation.getTotalScore() != null ? evaluation.getTotalScore().intValue() : 0,
+                maxPossibleScore
+        ));
+        
         return saved;
     }
 

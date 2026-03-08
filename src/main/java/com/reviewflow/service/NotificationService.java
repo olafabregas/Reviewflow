@@ -1,12 +1,15 @@
 package com.reviewflow.service;
 
+import com.reviewflow.config.CacheConfig;
 import com.reviewflow.exception.AccessDeniedException;
 import com.reviewflow.exception.ResourceNotFoundException;
+import com.reviewflow.model.dto.response.NotificationDto;
 import com.reviewflow.model.entity.Notification;
-import com.reviewflow.model.entity.User;
+import com.reviewflow.model.enums.NotificationType;
 import com.reviewflow.repository.NotificationRepository;
-import com.reviewflow.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -19,30 +22,28 @@ import java.time.Instant;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
-    private final UserRepository userRepository;
 
     @Transactional
-    public Notification create(Long userId, String type, String title, String message, String actionUrl) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+    public Notification create(Long userId, NotificationType type, String title, String message, String actionUrl) {
         Notification n = Notification.builder()
-                .user(user)
+                .userId(userId)
                 .type(type)
                 .title(title)
                 .message(message)
                 .actionUrl(actionUrl)
                 .isRead(false)
-                .createdAt(Instant.now())
                 .build();
         return notificationRepository.save(n);
     }
 
+    @CacheEvict(value = CacheConfig.CACHE_UNREAD_COUNT, key = "#userId")
     @Transactional
     public void markAsRead(Long id, Long userId) {
         Notification notification = notificationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification", id));
         
         // Check if notification belongs to the user
-        if (!notification.getUser().getId().equals(userId)) {
+        if (!notification.getUserId().equals(userId)) {
             throw new AccessDeniedException("Not authorized to access this notification");
         }
         
@@ -50,6 +51,7 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
+    @CacheEvict(value = CacheConfig.CACHE_UNREAD_COUNT, key = "#userId")
     @Transactional
     public int markAllAsRead(Long userId) {
         return notificationRepository.markAllReadByUserId(userId);
@@ -61,21 +63,32 @@ public class NotificationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Notification", id));
         
         // Check if notification belongs to the user
-        if (!notification.getUser().getId().equals(userId)) {
+        if (!notification.getUserId().equals(userId)) {
             throw new AccessDeniedException("Not authorized to delete this notification");
         }
         
         notificationRepository.deleteById(id);
     }
 
+    @Cacheable(value = CacheConfig.CACHE_UNREAD_COUNT, key = "#userId")
+    @Transactional(readOnly = true)
     public long getUnreadCount(Long userId) {
-        return notificationRepository.countByUser_IdAndIsReadFalse(userId);
+        return notificationRepository.countByUserIdAndIsReadFalse(userId);
     }
 
-    public Page<Notification> getNotifications(Long userId, Boolean unreadOnly, Pageable pageable) {
+    public Page<NotificationDto> getNotifications(Long userId, Boolean unreadOnly, Pageable pageable) {
         if (Boolean.TRUE.equals(unreadOnly)) {
-            return notificationRepository.findByUser_IdAndIsReadFalseOrderByCreatedAtDesc(userId, pageable);
+            return notificationRepository
+                    .findByUserIdAndIsReadFalseOrderByCreatedAtDesc(userId, pageable)
+                    .map(NotificationDto::from);
         }
-        return notificationRepository.findByUser_IdOrderByCreatedAtDesc(userId, pageable);
+        return notificationRepository
+                .findByUserIdOrderByCreatedAtDesc(userId, pageable)
+                .map(NotificationDto::from);
+    }
+
+    @Transactional
+    public void deleteOlderThan(Instant cutoff) {
+        notificationRepository.deleteOlderThan(cutoff);
     }
 }

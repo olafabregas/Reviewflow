@@ -1,8 +1,8 @@
 package com.reviewflow.controller;
 
 import com.reviewflow.model.dto.response.ApiResponse;
+import com.reviewflow.model.dto.response.NotificationDto;
 import com.reviewflow.model.dto.response.NotificationResponse;
-import com.reviewflow.model.entity.Notification;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -66,7 +66,7 @@ public class NotificationController {
         return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Notification deleted")));
     }
 
-    private NotificationResponse toResponse(Notification n) {
+    private NotificationResponse toResponse(NotificationDto n) {
         return NotificationResponse.builder()
                 .id(n.getId())
                 .type(n.getType())

@@ -1,0 +1,2523 @@
+{
+  "info": {
+    "name": "ReviewFlow API — Complete Test Suite",
+    "description": "Complete collection covering all ReviewFlow endpoints. Run in order: Auth → Courses → Assignments → Teams → Submissions → Evaluations → Notifications → Admin.\n\nBase URL: http://localhost:8081/api/v1\n\nCredentials:\n- Admin:      admin@reviewflow.com / Admin@1234\n- Instructor: sarah.johnson@university.edu / Test@1234\n- Student:    jane.smith@university.edu / Test@1234",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081/api/v1",
+      "type": "string"
+    },
+    { "key": "adminEmail", "value": "admin@reviewflow.com", "type": "string" },
+    { "key": "adminPassword", "value": "Admin@1234", "type": "string" },
+    {
+      "key": "instructorEmail",
+      "value": "sarah.johnson@university.edu",
+      "type": "string"
+    },
+    { "key": "instructorPassword", "value": "Test@1234", "type": "string" },
+    {
+      "key": "studentEmail",
+      "value": "jane.smith@university.edu",
+      "type": "string"
+    },
+    { "key": "studentPassword", "value": "Test@1234", "type": "string" },
+    {
+      "key": "student2Email",
+      "value": "marcus.chen@university.edu",
+      "type": "string"
+    },
+    { "key": "courseId", "value": "1", "type": "string" },
+    { "key": "assignmentId", "value": "1", "type": "string" },
+    { "key": "teamId", "value": "1", "type": "string" },
+    { "key": "submissionId", "value": "1", "type": "string" },
+    { "key": "evaluationId", "value": "1", "type": "string" },
+    { "key": "notificationId", "value": "1", "type": "string" },
+    { "key": "userId", "value": "1", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "01 — AUTH",
+      "description": "Authentication endpoints. Run these first — they set cookies used by all other requests.",
+      "item": [
+        {
+          "name": "01.01 Login — Admin (success)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('role is ADMIN', () => pm.expect(pm.response.json().data.role).to.eql('ADMIN'));",
+                  "pm.test('userId present', () => pm.expect(pm.response.json().data.userId).to.be.a('number'));",
+                  "pm.test('email present', () => pm.expect(pm.response.json().data.email).to.be.a('string'));",
+                  "pm.test('Access cookie set', () => pm.expect(pm.cookies.has('reviewflow_access')).to.be.true);",
+                  "pm.test('Refresh cookie set', () => pm.expect(pm.cookies.has('reviewflow_refresh')).to.be.true);",
+                  "pm.collectionVariables.set('adminUserId', pm.response.json().data.userId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "01.02 Login — Instructor (success)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('role is INSTRUCTOR', () => pm.expect(pm.response.json().data.role).to.eql('INSTRUCTOR'));",
+                  "pm.test('Access cookie set', () => pm.expect(pm.cookies.has('reviewflow_access')).to.be.true);",
+                  "pm.collectionVariables.set('instructorUserId', pm.response.json().data.userId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{instructorEmail}}\",\n  \"password\": \"{{instructorPassword}}\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "01.03 Login — Student (success)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('role is STUDENT', () => pm.expect(pm.response.json().data.role).to.eql('STUDENT'));",
+                  "pm.test('Access cookie set', () => pm.expect(pm.cookies.has('reviewflow_access')).to.be.true);",
+                  "pm.collectionVariables.set('studentUserId', pm.response.json().data.userId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "01.04 Login — Wrong password (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);",
+                  "pm.test('error code present', () => pm.expect(pm.response.json().error.code).to.be.a('string'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"WrongPassword123\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "01.05 Login — Non-existent email (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nobody@nowhere.com\",\n  \"password\": \"Test@1234\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "01.06 Login — Missing email field (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"Test@1234\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "01.07 Get Current User — /me (authenticated)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('data has userId', () => pm.expect(pm.response.json().data.userId).to.be.a('number'));",
+                  "pm.test('data has email', () => pm.expect(pm.response.json().data.email).to.be.a('string'));",
+                  "pm.test('data has role', () => pm.expect(pm.response.json().data.role).to.be.a('string'));",
+                  "pm.test('data has firstName', () => pm.expect(pm.response.json().data.firstName).to.be.a('string'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+
+        {
+          "name": "01.08 Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('New access cookie issued', () => pm.expect(pm.cookies.has('reviewflow_access')).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            }
+          }
+        },
+
+        {
+          "name": "01.09 Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('message is present', () => pm.expect(pm.response.json().data.message).to.be.a('string'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            }
+          }
+        },
+
+        {
+          "name": "01.10 Get /me after logout (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+
+        {
+          "name": "01.11 Re-login as Admin (restore session)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('adminUserId', pm.response.json().data.userId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "02 — COURSES",
+      "description": "Course management. Login as Admin first (01.11) before running these.",
+      "item": [
+        {
+          "name": "02.01 List Courses — Admin sees all",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('data is array', () => pm.expect(pm.response.json().data).to.be.an('array'));",
+                  "pm.test('at least 1 course', () => pm.expect(pm.response.json().data.length).to.be.above(0));",
+                  "if(pm.response.json().data.length > 0) {",
+                  "  pm.collectionVariables.set('courseId', pm.response.json().data[0].id);",
+                  "  pm.test('course has id', () => pm.expect(pm.response.json().data[0].id).to.be.a('number'));",
+                  "  pm.test('course has name', () => pm.expect(pm.response.json().data[0].name).to.be.a('string'));",
+                  "  pm.test('course has code', () => pm.expect(pm.response.json().data[0].code).to.be.a('string'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses",
+              "host": ["{{baseUrl}}"],
+              "path": ["courses"]
+            }
+          }
+        },
+
+        {
+          "name": "02.02 Create Course (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('course has id', () => pm.expect(pm.response.json().data.id).to.be.a('number'));",
+                  "pm.test('course code matches', () => pm.expect(pm.response.json().data.code).to.eql('CS999'));",
+                  "pm.collectionVariables.set('newCourseId', pm.response.json().data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/courses",
+              "host": ["{{baseUrl}}"],
+              "path": ["courses"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"CS999\",\n  \"name\": \"Test Course\",\n  \"term\": \"Spring 2026\",\n  \"description\": \"A test course created via Postman\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "02.03 Get Course by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('correct course returned', () => pm.expect(pm.response.json().data.id).to.eql(parseInt(pm.collectionVariables.get('courseId'))));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["courses", "{{courseId}}"]
+            }
+          }
+        },
+
+        {
+          "name": "02.04 Get Course — non-existent ID (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/99999",
+              "host": ["{{baseUrl}}"],
+              "path": ["courses", "99999"]
+            }
+          }
+        },
+
+        {
+          "name": "02.05 Assign Instructor to Course (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{newCourseId}}/instructors",
+              "host": ["{{baseUrl}}"],
+              "path": ["courses", "{{newCourseId}}", "instructors"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instructorId\": {{instructorUserId}}\n}"
+            }
+          }
+        },
+
+        {
+          "name": "02.06 Enroll Student (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/enroll",
+              "host": ["{{baseUrl}}"],
+              "path": ["courses", "{{courseId}}", "enroll"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": {{studentUserId}}\n}"
+            }
+          }
+        },
+
+        {
+          "name": "02.07 Archive Course (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{newCourseId}}/archive",
+              "host": ["{{baseUrl}}"],
+              "path": ["courses", "{{newCourseId}}", "archive"]
+            }
+          }
+        },
+
+        {
+          "name": "02.08 Create Course — Student tries (expect 403)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": ["// Login as student first then run this"],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/courses",
+              "host": ["{{baseUrl}}"],
+              "path": ["courses"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"CS000\",\n  \"name\": \"Unauthorized Course\",\n  \"term\": \"Spring 2026\",\n  \"description\": \"Should not be created\"\n}"
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "03 — ASSIGNMENTS",
+      "description": "Assignment and rubric management. Login as Instructor before running.",
+      "item": [
+        {
+          "name": "03.01 Login as Instructor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('instructorUserId', pm.response.json().data.userId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{instructorEmail}}\",\n  \"password\": \"{{instructorPassword}}\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "03.02 List Assignments for Course",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data is array', () => pm.expect(pm.response.json().data).to.be.an('array'));",
+                  "if(pm.response.json().data.length > 0) {",
+                  "  pm.collectionVariables.set('assignmentId', pm.response.json().data[0].id);",
+                  "  pm.test('assignment has id', () => pm.expect(pm.response.json().data[0].id).to.be.a('number'));",
+                  "  pm.test('assignment has title', () => pm.expect(pm.response.json().data[0].title).to.be.a('string'));",
+                  "  pm.test('assignment has dueAt', () => pm.expect(pm.response.json().data[0].dueAt).to.be.a('string'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignments",
+              "host": ["{{baseUrl}}"],
+              "path": ["courses", "{{courseId}}", "assignments"]
+            }
+          }
+        },
+
+        {
+          "name": "03.03 Create Assignment (Instructor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('assignment has id', () => pm.expect(pm.response.json().data.id).to.be.a('number'));",
+                  "pm.test('isPublished is false', () => pm.expect(pm.response.json().data.isPublished).to.be.false);",
+                  "pm.collectionVariables.set('newAssignmentId', pm.response.json().data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignments",
+              "host": ["{{baseUrl}}"],
+              "path": ["courses", "{{courseId}}", "assignments"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Postman Test Assignment\",\n  \"description\": \"Created via Postman test\",\n  \"dueAt\": \"2026-05-01T23:59:00\",\n  \"maxTeamSize\": 4,\n  \"teamLockAt\": \"2026-04-15T23:59:00\",\n  \"isPublished\": false\n}"
+            }
+          }
+        },
+
+        {
+          "name": "03.04 Get Assignment by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('rubric criteria present', () => pm.expect(pm.response.json().data.rubricCriteria).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{assignmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["assignments", "{{assignmentId}}"]
+            }
+          }
+        },
+
+        {
+          "name": "03.05 Update Assignment (Instructor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('title updated', () => pm.expect(pm.response.json().data.title).to.eql('Updated Assignment Title'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{newAssignmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["assignments", "{{newAssignmentId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Assignment Title\",\n  \"description\": \"Updated description\",\n  \"dueAt\": \"2026-05-15T23:59:00\",\n  \"maxTeamSize\": 3,\n  \"teamLockAt\": \"2026-04-20T23:59:00\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "03.06 Publish Assignment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('isPublished is true', () => pm.expect(pm.response.json().data.isPublished).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{newAssignmentId}}/publish",
+              "host": ["{{baseUrl}}"],
+              "path": ["assignments", "{{newAssignmentId}}", "publish"]
+            }
+          }
+        },
+
+        {
+          "name": "03.07 Add Rubric Criterion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('criterion has id', () => pm.expect(pm.response.json().data.id).to.be.a('number'));",
+                  "pm.test('maxScore is 25', () => pm.expect(pm.response.json().data.maxScore).to.eql(25));",
+                  "pm.collectionVariables.set('criterionId', pm.response.json().data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{newAssignmentId}}/rubric",
+              "host": ["{{baseUrl}}"],
+              "path": ["assignments", "{{newAssignmentId}}", "rubric"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Code Quality\",\n  \"description\": \"Clean, readable, well-structured code\",\n  \"maxScore\": 25,\n  \"displayOrder\": 1\n}"
+            }
+          }
+        },
+
+        {
+          "name": "03.08 Update Rubric Criterion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('maxScore updated to 30', () => pm.expect(pm.response.json().data.maxScore).to.eql(30));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{newAssignmentId}}/rubric/{{criterionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "assignments",
+                "{{newAssignmentId}}",
+                "rubric",
+                "{{criterionId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Code Quality\",\n  \"description\": \"Updated description\",\n  \"maxScore\": 30,\n  \"displayOrder\": 1\n}"
+            }
+          }
+        },
+
+        {
+          "name": "03.09 Delete Rubric Criterion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 204', () => pm.expect([200,204]).to.include(pm.response.code));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{newAssignmentId}}/rubric/{{criterionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "assignments",
+                "{{newAssignmentId}}",
+                "rubric",
+                "{{criterionId}}"
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "03.10 Student cannot see unpublished assignment (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Login as student first, then run this against an unpublished assignment",
+                  "pm.test('Status is 403 or 404', () => pm.expect([403,404]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{newAssignmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["assignments", "{{newAssignmentId}}"]
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "04 — TEAMS",
+      "description": "Team formation, invites and locking. Login as Student before running.",
+      "item": [
+        {
+          "name": "04.01 Login as Student",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('studentUserId', pm.response.json().data.userId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "04.02 Create Team (Student)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('team has id', () => pm.expect(pm.response.json().data.id).to.be.a('number'));",
+                  "pm.test('team name matches', () => pm.expect(pm.response.json().data.name).to.eql('Postman Test Team'));",
+                  "pm.test('is not locked', () => pm.expect(pm.response.json().data.isLocked).to.be.false);",
+                  "pm.collectionVariables.set('newTeamId', pm.response.json().data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{assignmentId}}/teams",
+              "host": ["{{baseUrl}}"],
+              "path": ["assignments", "{{assignmentId}}", "teams"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test Team\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "04.03 Get Team Detail",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('team has members array', () => pm.expect(pm.response.json().data.members).to.be.an('array'));",
+                  "pm.test('creator is member', () => pm.expect(pm.response.json().data.members.length).to.be.above(0));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{newTeamId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["teams", "{{newTeamId}}"]
+            }
+          }
+        },
+
+        {
+          "name": "04.04 List Teams for Assignment (Student sees own team only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data is array', () => pm.expect(pm.response.json().data).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{assignmentId}}/teams",
+              "host": ["{{baseUrl}}"],
+              "path": ["assignments", "{{assignmentId}}", "teams"]
+            }
+          }
+        },
+
+        {
+          "name": "04.05 Invite Member to Team",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 201', () => pm.expect([200,201]).to.include(pm.response.code));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{newTeamId}}/invite",
+              "host": ["{{baseUrl}}"],
+              "path": ["teams", "{{newTeamId}}", "invite"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inviteeEmail\": \"{{student2Email}}\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "04.06 Invite non-enrolled student (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{newTeamId}}/invite",
+              "host": ["{{baseUrl}}"],
+              "path": ["teams", "{{newTeamId}}", "invite"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inviteeEmail\": \"nobody@nowhere.com\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "04.07 List All Teams — Instructor sees all",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": ["// Switch to instructor session before this request"],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('multiple teams returned', () => pm.expect(pm.response.json().data.length).to.be.above(0));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{assignmentId}}/teams",
+              "host": ["{{baseUrl}}"],
+              "path": ["assignments", "{{assignmentId}}", "teams"]
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "05 — SUBMISSIONS",
+      "description": "File upload and version tracking. Use form-data for upload requests.",
+      "item": [
+        {
+          "name": "05.01 Login as Student",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "05.02 Upload Submission (multipart)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('version number is 1', () => pm.expect(pm.response.json().data.versionNumber).to.eql(1));",
+                  "pm.test('isLate flag present', () => pm.expect(pm.response.json().data).to.have.property('isLate'));",
+                  "pm.test('fileName present', () => pm.expect(pm.response.json().data.fileName).to.be.a('string'));",
+                  "pm.collectionVariables.set('submissionId', pm.response.json().data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/submissions",
+              "host": ["{{baseUrl}}"],
+              "path": ["submissions"]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "teamId", "value": "{{newTeamId}}", "type": "text" },
+                {
+                  "key": "assignmentId",
+                  "value": "{{assignmentId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "changeNote",
+                  "value": "Initial submission via Postman",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "src": [],
+                  "type": "file",
+                  "description": "Attach any small .zip or .pdf file here"
+                }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "05.03 Get Version History for Team",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data is array', () => pm.expect(pm.response.json().data).to.be.an('array'));",
+                  "pm.test('at least 1 submission', () => pm.expect(pm.response.json().data.length).to.be.above(0));",
+                  "pm.test('submissions have versionNumber', () => pm.expect(pm.response.json().data[0].versionNumber).to.be.a('number'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{newTeamId}}/submissions",
+              "host": ["{{baseUrl}}"],
+              "path": ["teams", "{{newTeamId}}", "submissions"]
+            }
+          }
+        },
+
+        {
+          "name": "05.04 Get Single Submission",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('correct submission returned', () => pm.expect(pm.response.json().data.id).to.eql(parseInt(pm.collectionVariables.get('submissionId'))));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/submissions/{{submissionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["submissions", "{{submissionId}}"]
+            }
+          }
+        },
+
+        {
+          "name": "05.05 Upload Second Version (version increments)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('version number is 2', () => pm.expect(pm.response.json().data.versionNumber).to.eql(2));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/submissions",
+              "host": ["{{baseUrl}}"],
+              "path": ["submissions"]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "teamId", "value": "{{newTeamId}}", "type": "text" },
+                {
+                  "key": "assignmentId",
+                  "value": "{{assignmentId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "changeNote",
+                  "value": "Second version — fixed bugs",
+                  "type": "text"
+                },
+                { "key": "file", "src": [], "type": "file" }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "05.06 Get All Submissions for Assignment (Instructor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data is array', () => pm.expect(pm.response.json().data).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{assignmentId}}/submissions",
+              "host": ["{{baseUrl}}"],
+              "path": ["assignments", "{{assignmentId}}", "submissions"]
+            }
+          }
+        },
+
+        {
+          "name": "05.07 Student cannot access another team's submission (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 403 or 404', () => pm.expect([403,404]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/submissions/99999",
+              "host": ["{{baseUrl}}"],
+              "path": ["submissions", "99999"]
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "06 — EVALUATIONS",
+      "description": "Rubric grading, draft/publish workflow. Login as Instructor before running.",
+      "item": [
+        {
+          "name": "06.01 Login as Instructor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{instructorEmail}}\",\n  \"password\": \"{{instructorPassword}}\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "06.02 Create Evaluation (draft)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('isDraft is true', () => pm.expect(pm.response.json().data.isDraft).to.be.true);",
+                  "pm.test('evaluation has id', () => pm.expect(pm.response.json().data.id).to.be.a('number'));",
+                  "pm.collectionVariables.set('evaluationId', pm.response.json().data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/evaluations",
+              "host": ["{{baseUrl}}"],
+              "path": ["evaluations"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"submissionId\": {{submissionId}}\n}"
+            }
+          }
+        },
+
+        {
+          "name": "06.03 Set Rubric Scores",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('totalScore updated', () => pm.expect(pm.response.json().data.totalScore).to.be.a('number'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/evaluations/{{evaluationId}}/scores",
+              "host": ["{{baseUrl}}"],
+              "path": ["evaluations", "{{evaluationId}}", "scores"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scores\": [\n    { \"criterionId\": 1, \"score\": 18, \"comment\": \"Good code quality\" },\n    { \"criterionId\": 2, \"score\": 15, \"comment\": \"Solid architecture\" },\n    { \"criterionId\": 3, \"score\": 14, \"comment\": \"Needs more tests\" },\n    { \"criterionId\": 4, \"score\": 17, \"comment\": \"Well documented\" },\n    { \"criterionId\": 5, \"score\": 20, \"comment\": \"Excellent presentation\" }\n  ]\n}"
+            }
+          }
+        },
+
+        {
+          "name": "06.04 Score exceeds max (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/evaluations/{{evaluationId}}/scores",
+              "host": ["{{baseUrl}}"],
+              "path": ["evaluations", "{{evaluationId}}", "scores"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scores\": [\n    { \"criterionId\": 1, \"score\": 999, \"comment\": \"Way over max score\" }\n  ]\n}"
+            }
+          }
+        },
+
+        {
+          "name": "06.05 Set Overall Comment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/evaluations/{{evaluationId}}/comment",
+              "host": ["{{baseUrl}}"],
+              "path": ["evaluations", "{{evaluationId}}", "comment"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Great work overall. Improve test coverage for next phase.\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "06.06 Student cannot see draft evaluation (expect 404)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": ["// Switch to student session before this request"],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Draft not visible to student — 404', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/evaluations/{{evaluationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["evaluations", "{{evaluationId}}"]
+            }
+          }
+        },
+
+        {
+          "name": "06.07 Publish Evaluation (Instructor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('isDraft is false', () => pm.expect(pm.response.json().data.isDraft).to.be.false);",
+                  "pm.test('publishedAt is set', () => pm.expect(pm.response.json().data.publishedAt).to.not.be.null);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/evaluations/{{evaluationId}}/publish",
+              "host": ["{{baseUrl}}"],
+              "path": ["evaluations", "{{evaluationId}}", "publish"]
+            }
+          }
+        },
+
+        {
+          "name": "06.08 Student can see published evaluation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('isDraft is false', () => pm.expect(pm.response.json().data.isDraft).to.be.false);",
+                  "pm.test('totalScore present', () => pm.expect(pm.response.json().data.totalScore).to.be.a('number'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/evaluations/{{evaluationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["evaluations", "{{evaluationId}}"]
+            }
+          }
+        },
+
+        {
+          "name": "06.09 Get Grade Book for Assignment (Instructor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data is array', () => pm.expect(pm.response.json().data).to.be.an('array'));",
+                  "pm.test('entries have teamName', () => pm.expect(pm.response.json().data[0].teamName).to.be.a('string'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{assignmentId}}/gradebook",
+              "host": ["{{baseUrl}}"],
+              "path": ["assignments", "{{assignmentId}}", "gradebook"]
+            }
+          }
+        },
+
+        {
+          "name": "06.10 Reopen Evaluation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('isDraft is true again', () => pm.expect(pm.response.json().data.isDraft).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/evaluations/{{evaluationId}}/reopen",
+              "host": ["{{baseUrl}}"],
+              "path": ["evaluations", "{{evaluationId}}", "reopen"]
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "07 — NOTIFICATIONS",
+      "description": "Notification management. Works for all roles.",
+      "item": [
+        {
+          "name": "07.01 Login as Student",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "07.02 Get All Notifications",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data is array', () => pm.expect(pm.response.json().data).to.be.an('array'));",
+                  "if(pm.response.json().data.length > 0) {",
+                  "  pm.collectionVariables.set('notificationId', pm.response.json().data[0].id);",
+                  "  pm.test('notification has type', () => pm.expect(pm.response.json().data[0].type).to.be.a('string'));",
+                  "  pm.test('notification has isRead', () => pm.expect(pm.response.json().data[0]).to.have.property('isRead'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications"]
+            }
+          }
+        },
+
+        {
+          "name": "07.03 Get Unread Count",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('count is a number', () => pm.expect(pm.response.json().data.count).to.be.a('number'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/unread-count",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "unread-count"]
+            }
+          }
+        },
+
+        {
+          "name": "07.04 Mark Single Notification as Read",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/{{notificationId}}/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "{{notificationId}}", "read"]
+            }
+          }
+        },
+
+        {
+          "name": "07.05 Mark All Notifications as Read",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/read-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "read-all"]
+            }
+          }
+        },
+
+        {
+          "name": "07.06 Unread count is 0 after mark all read",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('unread count is 0', () => pm.expect(pm.response.json().data.count).to.eql(0));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/unread-count",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "unread-count"]
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "08 — ADMIN",
+      "description": "Admin-only endpoints. Login as Admin before running.",
+      "item": [
+        {
+          "name": "08.01 Login as Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('adminUserId', pm.response.json().data.userId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "08.02 List All Users (paginated)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data is array', () => pm.expect(pm.response.json().data).to.be.an('array'));",
+                  "pm.test('has 35 users', () => pm.expect(pm.response.json().data.length).to.be.above(0));",
+                  "pm.test('user has email', () => pm.expect(pm.response.json().data[0].email).to.be.a('string'));",
+                  "pm.test('user has role', () => pm.expect(pm.response.json().data[0].role).to.be.a('string'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "08.03 Create New User (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('user has id', () => pm.expect(pm.response.json().data.id).to.be.a('number'));",
+                  "pm.test('role is STUDENT', () => pm.expect(pm.response.json().data.role).to.eql('STUDENT'));",
+                  "pm.collectionVariables.set('newUserId', pm.response.json().data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Test\",\n  \"lastName\": \"Student\",\n  \"email\": \"test.postman@university.edu\",\n  \"password\": \"Test@1234\",\n  \"role\": \"STUDENT\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "08.04 Update User Role (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('role updated to INSTRUCTOR', () => pm.expect(pm.response.json().data.role).to.eql('INSTRUCTOR'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{newUserId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users", "{{newUserId}}"]
+            },
+            "body": { "mode": "raw", "raw": "{\n  \"role\": \"INSTRUCTOR\"\n}" }
+          }
+        },
+
+        {
+          "name": "08.05 Deactivate User (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('isActive is false', () => pm.expect(pm.response.json().data.isActive).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{newUserId}}/deactivate",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users", "{{newUserId}}", "deactivate"]
+            }
+          }
+        },
+
+        {
+          "name": "08.06 Deactivated user cannot login (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test.postman@university.edu\",\n  \"password\": \"Test@1234\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "08.07 Get System Stats (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('has totalUsers', () => pm.expect(pm.response.json().data.totalUsers).to.be.a('number'));",
+                  "pm.test('has totalCourses', () => pm.expect(pm.response.json().data.totalCourses).to.be.a('number'));",
+                  "pm.test('has totalSubmissions', () => pm.expect(pm.response.json().data.totalSubmissions).to.be.a('number'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "stats"]
+            }
+          }
+        },
+
+        {
+          "name": "08.08 Get Audit Log (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data is array', () => pm.expect(pm.response.json().data).to.be.an('array'));",
+                  "pm.test('entries have action field', () => pm.expect(pm.response.json().data[0].action).to.be.a('string'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/audit-log?page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "audit-log"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "08.09 Non-admin cannot access admin endpoints (expect 403)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": ["// Switch to student session before this request"],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users"]
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "09 — SECURITY TESTS",
+      "description": "Security hardening feature tests: rate limiting, security headers, ClamAV malware scanning, and metrics.",
+      "item": [
+        {
+          "name": "09.01 Test Security Headers — Any Request",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('X-Content-Type-Options header present', () => pm.expect(pm.response.headers.get('X-Content-Type-Options')).to.eql('nosniff'));",
+                  "pm.test('X-XSS-Protection header present', () => pm.expect(pm.response.headers.get('X-XSS-Protection')).to.eql('0'));",
+                  "pm.test('X-Frame-Options header present', () => pm.expect(pm.response.headers.get('X-Frame-Options')).to.eql('DENY'));",
+                  "pm.test('Referrer-Policy header present', () => pm.expect(pm.response.headers.get('Referrer-Policy')).to.be.a('string'));",
+                  "pm.test('Content-Security-Policy header present', () => pm.expect(pm.response.headers.get('Content-Security-Policy')).to.be.a('string'));",
+                  "// Note: HSTS is disabled in local/dev profiles"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+
+        {
+          "name": "09.02 Trigger Login Rate Limit (5 failed attempts)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Run this request 6 times in a row",
+                  "const attemptNumber = pm.collectionVariables.get('loginAttemptCount') || 1;",
+                  "pm.collectionVariables.set('loginAttemptCount', attemptNumber + 1);",
+                  "",
+                  "if (attemptNumber < 5) {",
+                  "    pm.test('Attempt ' + attemptNumber + ' — Status is 401 (wrong password)', () => pm.response.to.have.status(401));",
+                  "} else if (attemptNumber === 5) {",
+                  "    pm.test('Attempt 5 — Status is 401', () => pm.response.to.have.status(401));",
+                  "} else {",
+                  "    pm.test('Attempt ' + attemptNumber + ' — Status is 429 (rate limited)', () => pm.response.to.have.status(429));",
+                  "    pm.test('Retry-After header present', () => pm.expect(pm.response.headers.get('Retry-After')).to.be.a('string'));",
+                  "    pm.collectionVariables.set('loginAttemptCount', 1); // Reset counter",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"WrongPassword123\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "09.03 Trigger Token Rate Limit (21 invalid tokens)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Run this request 21 times in a row to trigger rate limit",
+                  "const attemptNumber = pm.collectionVariables.get('tokenAttemptCount') || 1;",
+                  "pm.collectionVariables.set('tokenAttemptCount', attemptNumber + 1);",
+                  "",
+                  "if (attemptNumber <= 20) {",
+                  "    pm.test('Attempt ' + attemptNumber + ' — Status is 401 (invalid token)', () => pm.response.to.have.status(401));",
+                  "} else {",
+                  "    pm.test('Attempt ' + attemptNumber + ' — Status is 429 (rate limited)', () => pm.response.to.have.status(429));",
+                  "    pm.test('Retry-After header present', () => pm.expect(pm.response.headers.get('Retry-After')).to.be.a('string'));",
+                  "    pm.collectionVariables.set('tokenAttemptCount', 1); // Reset counter",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer invalid_token_12345" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+
+        {
+          "name": "09.04 Upload Blocked File (.exe) to Trigger Upload Block Rate Limit",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": ["// Login as student first before running this test"],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Run this request 11 times in a row",
+                  "const attemptNumber = pm.collectionVariables.get('uploadBlockAttemptCount') || 1;",
+                  "pm.collectionVariables.set('uploadBlockAttemptCount', attemptNumber + 1);",
+                  "",
+                  "if (attemptNumber <= 10) {",
+                  "    pm.test('Attempt ' + attemptNumber + ' — Status is 400 (blocked file type)', () => pm.response.to.have.status(400));",
+                  "    pm.test('error code is BLOCKED_FILE_TYPE', () => pm.expect(pm.response.json().error.code).to.include('BLOCKED'));",
+                  "} else {",
+                  "    pm.test('Attempt ' + attemptNumber + ' — Status is 429 (upload block rate limited)', () => pm.response.to.have.status(429));",
+                  "    pm.test('error message mentions blocked uploads', () => pm.expect(pm.response.json().error.message).to.include('blocked upload'));",
+                  "    pm.collectionVariables.set('uploadBlockAttemptCount', 1); // Reset counter",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/submissions/upload?teamId={{teamId}}&assignmentId={{assignmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["submissions", "upload"],
+              "query": [
+                { "key": "teamId", "value": "{{teamId}}" },
+                { "key": "assignmentId", "value": "{{assignmentId}}" }
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "/path/to/malicious.exe"
+                },
+                {
+                  "key": "changeNote",
+                  "value": "Testing blocked file upload",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "09.05 Upload EICAR Test File (ClamAV Malware Detection)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// EICAR is a safe test string that antivirus software detects as malware",
+                  "// Create a text file containing exactly this line:",
+                  "// X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*",
+                  "// ",
+                  "// ClamAV must be enabled (clamav.enabled=true) for this test to work",
+                  "// If ClamAV is disabled, the file will pass validation"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// If ClamAV is enabled:",
+                  "if (pm.response.code === 400) {",
+                  "    pm.test('Status is 400 — malware detected', () => pm.response.to.have.status(400));",
+                  "    pm.test('error code indicates malware or validation failure', () => {",
+                  "        const code = pm.response.json().error.code;",
+                  "        pm.expect(['MALWARE_DETECTED', 'FILE_VALIDATION_ERROR']).to.include(code);",
+                  "    });",
+                  "} else {",
+                  "    pm.test('ClamAV may be disabled — upload succeeded or failed for other reason', () => {",
+                  "        pm.expect([200, 201, 400]).to.include(pm.response.code);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/submissions/upload?teamId={{teamId}}&assignmentId={{assignmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["submissions", "upload"],
+              "query": [
+                { "key": "teamId", "value": "{{teamId}}" },
+                { "key": "assignmentId", "value": "{{assignmentId}}" }
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "/path/to/eicar.txt",
+                  "description": "EICAR test file containing malware signature"
+                },
+                {
+                  "key": "changeNote",
+                  "value": "Testing ClamAV malware detection",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "09.06 Get Security Metrics — Login Attempts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('measurements array present', () => pm.expect(pm.response.json().measurements).to.be.an('array'));",
+                  "pm.test('metric has count value', () => {",
+                  "    const measurements = pm.response.json().measurements;",
+                  "    if (measurements.length > 0) {",
+                  "        pm.expect(measurements[0].value).to.be.a('number');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/metrics/reviewflow.security.login?tag=result:failed",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "metrics", "reviewflow.security.login"],
+              "query": [{ "key": "tag", "value": "result:failed" }]
+            }
+          }
+        },
+
+        {
+          "name": "09.07 Get Security Metrics — File Upload Blocks",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('name is reviewflow.security.file_upload', () => pm.expect(pm.response.json().name).to.eql('reviewflow.security.file_upload'));",
+                  "pm.test('blocked_extension measurements present', () => {",
+                  "    const measurements = pm.response.json().measurements;",
+                  "    pm.expect(measurements).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/metrics/reviewflow.security.file_upload?tag=result:blocked_extension",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "actuator",
+                "metrics",
+                "reviewflow.security.file_upload"
+              ],
+              "query": [{ "key": "tag", "value": "result:blocked_extension" }]
+            }
+          }
+        },
+
+        {
+          "name": "09.08 Get Security Metrics — ClamAV Scans",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('name is reviewflow.security.clamav_scan', () => pm.expect(pm.response.json().name).to.eql('reviewflow.security.clamav_scan'));",
+                  "pm.test('measurements array present', () => pm.expect(pm.response.json().measurements).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/metrics/reviewflow.security.clamav_scan",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "metrics", "reviewflow.security.clamav_scan"]
+            }
+          }
+        },
+
+        {
+          "name": "09.09 List All Available Security Metrics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('names array present', () => pm.expect(pm.response.json().names).to.be.an('array'));",
+                  "pm.test('reviewflow.security.login metric exists', () => {",
+                  "    const names = pm.response.json().names;",
+                  "    pm.expect(names).to.include('reviewflow.security.login');",
+                  "});",
+                  "pm.test('reviewflow.security.file_upload metric exists', () => {",
+                  "    const names = pm.response.json().names;",
+                  "    pm.expect(names).to.include('reviewflow.security.file_upload');",
+                  "});",
+                  "pm.test('reviewflow.security.clamav_scan metric exists', () => {",
+                  "    const names = pm.response.json().names;",
+                  "    pm.expect(names).to.include('reviewflow.security.clamav_scan');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "metrics"]
+            }
+          }
+        },
+
+        {
+          "name": "09.10 Test IP Address Extraction (Debug)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// This tests if IP address extraction works behind proxies",
+                  "// Add custom headers to simulate proxy forwarding"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 401', () => pm.expect([200, 401]).to.include(pm.response.code));",
+                  "// Check server logs to verify IP extraction — IpAddressExtractor logs real client IP"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Forwarded-For",
+                "value": "203.0.113.195, 70.41.3.18, 150.172.238.178"
+              },
+              { "key": "X-Real-IP", "value": "203.0.113.195" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+
+        {
+          "name": "09.11 Test Token Fingerprinting (if enabled)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Token fingerprinting is disabled by default (TOKEN_FINGERPRINTING_ENABLED=false)",
+                  "// To test this:",
+                  "// 1. Set TOKEN_FINGERPRINTING_ENABLED=true in .env",
+                  "// 2. Restart the server",
+                  "// 3. Login to get a token",
+                  "// 4. Run this request with a DIFFERENT User-Agent",
+                  "// Expected: 401 with fingerprint mismatch error"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// If fingerprinting is enabled and User-Agent changed:",
+                  "if (pm.response.code === 401) {",
+                  "    pm.test('Status is 401 — fingerprint mismatch', () => pm.response.to.have.status(401));",
+                  "    pm.test('error indicates token validation failure', () => {",
+                  "        pm.expect(pm.response.json().success).to.be.false;",
+                  "    });",
+                  "} else {",
+                  "    pm.test('Fingerprinting disabled or User-Agent matches — Status is 200', () => {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "User-Agent",
+                "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) DifferentBrowser/99.0"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,22 @@
 package com.reviewflow.controller;
 
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.reviewflow.model.dto.request.RenameTeamRequest;
 import com.reviewflow.model.dto.request.TeamInviteRequest;
 import com.reviewflow.model.dto.request.TeamRespondRequest;
@@ -15,16 +32,9 @@ import com.reviewflow.model.entity.User;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.SubmissionService;
 import com.reviewflow.service.TeamService;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -128,17 +138,6 @@ public class TeamController {
         List<Submission> submissions = submissionService.getTeamSubmissions(id, user.getUserId(), user.getRole());
         List<SubmissionResponse> data = submissions.stream()
                 .map(this::toSubmissionResponse)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(ApiResponse.ok(data));
-    }
-    
-    @PreAuthorize("hasRole('STUDENT')")
-    @GetMapping("/students/me/invites")
-    public ResponseEntity<ApiResponse<List<TeamInviteResponse>>> getMyInvites(
-            @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        List<TeamMember> invites = teamService.getPendingInvitesForUser(user.getUserId());
-        List<TeamInviteResponse> data = invites.stream()
-                .map(this::toInviteResponse)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.ok(data));
     }

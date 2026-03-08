@@ -1,12 +1,18 @@
 package com.reviewflow.model.entity;
 
+import com.reviewflow.model.enums.NotificationType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
 
 @Entity
-@Table(name = "notifications")
+@Table(name = "notifications", indexes = {
+    @Index(name = "idx_notifications_user_id",    columnList = "user_id"),
+    @Index(name = "idx_notifications_is_read",    columnList = "is_read"),
+    @Index(name = "idx_notifications_created_at", columnList = "created_at")
+})
 @Data
 @Builder
 @NoArgsConstructor
@@ -17,15 +23,17 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    // Plain Long — no join needed, notifications just need to know who to send to
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
-    private String type;
+    private NotificationType type;
 
-    @Column(length = 200)
-    private String title;
+    @Column(nullable = false, length = 150)
+    @Builder.Default
+    private String title = "";
 
     @Column(columnDefinition = "TEXT")
     private String message;
@@ -37,6 +45,7 @@ public class Notification {
     @Column(name = "action_url", length = 500)
     private String actionUrl;
 
-    @Column(name = "created_at")
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 }

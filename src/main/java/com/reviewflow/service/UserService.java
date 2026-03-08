@@ -29,6 +29,7 @@ public class UserService {
     private final TeamMemberRepository teamMemberRepository;
     private final CourseEnrollmentRepository courseEnrollmentRepository;
     private final CourseInstructorRepository courseInstructorRepository;
+    private final AdminStatsService adminStatsService;
 
     public Page<User> listUsers(Pageable pageable) {
         return userRepository.findAll(pageable);
@@ -116,7 +117,9 @@ public class UserService {
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
-        return userRepository.save(user);
+        user = userRepository.save(user);
+        adminStatsService.evictStats();
+        return user;
     }
 
     @Transactional
@@ -148,6 +151,7 @@ public class UserService {
         user.setIsActive(false);
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
+        adminStatsService.evictStats();
         // TODO: Revoke all active refresh tokens
     }
     
@@ -164,5 +168,6 @@ public class UserService {
         user.setIsActive(true);
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
+        adminStatsService.evictStats();
     }
 }

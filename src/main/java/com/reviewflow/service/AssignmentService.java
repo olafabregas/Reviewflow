@@ -6,6 +6,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import com.reviewflow.config.CacheConfig;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -82,6 +85,7 @@ public class AssignmentService {
         return assignmentRepository.save(a);
     }
 
+    @CacheEvict(value = CacheConfig.CACHE_ASSIGNMENT, key = "#assignmentId")
     @Transactional
     public Assignment updateAssignment(Long assignmentId, String title, String description, Instant dueAt,
                                        Integer maxTeamSize, Instant teamLockAt, Long updaterId) {
@@ -112,6 +116,7 @@ public class AssignmentService {
         return assignmentRepository.save(a);
     }
 
+    @CacheEvict(value = CacheConfig.CACHE_ASSIGNMENT, key = "#assignmentId")
     @Transactional
     public Assignment publishAssignment(Long assignmentId, Long userId) {
         Assignment a = getAssignmentById(assignmentId);
@@ -132,6 +137,8 @@ public class AssignmentService {
         return assignmentRepository.save(a);
     }
 
+    @Cacheable(value = CacheConfig.CACHE_ASSIGNMENT, key = "#id")
+    @Transactional(readOnly = true)
     public Assignment getAssignmentById(Long id) {
         return assignmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Assignment", id));
@@ -151,6 +158,7 @@ public class AssignmentService {
         throw new com.reviewflow.exception.AccessDeniedException("You do not have access to this course");
     }
 
+    @CacheEvict(value = CacheConfig.CACHE_ASSIGNMENT, key = "#assignmentId")
     @Transactional
     public RubricCriterion addRubricCriteria(Long assignmentId, String name, String description, int maxScore, int displayOrder, Long userId) {
         Assignment a = getAssignmentById(assignmentId);
@@ -171,6 +179,7 @@ public class AssignmentService {
         return rubricCriterionRepository.save(c);
     }
 
+    @CacheEvict(value = CacheConfig.CACHE_ASSIGNMENT, key = "#assignmentId")
     @Transactional
     public RubricCriterion updateRubricCriteria(Long assignmentId, Long criterionId, String name, String description, Integer maxScore, Integer displayOrder, Long userId) {
         Assignment a = getAssignmentById(assignmentId);
@@ -193,6 +202,7 @@ public class AssignmentService {
         return rubricCriterionRepository.save(c);
     }
 
+    @CacheEvict(value = CacheConfig.CACHE_ASSIGNMENT, key = "#assignmentId")
     @Transactional
     public void deleteRubricCriterion(Long assignmentId, Long criterionId, Long userId) {
         Assignment a = getAssignmentById(assignmentId);

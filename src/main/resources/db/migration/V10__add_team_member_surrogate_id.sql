@@ -1,24 +1,22 @@
+-- V10__fix_notifications_table.sql  (use your next version number)
 
--- Add surrogate auto-increment id to team_members so that
--- PATCH /api/v1/team-members/{id}/respond can reference a single row.
--- The existing composite unique constraint (team_id, user_id) is retained.
+-- Drop the foreign key constraint on user_id if it exists
+ALTER TABLE notifications
+    DROP FOREIGN KEY IF EXISTS fk_notifications_user;
 
--- 1. Drop foreign keys that reference the old composite primary key
-ALTER TABLE team_members
-    DROP FOREIGN KEY fk_team_members_team,
-    DROP FOREIGN KEY fk_team_members_user,
-    DROP FOREIGN KEY fk_team_members_invited_by,
-    DROP FOREIGN KEY fk_team_members_assignment;
+-- Ensure user_id is a plain BIGINT (not a FK)
+ALTER TABLE notifications
+    MODIFY COLUMN user_id   BIGINT       NOT NULL,
+    MODIFY COLUMN type      VARCHAR(50)  NOT NULL,
+    MODIFY COLUMN title     VARCHAR(150) NOT NULL DEFAULT '',
+    MODIFY COLUMN action_url VARCHAR(500);
 
--- 2. Swap primary key and add surrogate id
-ALTER TABLE team_members
-    DROP PRIMARY KEY,
-    ADD COLUMN id BIGINT NOT NULL AUTO_INCREMENT FIRST,
-    ADD PRIMARY KEY (id);
+-- Add indexes for query performance
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id
+    ON notifications(user_id);
 
--- 3. Re-add foreign keys
-ALTER TABLE team_members
-    ADD CONSTRAINT fk_team_members_team       FOREIGN KEY (team_id)       REFERENCES teams(id)       ON DELETE CASCADE,
-    ADD CONSTRAINT fk_team_members_user       FOREIGN KEY (user_id)       REFERENCES users(id)       ON DELETE CASCADE,
-    ADD CONSTRAINT fk_team_members_invited_by FOREIGN KEY (invited_by)    REFERENCES users(id),
-    ADD CONSTRAINT fk_team_members_assignment FOREIGN KEY (assignment_id) REFERENCES assignments(id);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read
+    ON notifications(is_read);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at
+    ON notifications(created_at);

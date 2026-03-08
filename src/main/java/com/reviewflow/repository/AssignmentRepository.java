@@ -1,5 +1,6 @@
 package com.reviewflow.repository;
 
+import java.time.Instant;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,4 +22,12 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
     List<Assignment> findByCourseEnrollmentUserId(@Param("userId") Long userId);
     
     long countByIsPublishedTrue();
+    
+    @Query("SELECT a.id FROM Assignment a " +
+           "WHERE a.isPublished = true " +
+           "AND a.dueAt BETWEEN :start AND :end")
+    List<Long> findPublishedDueBetween(
+            @Param("start") Instant start,
+            @Param("end")   Instant end
+    );
 }

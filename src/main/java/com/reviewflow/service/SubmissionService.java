@@ -1,11 +1,12 @@
 package com.reviewflow.service;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,8 +14,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.reviewflow.event.SubmissionUploadedEvent;
 import com.reviewflow.exception.AccessDeniedException;
 import com.reviewflow.exception.DuplicateResourceException;
+import com.reviewflow.exception.MalwareDetectedException;
+import com.reviewflow.exception.RateLimitException;
 import com.reviewflow.exception.ResourceNotFoundException;
 import com.reviewflow.exception.ValidationException;
 import com.reviewflow.model.entity.Assignment;
@@ -24,6 +28,7 @@ import com.reviewflow.model.entity.TeamMember;
 import com.reviewflow.model.entity.TeamMemberStatus;
 import com.reviewflow.model.entity.User;
 import com.reviewflow.model.entity.UserRole;
+import com.reviewflow.monitoring.SecurityMetrics;
 import com.reviewflow.repository.AssignmentRepository;
 import com.reviewflow.repository.SubmissionRepository;
 import com.reviewflow.repository.TeamMemberRepository;
@@ -37,35 +42,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SubmissionService {
 
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
-            
-    // Archives (preferred submission format)
-    "zip", "rar", "gz", "tar", "7z",
-
-    // Documents
-    "pdf", "docx", "xlsx", "pptx", "txt",
-
-    // Data & Config
-    "csv", "json", "xml", "yaml", "yml", "toml", "sql",
-
-    // Markup & Web
-    "html", "css", "md",
-
-    // JVM Languages
-    "java", "kt", "scala",
-
-    // Systems & Low-level
-    "c", "cpp", "cs", "go", "rs",
-
-    // Scripting
-    "py", "rb", "php", "swift", "js", "ts", "r",
-
-    // Notebooks
-    "ipynb"
-);
-            
-    
-    private static final long MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+    private static final long MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB (matches security spec)
     private static final int MAX_CHANGE_NOTE_LENGTH = 500;
     
     // Concurrent upload tracking
@@ -76,24 +53,67 @@ public class SubmissionService {
     private final TeamMemberRepository teamMemberRepository;
     private final AssignmentRepository assignmentRepository;
     private final StorageService storageService;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final UserRepository userRepository;
+    private final FileSecurityValidator fileSecurityValidator;
+    private final AdminStatsService adminStatsService;
+    private final ClamAvScanService clamAvScanService;
+    private final RateLimiterService rateLimiterService;
+    private final SecurityMetrics securityMetrics;
 
     @Transactional
     public Submission upload(Long teamId, Long assignmentId, String changeNote,
                              MultipartFile file, Long uploaderId) {
+        // Check upload block rate limiting
+        String uploadKey = "user_" + uploaderId;
+        if (rateLimiterService.isUploadBlockRateLimited(uploadKey)) {
+            securityMetrics.recordUploadBlockRateLimited();
+            long retryAfter = rateLimiterService.getUploadBlockRetryAfterSeconds(uploadKey);
+            throw new RateLimitException("Too many blocked upload attempts. Try again in " + retryAfter + " seconds");
+        }
+        
         // Validate file is present
         if (file == null || file.isEmpty()) {
             throw new ValidationException("File is required", "VALIDATION_ERROR");
         }
         
-        // Validate file size
+        // Validate file size (HTTP layer enforcement)
         if (file.getSize() > MAX_FILE_SIZE) {
             long sizeMB = file.getSize() / (1024 * 1024);
             throw new ValidationException(
-                    "File size " + sizeMB + "MB exceeds maximum of 50MB",
+                    "File size " + sizeMB + "MB exceeds maximum of 100MB",
                     "FILE_TOO_LARGE"
             );
+        }
+        
+        // ══════════════════════════════════════════════════════════════════════
+        // THREE-GATE FILE SECURITY VALIDATION + CLAMAV SCAN
+        // ══════════════════════════════════════════════════════════════════════
+        try {
+            fileSecurityValidator.validate(file, uploaderId, "unknown"); // IP address can be extracted from HttpServletRequest if needed
+            
+            // GATE 4: ClamAV Malware Scan (if enabled)
+            // Synchronous scan with 30-second timeout
+            java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("clamav-scan-", "-" + file.getOriginalFilename());
+            try {
+                file.transferTo(tempFile.toFile());
+                clamAvScanService.scanAndThrow(tempFile, 30000); // 30-second timeout
+            } finally {
+                java.nio.file.Files.deleteIfExists(tempFile);
+            }
+        } catch (IOException e) {
+            securityMetrics.recordFileBlocked();
+            rateLimiterService.recordBlockedUpload(uploadKey);
+            throw new ValidationException("Failed to validate file", "FILE_VALIDATION_ERROR");
+        } catch (MalwareDetectedException e) {
+            securityMetrics.recordFileBlocked();
+            rateLimiterService.recordBlockedUpload(uploadKey);
+            throw new ValidationException("File failed security validation: " + e.getMessage(), "MALWARE_DETECTED");
+        } catch (RuntimeException e) {
+            // Catch BlockedFileTypeException, InvalidMimeTypeException, InvalidFileStructureException, etc.
+            securityMetrics.recordFileBlocked();
+            rateLimiterService.recordBlockedUpload(uploadKey);
+            throw e; // Re-throw as-is (these are already user-friendly)
         }
         
         // Validate changeNote length
@@ -120,22 +140,8 @@ public class SubmissionService {
         User uploader = userRepository.findById(uploaderId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", uploaderId));
         
-        // Validate file extension
+        // Get original filename
         String originalName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";
-        String ext = getFileExtension(originalName);
-        if (!ALLOWED_EXTENSIONS.contains(ext)) {
-            String allowedList = String.join(", ", ALLOWED_EXTENSIONS.stream()
-                    .map(e -> "." + e)
-                    .sorted()
-                    .toList());
-            throw new ValidationException(
-                    "File type ." + ext + " is not allowed. Allowed: " + allowedList,
-                    "INVALID_FILE_TYPE"
-            );
-        }
-        
-        // TODO: Add MIME type validation with Apache Tika
-        // For now, we'll skip MIME validation until Tika is added to dependencies
         
         // Concurrent upload protection
         String lockKey = "team_" + teamId + "_assignment_" + assignmentId;
@@ -171,35 +177,33 @@ public class SubmissionService {
             Submission saved = submissionRepository.save(submission);
             
             // Notify other accepted team members (not the uploader)
-            teamMemberRepository.findByTeam_Id(teamId).stream()
+            List<Long> recipientIds = teamMemberRepository.findByTeam_Id(teamId).stream()
                     .filter(m -> m.getStatus() == TeamMemberStatus.ACCEPTED && !m.getUser().getId().equals(uploaderId))
-                    .forEach(m -> notificationService.create(
-                            m.getUser().getId(), "NEW_SUBMISSION",
-                            "New Submission",
-                            uploader.getFirstName() + " " + uploader.getLastName()
-                                    + " submitted version " + nextVersion + " for " + assignment.getTitle(),
-                            "/submissions/" + saved.getId()));
+                    .map(m -> m.getUser().getId())
+                    .toList();
+            
+            eventPublisher.publishEvent(new SubmissionUploadedEvent(
+                    recipientIds,
+                    uploader.getFirstName() + " " + uploader.getLastName(),
+                    team.getId(),
+                    team.getName(),
+                    assignment.getId(),
+                    assignment.getTitle(),
+                    nextVersion
+            ));
+            
+            adminStatsService.evictStats();
             return saved;
         } finally {
             // Always release the lock
             uploadLocks.remove(lockKey);
         }
     }
-    
-    private String getFileExtension(String filename) {
-        if (filename == null || !filename.contains(".")) {
-            return "";
-        }
-        // Handle .tar.gz specifically
-        if (filename.toLowerCase().endsWith(".tar.gz")) {
-            return "gz";
-        }
-        String ext = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
-        return ext;
-    }
 
     public Submission getSubmission(Long id, Long userId, UserRole role) {
         Submission sub = submissionRepository.findById(id)
+    // Extension extraction method (kept for compatibility if needed elsewhere)
+    @SuppressWarnings("unused")
                 .orElseThrow(() -> new ResourceNotFoundException("Submission", id));
         
         // ADMIN can access any submission

@@ -1,11 +1,14 @@
 package com.reviewflow.repository;
 
-import com.reviewflow.model.entity.CourseEnrollment;
-import com.reviewflow.model.entity.CourseEnrollment.CourseEnrollmentId;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import com.reviewflow.model.entity.CourseEnrollment;
+import com.reviewflow.model.entity.CourseEnrollment.CourseEnrollmentId;
 
 public interface CourseEnrollmentRepository extends JpaRepository<CourseEnrollment, CourseEnrollmentId> {
 
@@ -20,4 +23,16 @@ public interface CourseEnrollmentRepository extends JpaRepository<CourseEnrollme
     long countByCourse_Id(Long courseId);
     
     long countByUser_Id(Long userId);
+    
+    @Query("""
+        SELECT e.user.id FROM CourseEnrollment e
+        JOIN Assignment a ON a.id = :assignmentId AND a.course.id = e.course.id
+        WHERE e.user.id NOT IN (
+            SELECT s.uploadedBy.id FROM Submission s
+            WHERE s.assignment.id = :assignmentId
+        )
+        """)
+    List<Long> findEnrolledStudentsWithoutSubmission(
+            @Param("assignmentId") Long assignmentId
+    );
 }

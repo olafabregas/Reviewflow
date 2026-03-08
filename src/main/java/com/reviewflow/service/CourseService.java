@@ -1,9 +1,12 @@
 package com.reviewflow.service;
 
+import com.reviewflow.config.CacheConfig;
 import com.reviewflow.exception.DuplicateResourceException;
 import com.reviewflow.exception.InvalidRoleException;
 import com.reviewflow.exception.ResourceNotFoundException;
 import com.reviewflow.model.entity.*;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.reviewflow.model.entity.Course;
@@ -29,6 +32,7 @@ public class CourseService {
     private final UserRepository userRepository;
     private final AssignmentRepository assignmentRepository;
     private final AuditService auditService;
+    private final AdminStatsService adminStatsService;
 
     @Transactional
     public Course createCourse(String code, String name, String term, String description, Long createdById) {
@@ -56,6 +60,7 @@ public class CourseService {
         auditService.log(createdById, "COURSE_CREATED", "Course", course.getId(), 
             "Created course: " + code, null);
         
+        adminStatsService.evictStats();
         return course;
     }
 
@@ -64,6 +69,8 @@ public class CourseService {
                 .orElseThrow(() -> new ResourceNotFoundException("Course", id));
     }
 
+    @Cacheable(value = CacheConfig.CACHE_USER_COURSES, key = "#userId")
+    @Transactional(readOnly = true)
     public List<Course> listCoursesForUser(Long userId, UserRole role) {
         if (role == UserRole.ADMIN) {
             return courseRepository.findAll();
@@ -84,14 +91,18 @@ public class CourseService {
         return courseRepository.findByEnrolledUserIdPaged(userId, archived, pageable);
     }
 
+    @CacheEvict(value = CacheConfig.CACHE_USER_COURSES, allEntries = true)
     @Transactional
     public Course archiveCourse(Long courseId) {
         Course course = getCourseById(courseId);
         // Toggle archive status
         course.setIsArchived(!Boolean.TRUE.equals(course.getIsArchived()));
-        return courseRepository.save(course);
+        course = courseRepository.save(course);
+        adminStatsService.evictStats();
+        return course;
     }
 
+    @CacheEvict(value = CacheConfig.CACHE_USER_COURSES, allEntries = true)
     @Transactional
     public void assignInstructor(Long courseId, Long userId) {
         Course course = getCourseById(courseId);
@@ -116,6 +127,7 @@ public class CourseService {
         courseInstructorRepository.save(ci);
     }
 
+    @CacheEvict(value = CacheConfig.CACHE_USER_COURSES, key = "#userId")
     @Transactional
     public void enrollStudent(Long courseId, Long userId) {
         Course course = getCourseById(courseId);
@@ -197,12 +209,14 @@ public class CourseService {
         return courseRepository.save(course);
     }
 
+    @CacheEvict(value = CacheConfig.CACHE_USER_COURSES, allEntries = true)
     @Transactional
     public void removeInstructor(Long courseId, Long userId) {
         getCourseById(courseId);
         courseInstructorRepository.deleteByCourse_IdAndUser_Id(courseId, userId);
     }
 
+    @CacheEvict(value = CacheConfig.CACHE_USER_COURSES, key = "#userId")
     @Transactional
     public void unenrollStudent(Long courseId, Long userId) {
         getCourseById(courseId);

@@ -20,6 +20,7 @@ import com.reviewflow.repository.RefreshTokenRepository;
 import com.reviewflow.repository.UserRepository;
 import com.reviewflow.security.JwtService;
 import com.reviewflow.security.ReviewFlowUserDetails;
+import com.reviewflow.monitoring.SecurityMetrics;
 
 import lombok.RequiredArgsConstructor;
 
@@ -33,12 +34,14 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuditService auditService;
     private final RateLimiterService rateLimiterService;
+    private final SecurityMetrics securityMetrics;
 
     @Transactional
     public LoginResult login(String email, String password, String ipAddress) {
         // Check rate limiting
-        if (rateLimiterService.isRateLimited(ipAddress)) {
-            long retryAfter = rateLimiterService.getRetryAfterSeconds(ipAddress);
+        if (rateLimiterService.isLoginRateLimited(ipAddress)) {
+            securityMetrics.recordLoginRateLimited();
+            long retryAfter = rateLimiterService.getLoginRetryAfterSeconds(ipAddress);
             throw new TooManyRequestsException("Too many login attempts. Please try again later.", retryAfter);
         }
         
@@ -55,12 +58,14 @@ public class AuthService {
         }
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             rateLimiterService.recordFailedLogin(ipAddress);
+            securityMetrics.recordLoginFailed();
             auditService.log(user.getId(), "USER_LOGIN_FAILED", "User", user.getId(), "Invalid password", ipAddress);
             throw new BadCredentialsException("Invalid credentials");
         }
         
         // Successful login - clear rate limit for this IP
-        rateLimiterService.clearFailedAttempts(ipAddress);
+        rateLimiterService.clearFailedLogins(ipAddress);
+        securityMetrics.recordLoginSuccess();
         
         ReviewFlowUserDetails details = new ReviewFlowUserDetails(user);
         String accessToken = jwtService.generateAccessToken(details);
