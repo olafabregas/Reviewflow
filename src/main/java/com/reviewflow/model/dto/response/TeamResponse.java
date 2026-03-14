@@ -10,25 +10,25 @@ import java.util.List;
 @Builder
 public class TeamResponse {
 
-    Long id;
-    Long assignmentId;
+    String id;
+    String assignmentId;
     String assignmentTitle;
     String name;
     Boolean isLocked;
-    Long createdById;
+    String createdById;
     Integer memberCount;
     List<TeamMemberResponse> members;
 
     @Value
     @Builder
     public static class TeamMemberResponse {
-        Long teamMemberId;
-        Long userId;
+        String teamMemberId;
+        String userId;
         String firstName;
         String lastName;
         String email;
         String status;
-        Long invitedById;
+        String invitedById;
         Instant joinedAt;
     }
 }

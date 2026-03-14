@@ -8,7 +8,7 @@ import lombok.Value;
 @Builder
 public class AuthUserResponse {
 
-    Long userId;
+    String userId;
     String firstName;
     String lastName;
     String email;

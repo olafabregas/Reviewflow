@@ -174,6 +174,9 @@ public class FileSecurityValidator {
             throw new InvalidFileTypeException("");
         }
 
+        // Extract just the filename from path (Postman often sends full paths)
+        filename = extractFilenameFromPath(filename);
+        
         // Normalize and sanitize filename
         filename = normalizeFilename(filename);
         String extension = extractExtension(filename);
@@ -190,12 +193,57 @@ public class FileSecurityValidator {
             throw new InvalidFileTypeException(extension);
         }
 
-        // Write to temporary file for validation (prevents multiple stream reads)
-        Path tempFile = Files.createTempFile("upload-", "-" + filename);
-        try {
-            file.transferTo(tempFile.toFile());
+        // Validation without consuming the MultipartFile stream
+        // This allows the caller to reuse the file for additional processing (e.g., ClamAV scan)
+        validateFromStream(file.getInputStream(), filename, extension, userId, ipAddress);
+    }
 
-            // ── GATE 2 — MIME Detection (Tika) ───────────────────────────────
+    /**
+     * Validates a file from a Path (for use when file is already saved to disk).
+     */
+    public void validateFromPath(Path filePath, Long userId, String ipAddress) throws IOException {
+        String filename = filePath.getFileName().toString();
+        
+        // Extract just the filename from path
+        filename = extractFilenameFromPath(filename);
+        
+        // Normalize and sanitize filename
+        filename = normalizeFilename(filename);
+        String extension = extractExtension(filename);
+
+        // ── GATE 1A — Denylist ───────────────────────────────────────────
+        if (BLOCKED_EXTENSIONS.contains(extension)) {
+            securityMetrics.recordFileBlocked();
+            log.warn("BLOCKED_FILE_TYPE user={} file={} ip={}", userId, filename, ipAddress);
+            throw new BlockedFileTypeException(extension);
+        }
+
+        // ── GATE 1B — Allowlist ──────────────────────────────────────────
+        if (!ALLOWED_EXTENSIONS.contains(extension)) {
+            throw new InvalidFileTypeException(extension);
+        }
+
+        // Validate using the existing file
+        try (InputStream is = Files.newInputStream(filePath)) {
+            validateFromStream(is, filename, extension, userId, ipAddress);
+        }
+    }
+
+    /**
+     * Core validation logic that works with an InputStream.
+     */
+    private void validateFromStream(InputStream inputStream, String filename, String extension, 
+                                     Long userId, String ipAddress) throws IOException {
+
+        // ── GATE 2 — MIME Detection (Tika) ───────────────────────────────
+        // Need to read stream twice, so save to temp file
+        Path tempFile = Files.createTempFile("validation-", "-" + filename.replaceAll("[^a-zA-Z0-9.-]", "_"));
+        try {
+            // Copy stream to temp file
+            try (var out = Files.newOutputStream(tempFile)) {
+                inputStream.transferTo(out);
+            }
+
             String detectedMime;
             try (InputStream is = Files.newInputStream(tempFile)) {
                 detectedMime = tika.detect(is, filename);
@@ -238,6 +286,31 @@ public class FileSecurityValidator {
     // ═══════════════════════════════════════════════════════════════════════════
     // Filename Normalization & Validation
     // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Extracts just the filename from a full path.
+     * Handles both Windows (C:\path\file.txt) and Unix (/path/file.txt) paths.
+     * This is necessary because Postman and some clients send full file paths.
+     */
+    private String extractFilenameFromPath(String filename) {
+        if (filename == null) {
+            return null;
+        }
+        
+        // Handle Windows paths (e.g., C:\Users\...\file.txt)
+        int lastBackslash = filename.lastIndexOf('\\');
+        if (lastBackslash != -1) {
+            filename = filename.substring(lastBackslash + 1);
+        }
+        
+        // Handle Unix paths (e.g., /home/user/file.txt)
+        int lastForwardSlash = filename.lastIndexOf('/');
+        if (lastForwardSlash != -1) {
+            filename = filename.substring(lastForwardSlash + 1);
+        }
+        
+        return filename;
+    }
 
     private String normalizeFilename(String filename) {
         // Unicode NFKC normalization

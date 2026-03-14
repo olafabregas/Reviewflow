@@ -1,10 +1,10 @@
 package com.reviewflow.model.dto.request;
 
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
 public class CreateEvaluationRequest {
-    @NotNull
-    private Long submissionId;
+    @NotBlank
+    private String submissionId;
 }

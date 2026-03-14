@@ -8,6 +8,7 @@ import com.reviewflow.model.entity.User;
 import com.reviewflow.model.entity.UserRole;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.UserService;
+import com.reviewflow.service.HashidService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -28,6 +29,7 @@ import java.util.Map;
 public class AdminUserController {
 
     private final UserService userService;
+    private final HashidService hashidService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<AuthUserResponse>>> list(
@@ -41,8 +43,9 @@ public class AdminUserController {
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<UserDetailResponse>> getById(@PathVariable Long id) {
-        UserDetailResponse user = userService.getUserByIdWithCounts(id);
+    public ResponseEntity<ApiResponse<UserDetailResponse>> getById(@PathVariable String id) {
+        Long userId = hashidService.decodeOrThrow(id);
+        UserDetailResponse user = userService.getUserByIdWithCounts(userId);
         return ResponseEntity.ok(ApiResponse.ok(user));
     }
 
@@ -57,20 +60,22 @@ public class AdminUserController {
 
     @PatchMapping("/{id}")
     public ResponseEntity<ApiResponse<AuthUserResponse>> update(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestBody Map<String, Object> body) {
+        Long userId = hashidService.decodeOrThrow(id);
         String firstName = (String) body.get("firstName");
         String lastName = (String) body.get("lastName");
         UserRole role = body.get("role") != null ? UserRole.valueOf(body.get("role").toString()) : null;
-        User user = userService.updateUser(id, firstName, lastName, role);
+        User user = userService.updateUser(userId, firstName, lastName, role);
         return ResponseEntity.ok(ApiResponse.ok(toResponse(user)));
     }
 
     @PatchMapping("/{id}/deactivate")
     public ResponseEntity<ApiResponse<Map<String, Object>>> deactivate(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal ReviewFlowUserDetails principal) {
-        userService.deactivateUser(id, principal.getUserId());
+        Long userId = hashidService.decodeOrThrow(id);
+        userService.deactivateUser(userId, principal.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(Map.of(
                 "message", "User deactivated",
                 "isActive", false
@@ -78,8 +83,9 @@ public class AdminUserController {
     }
     
     @PatchMapping("/{id}/reactivate")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> reactivate(@PathVariable Long id) {
-        userService.reactivateUser(id);
+    public ResponseEntity<ApiResponse<Map<String, Object>>> reactivate(@PathVariable String id) {
+        Long userId = hashidService.decodeOrThrow(id);
+        userService.reactivateUser(userId);
         return ResponseEntity.ok(ApiResponse.ok(Map.of(
                 "message", "User reactivated",
                 "isActive", true
@@ -88,7 +94,7 @@ public class AdminUserController {
 
     private AuthUserResponse toResponse(User u) {
         return AuthUserResponse.builder()
-                .userId(u.getId())
+                .userId(hashidService.encode(u.getId()))
                 .email(u.getEmail())
                 .firstName(u.getFirstName())
                 .lastName(u.getLastName())

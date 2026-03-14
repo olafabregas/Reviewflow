@@ -5,6 +5,7 @@ import com.reviewflow.model.dto.response.NotificationDto;
 import com.reviewflow.model.dto.response.NotificationResponse;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.NotificationService;
+import com.reviewflow.service.HashidService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +22,7 @@ import java.util.Map;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final HashidService hashidService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<NotificationResponse>>> list(
@@ -42,9 +44,10 @@ public class NotificationController {
 
     @PatchMapping("/{id}/read")
     public ResponseEntity<ApiResponse<Map<String, String>>> markRead(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        notificationService.markAsRead(id, user.getUserId());
+        Long notificationId = hashidService.decodeOrThrow(id);
+        notificationService.markAsRead(notificationId, user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Marked as read")));
     }
 
@@ -60,9 +63,10 @@ public class NotificationController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Map<String, String>>> delete(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        notificationService.deleteNotification(id, user.getUserId());
+        Long notificationId = hashidService.decodeOrThrow(id);
+        notificationService.deleteNotification(notificationId, user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Notification deleted")));
     }
 

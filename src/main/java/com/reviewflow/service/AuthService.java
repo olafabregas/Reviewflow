@@ -35,6 +35,7 @@ public class AuthService {
     private final AuditService auditService;
     private final RateLimiterService rateLimiterService;
     private final SecurityMetrics securityMetrics;
+    private final HashidService hashidService;
 
     @Transactional
     public LoginResult login(String email, String password, String ipAddress) {
@@ -83,7 +84,7 @@ public class AuthService {
         auditService.log(user.getId(), "USER_LOGIN", "User", user.getId(), "Login successful", ipAddress);
 
         AuthUserResponse userResponse = AuthUserResponse.builder()
-                .userId(user.getId())
+                .userId(hashidService.encode(user.getId()))
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
                 .email(user.getEmail())

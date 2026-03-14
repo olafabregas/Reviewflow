@@ -8,7 +8,7 @@ import java.time.Instant;
 @Value
 @Builder
 public class NotificationResponse {
-    Long id;
+    String id;
     String type;
     String title;
     String message;

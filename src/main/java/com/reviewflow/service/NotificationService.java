@@ -22,6 +22,7 @@ import java.time.Instant;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final HashidService hashidService;
 
     @Transactional
     public Notification create(Long userId, NotificationType type, String title, String message, String actionUrl) {
@@ -80,11 +81,11 @@ public class NotificationService {
         if (Boolean.TRUE.equals(unreadOnly)) {
             return notificationRepository
                     .findByUserIdAndIsReadFalseOrderByCreatedAtDesc(userId, pageable)
-                    .map(NotificationDto::from);
+                    .map(n -> NotificationDto.from(n, hashidService));
         }
         return notificationRepository
                 .findByUserIdOrderByCreatedAtDesc(userId, pageable)
-                .map(NotificationDto::from);
+                .map(n -> NotificationDto.from(n, hashidService));
     }
 
     @Transactional

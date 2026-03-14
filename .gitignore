@@ -4,6 +4,7 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+
 ### STS ###
 .apt_generated
 .classpath
@@ -39,3 +40,43 @@ build/
 *.env
 !.env.example
 application-local.properties
+
+### Logs ###
+logs/
+*.log
+
+### OS Files ###
+.DS_Store
+Thumbs.db   
+Desktop.ini
+
+### Others ###
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.7z
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo       
+
+controller_specs/
+workflow/
+postman/
+
+# Local file uploads / generated submission assets
+/storage/submissions/
+
+# Local database seed data
+src/main/resources/db/seed/
+
+# Local runtime artifacts
+hs_err_pid*
+*.pid
+*.seed
+
+

@@ -10,9 +10,9 @@ import java.util.List;
 @Value
 @Builder
 public class EvaluationResponse {
-    Long id;
-    Long submissionId;
-    Long instructorId;
+    String id;
+    String submissionId;
+    String instructorId;
     String instructorName;
     String overallComment;
     BigDecimal totalScore;
@@ -26,8 +26,8 @@ public class EvaluationResponse {
     @Value
     @Builder
     public static class RubricScoreResponse {
-        Long id;
-        Long criterionId;
+        String id;
+        String criterionId;
         String criterionName;
         BigDecimal maxScore;
         BigDecimal score;

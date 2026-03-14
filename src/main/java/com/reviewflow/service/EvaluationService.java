@@ -33,6 +33,7 @@ public class EvaluationService {
     private final TeamMemberRepository teamMemberRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final PdfGenerationService pdfGenerationService;
+    private final HashidService hashidService;
 
     @Transactional
     public Evaluation createEvaluation(Long submissionId, Long instructorId) {
@@ -112,8 +113,9 @@ public class EvaluationService {
         Long assignmentId = evaluation.getSubmission().getAssignment().getId();
         
         for (UpdateScoresRequest.ScoreEntry entry : scores) {
-            RubricCriterion criterion = rubricCriterionRepository.findById(entry.getCriterionId())
-                    .orElseThrow(() -> new ResourceNotFoundException("RubricCriterion", entry.getCriterionId()));
+            Long criterionId = hashidService.decodeOrThrow(entry.getCriterionId());
+            RubricCriterion criterion = rubricCriterionRepository.findById(criterionId)
+                    .orElseThrow(() -> new ResourceNotFoundException("RubricCriterion", criterionId));
             
             // Validate criterion belongs to this assignment
             if (!criterion.getAssignment().getId().equals(assignmentId)) {
@@ -133,7 +135,7 @@ public class EvaluationService {
             }
             
             RubricScore rubricScore = rubricScoreRepository
-                    .findByEvaluation_IdAndCriterion_Id(evalId, entry.getCriterionId())
+                    .findByEvaluation_IdAndCriterion_Id(evalId, criterionId)
                     .orElse(RubricScore.builder().evaluation(evaluation).criterion(criterion).build());
             rubricScore.setScore(entry.getScore());
             if (entry.getComment() != null) rubricScore.setComment(entry.getComment());

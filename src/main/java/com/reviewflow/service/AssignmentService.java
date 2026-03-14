@@ -49,6 +49,7 @@ public class AssignmentService {
     private final EvaluationRepository evaluationRepository;
     private final RubricScoreRepository rubricScoreRepository;
     private final TeamRepository teamRepository;
+    private final HashidService hashidService;
 
     @Transactional
     public Assignment createAssignment(Long courseId, String title, String description, Instant dueAt,
@@ -271,13 +272,13 @@ public class AssignmentService {
         List<AssignmentResponse.RubricCriterionResponse> criteria = a.getRubricCriteria() != null
                 ? a.getRubricCriteria().stream()
                 .map(c -> AssignmentResponse.RubricCriterionResponse.builder()
-                        .id(c.getId())
+                        .id(hashidService.encode(c.getId()))
                         .name(c.getName())
                         .description(c.getDescription())
                         .maxScore(c.getMaxScore())
                         .displayOrder(c.getDisplayOrder())
                         .build())
-                .collect(Collectors.toList())
+                .toList()
                 : List.of();
 
         String teamStatus = null;
@@ -316,8 +317,8 @@ public class AssignmentService {
         }
 
         return AssignmentResponse.builder()
-                .id(a.getId())
-                .courseId(a.getCourse() != null ? a.getCourse().getId() : null)
+                .id(hashidService.encode(a.getId()))
+                .courseId(a.getCourse() != null ? hashidService.encode(a.getCourse().getId()) : null)
                 .courseCode(a.getCourse() != null ? a.getCourse().getCode() : null)
                 .courseName(a.getCourse() != null ? a.getCourse().getName() : null)
                 .title(a.getTitle())
@@ -408,7 +409,7 @@ public class AssignmentService {
                     }
                     
                     return GradebookEntryResponse.builder()
-                            .teamId(team.getId())
+                            .teamId(hashidService.encode(team.getId()))
                             .teamName(team.getName())
                             .memberNames(memberNames)
                             .latestVersion(latestSubmission != null ? latestSubmission.getVersionNumber() : null)
@@ -418,8 +419,8 @@ public class AssignmentService {
                             .evaluationStatus(evaluationStatus)
                             .build();
                 })
-                .sorted(Comparator.comparing(GradebookEntryResponse::getTeamName))
-                .collect(Collectors.toList());
+                .sorted(Comparator.comparing(GradebookEntryResponse::getTeamName, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
     }
 
     public Assignment getAssignmentByIdWithAccessControl(Long assignmentId, Long userId, UserRole role) {

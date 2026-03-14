@@ -7,13 +7,13 @@ import lombok.Value;
 @Builder
 public class CourseResponse {
 
-    Long id;
+    String id;
     String code;
     String name;
     String term;
     String description;
     Boolean isArchived;
-    Long createdById;
+    String createdById;
     Integer instructorCount;
     Integer enrollmentCount;
     Integer assignmentCount;

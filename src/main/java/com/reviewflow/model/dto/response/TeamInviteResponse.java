@@ -8,10 +8,10 @@ import java.time.Instant;
 @Value
 @Builder
 public class TeamInviteResponse {
-    Long teamMemberId;
-    Long teamId;
+    String teamMemberId;
+    String teamId;
     String teamName;
-    Long assignmentId;
+    String assignmentId;
     String assignmentTitle;
     String courseCode;
     String invitedByName;

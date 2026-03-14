@@ -1,6 +1,7 @@
 package com.reviewflow.service;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +38,9 @@ import com.reviewflow.repository.UserRepository;
 import com.reviewflow.storage.StorageService;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SubmissionService {
@@ -88,33 +91,50 @@ public class SubmissionService {
         
         // ══════════════════════════════════════════════════════════════════════
         // THREE-GATE FILE SECURITY VALIDATION + CLAMAV SCAN
+        // Save file once to temp location for all validation steps
         // ══════════════════════════════════════════════════════════════════════
+        String originalName = file.getOriginalFilename();
+        String sanitizedName = originalName != null ? originalName.replaceAll("[^a-zA-Z0-9.-]", "_") : "upload";
+        java.nio.file.Path tempFile;
+        
         try {
-            fileSecurityValidator.validate(file, uploaderId, "unknown"); // IP address can be extracted from HttpServletRequest if needed
-            
-            // GATE 4: ClamAV Malware Scan (if enabled)
-            // Synchronous scan with 30-second timeout
-            java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("clamav-scan-", "-" + file.getOriginalFilename());
-            try {
-                file.transferTo(tempFile.toFile());
-                clamAvScanService.scanAndThrow(tempFile, 30000); // 30-second timeout
-            } finally {
-                java.nio.file.Files.deleteIfExists(tempFile);
-            }
+            tempFile = java.nio.file.Files.createTempFile("upload-validation-", "-" + sanitizedName);
         } catch (IOException e) {
+            log.error("Failed to create temp file for validation: {}", e.getMessage(), e);
+            throw new ValidationException("Failed to process file upload", "FILE_VALIDATION_ERROR");
+        }
+        
+        try {
+            // Save MultipartFile to temp file ONCE
+            file.transferTo(tempFile.toFile());
+            
+            // GATE 1-3: Three-gate file security validation using the saved temp file
+            fileSecurityValidator.validateFromPath(tempFile, uploaderId, "unknown");
+            
+            // GATE 4: ClamAV Malware Scan (if enabled) using the same temp file
+            clamAvScanService.scanAndThrow(tempFile, 30000); // 30-second timeout
+            
+        } catch (IOException e) {
+            log.error("File validation failed for user={}, file={}: {}", uploaderId, originalName, e.getMessage(), e);
             securityMetrics.recordFileBlocked();
             rateLimiterService.recordBlockedUpload(uploadKey);
-            throw new ValidationException("Failed to validate file", "FILE_VALIDATION_ERROR");
+            try { java.nio.file.Files.deleteIfExists(tempFile); } catch (IOException ex) {}
+            throw new ValidationException("Failed to validate file: " + e.getMessage(), "FILE_VALIDATION_ERROR");
         } catch (MalwareDetectedException e) {
             securityMetrics.recordFileBlocked();
             rateLimiterService.recordBlockedUpload(uploadKey);
+            try { java.nio.file.Files.deleteIfExists(tempFile); } catch (IOException ex) {}
             throw new ValidationException("File failed security validation: " + e.getMessage(), "MALWARE_DETECTED");
         } catch (RuntimeException e) {
             // Catch BlockedFileTypeException, InvalidMimeTypeException, InvalidFileStructureException, etc.
             securityMetrics.recordFileBlocked();
             rateLimiterService.recordBlockedUpload(uploadKey);
+            try { java.nio.file.Files.deleteIfExists(tempFile); } catch (IOException ex) {}
             throw e; // Re-throw as-is (these are already user-friendly)
         }
+        
+        // Validation passed - continue with upload process
+        // Note: tempFile will be cleaned up after storage is complete
         
         // Validate changeNote length
         if (changeNote != null && changeNote.length() > MAX_CHANGE_NOTE_LENGTH) {
@@ -140,8 +160,7 @@ public class SubmissionService {
         User uploader = userRepository.findById(uploaderId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", uploaderId));
         
-        // Get original filename
-        String originalName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";
+        // originalName already extracted above - use it for storage
         
         // Concurrent upload protection
         String lockKey = "team_" + teamId + "_assignment_" + assignmentId;
@@ -158,9 +177,15 @@ public class SubmissionService {
             Instant now = Instant.now();
             boolean isLate = assignment.getDueAt() != null && now.isAfter(assignment.getDueAt());
             
-            // Store the file
+            // Store the file (use temp file since MultipartFile was already consumed)
             String relativePath = "submissions/" + teamId + "/" + assignmentId + "/v" + nextVersion + "_" + originalName;
-            String storedPath = storageService.store(relativePath, file);
+            String storedPath;
+            try (InputStream is = java.nio.file.Files.newInputStream(tempFile)) {
+                storedPath = storageService.store(relativePath, is, file.getSize(), file.getContentType());
+            } catch (IOException e) {
+                log.error("Failed to store file: {}", e.getMessage(), e);
+                throw new ValidationException("Failed to store file", "FILE_STORAGE_ERROR");
+            }
             
             Submission submission = Submission.builder()
                     .team(team)
@@ -197,6 +222,13 @@ public class SubmissionService {
         } finally {
             // Always release the lock
             uploadLocks.remove(lockKey);
+            
+            // Always clean up temp file
+            try {
+                java.nio.file.Files.deleteIfExists(tempFile);
+            } catch (IOException e) {
+                log.warn("Failed to delete temporary validation file: {}", tempFile, e);
+            }
         }
     }
 

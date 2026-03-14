@@ -8,10 +8,10 @@ import java.time.Instant;
 @Value
 @Builder
 public class SubmissionResponse {
-    Long id;
-    Long teamId;
+    String id;
+    String teamId;
     String teamName;
-    Long assignmentId;
+    String assignmentId;
     String assignmentTitle;
     String courseCode;
     Integer versionNumber;
@@ -20,6 +20,6 @@ public class SubmissionResponse {
     Boolean isLate;
     Instant uploadedAt;
     String changeNote;
-    Long uploadedById;
+    String uploadedById;
     String uploadedByName;
 }

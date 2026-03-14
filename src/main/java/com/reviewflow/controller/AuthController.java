@@ -18,6 +18,7 @@ import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.AuthService;
 import com.reviewflow.service.AuthService.LoginResult;
 import com.reviewflow.service.AuthService.RefreshResult;
+import com.reviewflow.service.HashidService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -36,6 +37,7 @@ public class AuthController {
     private static final String COOKIE_PATH = "/";
 
     private final AuthService authService;
+    private final HashidService hashidService;
 
     @Value("${app.cookie.secure:false}")
     private boolean cookieSecure;
@@ -108,7 +110,7 @@ public class AuthController {
         }
         
         AuthUserResponse data = AuthUserResponse.builder()
-                .userId(user.getUserId())
+                .userId(hashidService.encode(user.getUserId()))
                 .email(user.getUsername())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())

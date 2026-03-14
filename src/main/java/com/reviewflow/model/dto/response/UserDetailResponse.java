@@ -9,7 +9,7 @@ import java.time.Instant;
 @Data
 @Builder
 public class UserDetailResponse {
-    private Long id;
+    private String id;
     private String email;
     private String firstName;
     private String lastName;

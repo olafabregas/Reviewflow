@@ -10,7 +10,7 @@ import java.util.List;
 @Value
 @Builder
 public class GradebookEntryResponse {
-    Long teamId;
+    String teamId;
     String teamName;
     List<String> memberNames;
     Integer latestVersion;

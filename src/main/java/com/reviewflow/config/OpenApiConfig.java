@@ -18,6 +18,9 @@ public class OpenApiConfig {
     @Value("${server.port:8080}")
     private int serverPort;
 
+    @Value("${swagger.prod-url:https://api.reviewflow.example.com}")
+    private String prodApiUrl;
+
     @Bean
     public OpenAPI openAPI() {
         final String securitySchemeName = "cookieAuth";
@@ -28,7 +31,7 @@ public class OpenApiConfig {
                         .description("ReviewFlow Backend API"))
                 .servers(List.of(
                         new Server().url("http://localhost:" + serverPort).description("Local"),
-                        new Server().url("https://api.reviewflow.example.com").description("Production")))
+                        new Server().url(prodApiUrl).description("Production")))
                 .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
                 .components(new Components()
                         .addSecuritySchemes(securitySchemeName,

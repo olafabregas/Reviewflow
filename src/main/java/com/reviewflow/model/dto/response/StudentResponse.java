@@ -8,7 +8,7 @@ import java.time.Instant;
 @Value
 @Builder
 public class StudentResponse {
-    Long userId;
+    String userId;
     String email;
     String firstName;
     String lastName;

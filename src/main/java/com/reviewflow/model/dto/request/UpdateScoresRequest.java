@@ -14,7 +14,7 @@ public class UpdateScoresRequest {
 
     @Data
     public static class ScoreEntry {
-        private Long criterionId;
+        private String criterionId;
         private BigDecimal score;
         private String comment;
     }

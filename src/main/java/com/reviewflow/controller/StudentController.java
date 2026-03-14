@@ -11,6 +11,7 @@ import com.reviewflow.repository.TeamMemberRepository;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.EvaluationService;
 import com.reviewflow.service.SubmissionService;
+import com.reviewflow.service.HashidService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +37,7 @@ public class StudentController {
     private final SubmissionService submissionService;
     private final EvaluationService evaluationService;
     private final RubricScoreRepository rubricScoreRepository;
+    private final HashidService hashidService;
 
     @GetMapping("/invites")
     @SuppressWarnings("NullableProblems")
@@ -68,10 +70,10 @@ public class StudentController {
 
     private TeamInviteResponse toInviteResponse(TeamMember m) {
         return TeamInviteResponse.builder()
-                .teamMemberId(m.getId())
-                .teamId(m.getTeam() != null ? m.getTeam().getId() : null)
+                .teamMemberId(hashidService.encode(m.getId()))
+                .teamId(m.getTeam() != null ? hashidService.encode(m.getTeam().getId()) : null)
                 .teamName(m.getTeam() != null ? m.getTeam().getName() : null)
-                .assignmentId(m.getAssignment() != null ? m.getAssignment().getId() : null)
+                .assignmentId(m.getAssignment() != null ? hashidService.encode(m.getAssignment().getId()) : null)
                 .assignmentTitle(m.getAssignment() != null ? m.getAssignment().getTitle() : null)
                 .courseCode(m.getAssignment() != null && m.getAssignment().getCourse() != null
                         ? m.getAssignment().getCourse().getCode() : null)
@@ -83,10 +85,10 @@ public class StudentController {
 
     private SubmissionResponse toSubmissionResponse(Submission s) {
         return SubmissionResponse.builder()
-                .id(s.getId())
-                .teamId(s.getTeam() != null ? s.getTeam().getId() : null)
+                .id(hashidService.encode(s.getId()))
+                .teamId(s.getTeam() != null ? hashidService.encode(s.getTeam().getId()) : null)
                 .teamName(s.getTeam() != null ? s.getTeam().getName() : null)
-                .assignmentId(s.getAssignment() != null ? s.getAssignment().getId() : null)
+                .assignmentId(s.getAssignment() != null ? hashidService.encode(s.getAssignment().getId()) : null)
                 .assignmentTitle(s.getAssignment() != null ? s.getAssignment().getTitle() : null)
                 .courseCode(s.getAssignment() != null && s.getAssignment().getCourse() != null
                         ? s.getAssignment().getCourse().getCode() : null)
@@ -96,7 +98,7 @@ public class StudentController {
                 .isLate(s.getIsLate())
                 .uploadedAt(s.getUploadedAt())
                 .changeNote(s.getChangeNote())
-                .uploadedById(s.getUploadedBy() != null ? s.getUploadedBy().getId() : null)
+                .uploadedById(s.getUploadedBy() != null ? hashidService.encode(s.getUploadedBy().getId()) : null)
                 .uploadedByName(s.getUploadedBy() != null
                         ? s.getUploadedBy().getFirstName() + " " + s.getUploadedBy().getLastName() : null)
                 .build();
@@ -109,6 +111,37 @@ public class StudentController {
                         ? s.getCriterion().getMaxScore()
                         : 0)
                 .sum());
-        return getEvaluationResponse(ev, scores, maxPossible);
+        
+        List<EvaluationResponse.RubricScoreResponse> scoreResponses = scores.stream()
+                .map(s -> {
+                    BigDecimal maxScore = s.getCriterion() != null && s.getCriterion().getMaxScore() != null
+                            ? BigDecimal.valueOf(s.getCriterion().getMaxScore())
+                            : BigDecimal.ZERO;
+                    return EvaluationResponse.RubricScoreResponse.builder()
+                            .id(hashidService.encode(s.getId()))
+                            .criterionId(s.getCriterion() != null ? hashidService.encode(s.getCriterion().getId()) : null)
+                            .criterionName(s.getCriterion() != null ? s.getCriterion().getName() : null)
+                            .maxScore(maxScore)
+                            .score(s.getScore())
+                            .comment(s.getComment())
+                            .build();
+                })
+                .collect(Collectors.toList());
+        
+        return EvaluationResponse.builder()
+                .id(hashidService.encode(ev.getId()))
+                .submissionId(ev.getSubmission() != null ? hashidService.encode(ev.getSubmission().getId()) : null)
+                .instructorId(ev.getInstructor() != null ? hashidService.encode(ev.getInstructor().getId()) : null)
+                .instructorName(ev.getInstructor() != null
+                        ? ev.getInstructor().getFirstName() + " " + ev.getInstructor().getLastName() : null)
+                .overallComment(ev.getOverallComment())
+                .totalScore(ev.getTotalScore())
+                .maxPossibleScore(maxPossible)
+                .isDraft(ev.getIsDraft())
+                .publishedAt(ev.getPublishedAt())
+                .createdAt(ev.getCreatedAt())
+                .hasPdf(ev.getPdfPath() != null)
+                .rubricScores(scoreResponses)
+                .build();
     }
 }

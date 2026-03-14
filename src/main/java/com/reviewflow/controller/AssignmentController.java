@@ -31,6 +31,7 @@ import com.reviewflow.model.entity.RubricCriterion;
 import com.reviewflow.model.entity.Submission;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.AssignmentService;
+import com.reviewflow.service.HashidService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -41,51 +42,57 @@ import lombok.RequiredArgsConstructor;
 public class AssignmentController {
 
     private final AssignmentService assignmentService;
+    private final HashidService hashidService;
 
     @GetMapping("/courses/{courseId}/assignments")
     public ResponseEntity<ApiResponse<List<AssignmentResponse>>> listByCourse(
-            @PathVariable Long courseId,
+            @PathVariable String courseId,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        List<Assignment> list = assignmentService.listAssignmentsForCourse(courseId, user.getUserId(), user.getRole());
+        Long courseIdLong = hashidService.decodeOrThrow(courseId);
+        List<Assignment> list = assignmentService.listAssignmentsForCourse(courseIdLong, user.getUserId(), user.getRole());
         List<AssignmentResponse> data = list.stream().map(this::toResponse).collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.ok(data));
     }
 
     @PostMapping("/courses/{courseId}/assignments")
     public ResponseEntity<ApiResponse<AssignmentResponse>> create(
-            @PathVariable Long courseId,
+            @PathVariable String courseId,
             @Valid @RequestBody CreateAssignmentRequest request,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
+        Long courseIdLong = hashidService.decodeOrThrow(courseId);
         Assignment a = assignmentService.createAssignment(
-                courseId, request.getTitle(), request.getDescription(), request.getDueAt(),
+                courseIdLong, request.getTitle(), request.getDescription(), request.getDueAt(),
                 request.getMaxTeamSize(), request.getTeamLockAt(), request.getIsPublished(), user.getUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(toResponse(a)));
     }
 
     @GetMapping("/assignments/{id}")
     public ResponseEntity<ApiResponse<AssignmentResponse>> get(
-            @PathVariable Long id, 
+            @PathVariable String id, 
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        Assignment a = assignmentService.getAssignmentByIdWithAccessControl(id, user.getUserId(), user.getRole());
+        Long assignmentId = hashidService.decodeOrThrow(id);
+        Assignment a = assignmentService.getAssignmentByIdWithAccessControl(assignmentId, user.getUserId(), user.getRole());
         return ResponseEntity.ok(ApiResponse.ok(toResponse(a)));
     }
 
     @PutMapping("/assignments/{id}")
     public ResponseEntity<ApiResponse<AssignmentResponse>> update(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestBody CreateAssignmentRequest request,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
+        Long assignmentId = hashidService.decodeOrThrow(id);
         Assignment a = assignmentService.updateAssignment(
-                id, request.getTitle(), request.getDescription(), request.getDueAt(),
+                assignmentId, request.getTitle(), request.getDescription(), request.getDueAt(),
                 request.getMaxTeamSize(), request.getTeamLockAt(), user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(toResponse(a)));
     }
 
     @PatchMapping("/assignments/{id}/publish")
     public ResponseEntity<ApiResponse<AssignmentResponse>> publish(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        Assignment a = assignmentService.publishAssignment(id, user.getUserId());
+        Long assignmentId = hashidService.decodeOrThrow(id);
+        Assignment a = assignmentService.publishAssignment(assignmentId, user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(toResponse(a)));
     }
 
@@ -95,25 +102,28 @@ public class AssignmentController {
     public ResponseEntity<ApiResponse<List<AssignmentResponse>>> getMyAssignments(
             @AuthenticationPrincipal ReviewFlowUserDetails user,
             @RequestParam(required = false) String status, // UPCOMING|PAST_DUE|ALL
-            @RequestParam(required = false) Long courseId) {
+            @RequestParam(required = false) String courseId) {
+        Long courseIdLong = courseId != null ? hashidService.decodeOrThrow(courseId) : null;
         List<AssignmentResponse> data = assignmentService.listAssignmentsForUserWithDetails(
-                user.getUserId(), user.getRole(), status, courseId);
+                user.getUserId(), user.getRole(), status, courseIdLong);
         return ResponseEntity.ok(ApiResponse.ok(data));
     }
 
     @DeleteMapping("/assignments/{id}")
     public ResponseEntity<ApiResponse<Map<String, String>>> delete(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        assignmentService.deleteAssignment(id, user.getUserId());
+        Long assignmentId = hashidService.decodeOrThrow(id);
+        assignmentService.deleteAssignment(assignmentId, user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Assignment deleted")));
     }
 
     @PostMapping("/assignments/{id}/rubric")
     public ResponseEntity<ApiResponse<AssignmentResponse.RubricCriterionResponse>> addRubric(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestBody Map<String, Object> body,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
+        Long assignmentId = hashidService.decodeOrThrow(id);
         String name = (String) body.get("name");
         String description = (String) body.get("description");
         
@@ -129,39 +139,44 @@ public class AssignmentController {
         
         int maxScore = ((Number) body.get("maxScore")).intValue();
         int displayOrder = ((Number) body.get("displayOrder")).intValue();
-        RubricCriterion c = assignmentService.addRubricCriteria(id, name, description, maxScore, displayOrder, user.getUserId());
+        RubricCriterion c = assignmentService.addRubricCriteria(assignmentId, name, description, maxScore, displayOrder, user.getUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(toCriterionResponse(c)));
     }
 
     @PutMapping("/assignments/{id}/rubric/{criterionId}")
     public ResponseEntity<ApiResponse<AssignmentResponse.RubricCriterionResponse>> updateRubric(
-            @PathVariable Long id,
-            @PathVariable Long criterionId,
+            @PathVariable String id,
+            @PathVariable String criterionId,
             @RequestBody Map<String, Object> body,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
+        Long assignmentId = hashidService.decodeOrThrow(id);
+        Long criterionIdLong = hashidService.decodeOrThrow(criterionId);
         String name = (String) body.get("name");
         String description = (String) body.get("description");
         Integer maxScore = body.get("maxScore") != null ? ((Number) body.get("maxScore")).intValue() : null;
         Integer displayOrder = body.get("displayOrder") != null ? ((Number) body.get("displayOrder")).intValue() : null;
-        RubricCriterion c = assignmentService.updateRubricCriteria(id, criterionId, name, description, maxScore, displayOrder, user.getUserId());
+        RubricCriterion c = assignmentService.updateRubricCriteria(assignmentId, criterionIdLong, name, description, maxScore, displayOrder, user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(toCriterionResponse(c)));
     }
 
     @DeleteMapping("/assignments/{id}/rubric/{criterionId}")
     public ResponseEntity<ApiResponse<Map<String, String>>> deleteRubric(
-            @PathVariable Long id,
-            @PathVariable Long criterionId,
+            @PathVariable String id,
+            @PathVariable String criterionId,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        assignmentService.deleteRubricCriterion(id, criterionId, user.getUserId());
+        Long assignmentId = hashidService.decodeOrThrow(id);
+        Long criterionIdLong = hashidService.decodeOrThrow(criterionId);
+        assignmentService.deleteRubricCriterion(assignmentId, criterionIdLong, user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Criterion deleted")));
     }
 
     @PreAuthorize("hasRole('INSTRUCTOR') or hasRole('ADMIN')")
     @GetMapping("/assignments/{id}/submissions")
     public ResponseEntity<ApiResponse<List<SubmissionResponse>>> getSubmissions(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        List<Submission> submissions = assignmentService.getSubmissionsForAssignment(id, user.getUserId());
+        Long assignmentId = hashidService.decodeOrThrow(id);
+        List<Submission> submissions = assignmentService.getSubmissionsForAssignment(assignmentId, user.getUserId());
         List<SubmissionResponse> data = submissions.stream().map(this::toSubmissionResponse).collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.ok(data));
     }
@@ -169,18 +184,19 @@ public class AssignmentController {
     @PreAuthorize("hasRole('INSTRUCTOR') or hasRole('ADMIN')")
     @GetMapping("/assignments/{id}/gradebook")
     public ResponseEntity<ApiResponse<List<GradebookEntryResponse>>> getGradebook(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        List<GradebookEntryResponse> data = assignmentService.getGradebookForAssignment(id, user.getUserId());
+        Long assignmentId = hashidService.decodeOrThrow(id);
+        List<GradebookEntryResponse> data = assignmentService.getGradebookForAssignment(assignmentId, user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(data));
     }
 
     private SubmissionResponse toSubmissionResponse(Submission s) {
         return SubmissionResponse.builder()
-                .id(s.getId())
-                .teamId(s.getTeam() != null ? s.getTeam().getId() : null)
+                .id(hashidService.encode(s.getId()))
+                .teamId(hashidService.encode(s.getTeam() != null ? s.getTeam().getId() : null))
                 .teamName(s.getTeam() != null ? s.getTeam().getName() : null)
-                .assignmentId(s.getAssignment() != null ? s.getAssignment().getId() : null)
+                .assignmentId(hashidService.encode(s.getAssignment() != null ? s.getAssignment().getId() : null))
                 .assignmentTitle(s.getAssignment() != null ? s.getAssignment().getTitle() : null)
                 .courseCode(s.getAssignment() != null && s.getAssignment().getCourse() != null ? s.getAssignment().getCourse().getCode() : null)
                 .versionNumber(s.getVersionNumber())
@@ -189,7 +205,7 @@ public class AssignmentController {
                 .isLate(s.getIsLate())
                 .uploadedAt(s.getUploadedAt())
                 .changeNote(s.getChangeNote())
-                .uploadedById(s.getUploadedBy() != null ? s.getUploadedBy().getId() : null)
+                .uploadedById(hashidService.encode(s.getUploadedBy() != null ? s.getUploadedBy().getId() : null))
                 .uploadedByName(s.getUploadedBy() != null ? s.getUploadedBy().getFirstName() + " " + s.getUploadedBy().getLastName() : null)
                 .build();
     }
@@ -197,8 +213,8 @@ public class AssignmentController {
     private EvaluationResponse toEvalResponse(Evaluation e) {
         List<EvaluationResponse.RubricScoreResponse> scores = e.getRubricScores() != null
                 ? e.getRubricScores().stream().map(rs -> EvaluationResponse.RubricScoreResponse.builder()
-                .id(rs.getId())
-                .criterionId(rs.getCriterion() != null ? rs.getCriterion().getId() : null)
+                .id(hashidService.encode(rs.getId()))
+                .criterionId(hashidService.encode(rs.getCriterion() != null ? rs.getCriterion().getId() : null))
                 .criterionName(rs.getCriterion() != null ? rs.getCriterion().getName() : null)
                 .maxScore(rs.getCriterion() != null ? java.math.BigDecimal.valueOf(rs.getCriterion().getMaxScore()) : null)
                 .score(rs.getScore())
@@ -206,9 +222,9 @@ public class AssignmentController {
                 .build()).collect(Collectors.toList())
                 : List.of();
         return EvaluationResponse.builder()
-                .id(e.getId())
-                .submissionId(e.getSubmission() != null ? e.getSubmission().getId() : null)
-                .instructorId(e.getInstructor() != null ? e.getInstructor().getId() : null)
+                .id(hashidService.encode(e.getId()))
+                .submissionId(hashidService.encode(e.getSubmission() != null ? e.getSubmission().getId() : null))
+                .instructorId(hashidService.encode(e.getInstructor() != null ? e.getInstructor().getId() : null))
                 .instructorName(e.getInstructor() != null ? e.getInstructor().getFirstName() + " " + e.getInstructor().getLastName() : null)
                 .overallComment(e.getOverallComment())
                 .totalScore(e.getTotalScore())
@@ -225,8 +241,8 @@ public class AssignmentController {
                 ? a.getRubricCriteria().stream().map(this::toCriterionResponse).collect(Collectors.toList())
                 : List.of();
         return AssignmentResponse.builder()
-                .id(a.getId())
-                .courseId(a.getCourse() != null ? a.getCourse().getId() : null)
+                .id(hashidService.encode(a.getId()))
+                .courseId(hashidService.encode(a.getCourse() != null ? a.getCourse().getId() : null))
                 .courseCode(a.getCourse() != null ? a.getCourse().getCode() : null)
                 .courseName(a.getCourse() != null ? a.getCourse().getName() : null)
                 .title(a.getTitle())
@@ -241,7 +257,7 @@ public class AssignmentController {
 
     private AssignmentResponse.RubricCriterionResponse toCriterionResponse(RubricCriterion c) {
         return AssignmentResponse.RubricCriterionResponse.builder()
-                .id(c.getId())
+                .id(hashidService.encode(c.getId()))
                 .name(c.getName())
                 .description(c.getDescription())
                 .maxScore(c.getMaxScore())

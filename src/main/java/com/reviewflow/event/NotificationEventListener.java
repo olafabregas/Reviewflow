@@ -5,6 +5,7 @@ import com.reviewflow.model.dto.response.NotificationDto;
 import com.reviewflow.model.entity.Notification;
 import com.reviewflow.model.enums.NotificationType;
 import com.reviewflow.repository.NotificationRepository;
+import com.reviewflow.service.HashidService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.CacheManager;
@@ -23,6 +24,7 @@ public class NotificationEventListener {
     private final NotificationRepository notificationRepository;
     private final SimpMessagingTemplate  messagingTemplate;
     private final CacheManager           cacheManager;
+    private final HashidService          hashidService;
 
     // ── TEAM INVITE ───────────────────────────────────────────────
     @Async("notificationExecutor")
@@ -34,7 +36,8 @@ public class NotificationEventListener {
                 "Team Invitation",
                 event.invitedByFirstName() + " invited you to join team \"" + event.teamName() 
                     + "\" for " + event.assignmentTitle(),
-                "/assignments/" + event.assignmentId() + "/team"
+                "/teams/{id}",
+                event.teamId()  // targetId - will be hashed in action URL
         );
     }
 
@@ -101,12 +104,18 @@ public class NotificationEventListener {
 
     private void saveAndPush(Long userId, NotificationType type,
                               String title, String message, String actionUrl) {
+        saveAndPush(userId, type, title, message, actionUrl, null);
+    }
+
+    private void saveAndPush(Long userId, NotificationType type,
+                              String title, String message, String actionUrl, Long targetId) {
         Notification notification = Notification.builder()
                 .userId(userId)
                 .type(type)
                 .title(title)
                 .message(message)
                 .actionUrl(actionUrl)
+                .targetId(targetId)  // Optional - for action URL rewriting with hashed IDs
                 .build();
 
         notificationRepository.save(notification);
@@ -122,7 +131,7 @@ public class NotificationEventListener {
             messagingTemplate.convertAndSendToUser(
                     userId.toString(),
                     "/queue/notifications",
-                    NotificationDto.from(notification)
+                    NotificationDto.from(notification, hashidService)
             );
             log.debug("Pushed {} to user {}", type, userId);
         } catch (Exception e) {

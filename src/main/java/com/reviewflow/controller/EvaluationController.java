@@ -11,6 +11,7 @@ import com.reviewflow.model.entity.RubricScore;
 import com.reviewflow.repository.RubricScoreRepository;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.EvaluationService;
+import com.reviewflow.service.HashidService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
@@ -33,6 +34,7 @@ public class EvaluationController {
 
     private final EvaluationService evaluationService;
     private final RubricScoreRepository rubricScoreRepository;
+    private final HashidService hashidService;
 
     @PostMapping
     @PreAuthorize("hasRole('INSTRUCTOR') or hasRole('ADMIN')")
@@ -40,7 +42,8 @@ public class EvaluationController {
     public ResponseEntity<ApiResponse<EvaluationResponse>> create(
             @Valid @RequestBody CreateEvaluationRequest request,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        Evaluation ev = evaluationService.createEvaluation(request.getSubmissionId(), user.getUserId());
+        Long submissionId = hashidService.decodeOrThrow(request.getSubmissionId());
+        Evaluation ev = evaluationService.createEvaluation(submissionId, user.getUserId());
         return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
                 .body(ApiResponse.ok(toResponse(ev)));
     }
@@ -48,9 +51,10 @@ public class EvaluationController {
     @GetMapping("/{id}")
     @SuppressWarnings("NullableProblems")
     public ResponseEntity<ApiResponse<EvaluationResponse>> get(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        Evaluation ev = evaluationService.getEvaluationWithAccessControl(id, user.getUserId(), user.getRole());
+        Long evalId = hashidService.decodeOrThrow(id);
+        Evaluation ev = evaluationService.getEvaluationWithAccessControl(evalId, user.getUserId(), user.getRole());
         return ResponseEntity.ok(ApiResponse.ok(toResponse(ev)));
     }
 
@@ -58,10 +62,11 @@ public class EvaluationController {
     @PreAuthorize("hasRole('INSTRUCTOR') or hasRole('ADMIN')")
     @SuppressWarnings("NullableProblems")
     public ResponseEntity<ApiResponse<EvaluationResponse>> setScores(
-            @PathVariable Long id,
+            @PathVariable String id,
             @Valid @RequestBody UpdateScoresRequest request,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        Evaluation ev = evaluationService.setScores(id, request.getScores(), user.getUserId());
+        Long evalId = hashidService.decodeOrThrow(id);
+        Evaluation ev = evaluationService.setScores(evalId, request.getScores(), user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(toResponse(ev)));
     }
 
@@ -69,11 +74,13 @@ public class EvaluationController {
     @PreAuthorize("hasRole('INSTRUCTOR') or hasRole('ADMIN')")
     @SuppressWarnings("NullableProblems")
     public ResponseEntity<ApiResponse<EvaluationResponse>> patchScore(
-            @PathVariable Long id,
-            @PathVariable Long criterionId,
+            @PathVariable String id,
+            @PathVariable String criterionId,
             @Valid @RequestBody PatchScoreRequest request,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        Evaluation ev = evaluationService.patchScore(id, criterionId, request.getScore(), request.getComment(), user.getUserId());
+        Long evalId = hashidService.decodeOrThrow(id);
+        Long criterionIdLong = hashidService.decodeOrThrow(criterionId);
+        Evaluation ev = evaluationService.patchScore(evalId, criterionIdLong, request.getScore(), request.getComment(), user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(toResponse(ev)));
     }
 
@@ -81,10 +88,11 @@ public class EvaluationController {
     @PreAuthorize("hasRole('INSTRUCTOR') or hasRole('ADMIN')")
     @SuppressWarnings("NullableProblems")
     public ResponseEntity<ApiResponse<EvaluationResponse>> setComment(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestBody PatchCommentRequest request,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        Evaluation ev = evaluationService.setComment(id, request.getOverallComment(), user.getUserId());
+        Long evalId = hashidService.decodeOrThrow(id);
+        Evaluation ev = evaluationService.setComment(evalId, request.getOverallComment(), user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(toResponse(ev)));
     }
 
@@ -92,9 +100,10 @@ public class EvaluationController {
     @PreAuthorize("hasRole('INSTRUCTOR') or hasRole('ADMIN')")
     @SuppressWarnings("NullableProblems")
     public ResponseEntity<ApiResponse<EvaluationResponse>> publish(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        Evaluation ev = evaluationService.publishEvaluation(id, user.getUserId());
+        Long evalId = hashidService.decodeOrThrow(id);
+        Evaluation ev = evaluationService.publishEvaluation(evalId, user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(toResponse(ev)));
     }
 
@@ -102,9 +111,10 @@ public class EvaluationController {
     @PreAuthorize("hasRole('INSTRUCTOR') or hasRole('ADMIN')")
     @SuppressWarnings("NullableProblems")
     public ResponseEntity<ApiResponse<EvaluationResponse>> reopen(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        Evaluation ev = evaluationService.reopenEvaluation(id, user.getUserId());
+        Long evalId = hashidService.decodeOrThrow(id);
+        Evaluation ev = evaluationService.reopenEvaluation(evalId, user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(toResponse(ev)));
     }
 
@@ -112,20 +122,22 @@ public class EvaluationController {
     @PreAuthorize("hasRole('INSTRUCTOR') or hasRole('ADMIN')")
     @SuppressWarnings("NullableProblems")
     public ResponseEntity<ApiResponse<Map<String, String>>> generatePdf(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        Evaluation ev = evaluationService.generatePdf(id, user.getUserId());
+        Long evalId = hashidService.decodeOrThrow(id);
+        Evaluation ev = evaluationService.generatePdf(evalId, user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(Map.of("pdfPath", ev.getPdfPath())));
     }
 
     @GetMapping("/{id}/pdf")
     @SuppressWarnings("NullableProblems")
     public ResponseEntity<Resource> downloadPdf(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        Resource resource = evaluationService.downloadPdf(id, user.getUserId(), user.getRole());
+        Long evalId = hashidService.decodeOrThrow(id);
+        Resource resource = evaluationService.downloadPdf(evalId, user.getUserId(), user.getRole());
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"evaluation_" + id + ".pdf\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"evaluation_" + evalId + ".pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(resource);
     }
@@ -137,18 +149,18 @@ public class EvaluationController {
                         ? BigDecimal.valueOf(s.getCriterion().getMaxScore())
                         : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return getEvaluationResponse(ev, scores, maxPossible);
+        return getEvaluationResponse(ev, scores, maxPossible, hashidService);
     }
 
-    static EvaluationResponse getEvaluationResponse(Evaluation ev, List<RubricScore> scores, BigDecimal maxPossible) {
+    static EvaluationResponse getEvaluationResponse(Evaluation ev, List<RubricScore> scores, BigDecimal maxPossible, HashidService hashidService) {
         List<EvaluationResponse.RubricScoreResponse> scoreResponses = scores.stream()
                 .map(s -> {
                     BigDecimal maxScore = s.getCriterion() != null && s.getCriterion().getMaxScore() != null
                             ? BigDecimal.valueOf(s.getCriterion().getMaxScore())
                             : BigDecimal.ZERO;
                     return EvaluationResponse.RubricScoreResponse.builder()
-                            .id(s.getId())
-                            .criterionId(s.getCriterion() != null ? s.getCriterion().getId() : null)
+                            .id(hashidService.encode(s.getId()))
+                            .criterionId(s.getCriterion() != null ? hashidService.encode(s.getCriterion().getId()) : null)
                             .criterionName(s.getCriterion() != null ? s.getCriterion().getName() : null)
                             .maxScore(maxScore)
                             .score(s.getScore())
@@ -157,9 +169,9 @@ public class EvaluationController {
                 })
                 .collect(Collectors.toList());
         return EvaluationResponse.builder()
-                .id(ev.getId())
-                .submissionId(ev.getSubmission() != null ? ev.getSubmission().getId() : null)
-                .instructorId(ev.getInstructor() != null ? ev.getInstructor().getId() : null)
+                .id(hashidService.encode(ev.getId()))
+                .submissionId(ev.getSubmission() != null ? hashidService.encode(ev.getSubmission().getId()) : null)
+                .instructorId(ev.getInstructor() != null ? hashidService.encode(ev.getInstructor().getId()) : null)
                 .instructorName(ev.getInstructor() != null
                         ? ev.getInstructor().getFirstName() + " " + ev.getInstructor().getLastName() : null)
                 .overallComment(ev.getOverallComment())

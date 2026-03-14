@@ -5,6 +5,7 @@ import com.reviewflow.model.dto.response.SubmissionResponse;
 import com.reviewflow.model.entity.Submission;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.SubmissionService;
+import com.reviewflow.service.HashidService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -23,44 +24,51 @@ import java.util.stream.Collectors;
 public class SubmissionController {
 
     private final SubmissionService submissionService;
+    private final HashidService hashidService;
 
     @PostMapping
     public ResponseEntity<ApiResponse<SubmissionResponse>> upload(
-            @RequestParam Long teamId,
-            @RequestParam Long assignmentId,
+            @RequestParam String teamId,
+            @RequestParam String assignmentId,
             @RequestParam(required = false) String changeNote,
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        Submission sub = submissionService.upload(teamId, assignmentId, changeNote, file, user.getUserId());
+        Long teamIdLong = hashidService.decodeOrThrow(teamId);
+        Long assignmentIdLong = hashidService.decodeOrThrow(assignmentId);
+        Submission sub = submissionService.upload(teamIdLong, assignmentIdLong, changeNote, file, user.getUserId());
         return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
                 .body(ApiResponse.ok(toResponse(sub)));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<SubmissionResponse>> get(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        Submission sub = submissionService.getSubmission(id, user.getUserId(), user.getRole());
+        Long submissionId = hashidService.decodeOrThrow(id);
+        Submission sub = submissionService.getSubmission(submissionId, user.getUserId(), user.getRole());
         return ResponseEntity.ok(ApiResponse.ok(toResponse(sub)));
     }
 
     @GetMapping("/teams/{teamId}/assignments/{assignmentId}/history")
     public ResponseEntity<ApiResponse<List<SubmissionResponse>>> history(
-            @PathVariable Long teamId,
-            @PathVariable Long assignmentId,
+            @PathVariable String teamId,
+            @PathVariable String assignmentId,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
+        Long teamIdLong = hashidService.decodeOrThrow(teamId);
+        Long assignmentIdLong = hashidService.decodeOrThrow(assignmentId);
         List<SubmissionResponse> data = submissionService
-                .getVersionHistory(teamId, assignmentId, user.getUserId(), user.getRole())
+                .getVersionHistory(teamIdLong, assignmentIdLong, user.getUserId(), user.getRole())
                 .stream().map(this::toResponse).collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.ok(data));
     }
 
     @GetMapping("/{id}/download")
     public ResponseEntity<Resource> download(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        Submission sub = submissionService.getSubmission(id, user.getUserId(), user.getRole());
-        Resource resource = submissionService.downloadSubmission(id, user.getUserId(), user.getRole());
+        Long submissionId = hashidService.decodeOrThrow(id);
+        Submission sub = submissionService.getSubmission(submissionId, user.getUserId(), user.getRole());
+        Resource resource = submissionService.downloadSubmission(submissionId, user.getUserId(), user.getRole());
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + sub.getFileName() + "\"")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
@@ -69,10 +77,10 @@ public class SubmissionController {
 
     private SubmissionResponse toResponse(Submission s) {
         return SubmissionResponse.builder()
-                .id(s.getId())
-                .teamId(s.getTeam() != null ? s.getTeam().getId() : null)
+                .id(hashidService.encode(s.getId()))
+                .teamId(hashidService.encode(s.getTeam() != null ? s.getTeam().getId() : null))
                 .teamName(s.getTeam() != null ? s.getTeam().getName() : null)
-                .assignmentId(s.getAssignment() != null ? s.getAssignment().getId() : null)
+                .assignmentId(hashidService.encode(s.getAssignment() != null ? s.getAssignment().getId() : null))
                 .assignmentTitle(s.getAssignment() != null ? s.getAssignment().getTitle() : null)
                 .courseCode(s.getAssignment() != null && s.getAssignment().getCourse() != null
                         ? s.getAssignment().getCourse().getCode() : null)
@@ -82,7 +90,7 @@ public class SubmissionController {
                 .isLate(s.getIsLate())
                 .uploadedAt(s.getUploadedAt())
                 .changeNote(s.getChangeNote())
-                .uploadedById(s.getUploadedBy() != null ? s.getUploadedBy().getId() : null)
+                .uploadedById(hashidService.encode(s.getUploadedBy() != null ? s.getUploadedBy().getId() : null))
                 .uploadedByName(s.getUploadedBy() != null
                         ? s.getUploadedBy().getFirstName() + " " + s.getUploadedBy().getLastName() : null)
                 .build();

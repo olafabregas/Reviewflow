@@ -45,6 +45,11 @@ public class Notification {
     @Column(name = "action_url", length = 500)
     private String actionUrl;
 
+    // Optional: ID of the resource this notification points to (team, submission, etc.)
+    // Used for action URL rewriting with hashed IDs: "/teams/{id}" becomes "/teams/Xm2pNqR4"
+    @Column(name = "target_id")
+    private Long targetId;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;

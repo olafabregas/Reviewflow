@@ -30,6 +30,7 @@ public class UserService {
     private final CourseEnrollmentRepository courseEnrollmentRepository;
     private final CourseInstructorRepository courseInstructorRepository;
     private final AdminStatsService adminStatsService;
+    private final HashidService hashidService;
 
     public Page<User> listUsers(Pageable pageable) {
         return userRepository.findAll(pageable);
@@ -84,7 +85,7 @@ public class UserService {
         long teamCount = teamMemberRepository.countByUser_Id(id);
         
         return UserDetailResponse.builder()
-                .id(user.getId())
+                .id(hashidService.encode(user.getId()))
                 .email(user.getEmail())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())

@@ -10,8 +10,8 @@ import java.util.List;
 @Builder
 public class AssignmentResponse {
 
-    Long id;
-    Long courseId;
+    String id;
+    String courseId;
     String courseCode;
     String courseName;
     String title;
@@ -30,7 +30,7 @@ public class AssignmentResponse {
     @Value
     @Builder
     public static class RubricCriterionResponse {
-        Long id;
+        String id;
         String name;
         String description;
         Integer maxScore;
