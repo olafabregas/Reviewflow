@@ -1,8 +1,10 @@
 # ReviewFlow
 
-> A university project submission and peer evaluation platform built for real academic workflows — not a toy CRUD app.
+> A university project submission and evaluation platform built for real academic workflows.
 
-**Status:** Backend complete · Frontend in development · Deployment pending
+**Status:** Backend complete · Frontend in development · Deployment pending  
+
+**Live demo:** Coming soon
 
 -----
 
@@ -10,7 +12,7 @@
 
 ReviewFlow is a full-stack web application that handles the end-to-end lifecycle of university project submissions: team formation, file submission, rubric-based evaluation, and feedback delivery. Three roles — Student, Instructor, and Admin — each have distinct workflows and permission boundaries enforced at every layer of the stack.
 
-Built as a portfolio project to demonstrate production-grade backend engineering: security hardening, caching strategy, real-time notifications, ID obfuscation, PDF generation, and a multi-stage file validation pipeline — not just CRUD endpoints.
+It covers security hardening, caching strategy, real-time notifications, ID obfuscation, PDF generation, and a multi-stage file validation pipeline.
 
 -----
 
@@ -82,7 +84,6 @@ Built as a portfolio project to demonstrate production-grade backend engineering
   ├── AWS S3 (pre-signed URLs)
   ├── Caffeine Cache (Redis-ready · 4 caches)
   └── WebSocket (STOMP over SockJS)
-
 ```
 
 For detailed flow diagrams and architecture breakdowns:
@@ -94,7 +95,7 @@ For detailed flow diagrams and architecture breakdowns:
 
 ## API Overview
 
-52 endpoints across 9 modules. Full OpenAPI spec at `/swagger-ui.html` when running locally.
+52 endpoints across 9 modules. Full OpenAPI spec at `http://localhost:8081/swagger-ui.html` when running locally.
 
 |Module       |Endpoints                                      |
 |-------------|-----------------------------------------------|
@@ -107,16 +108,6 @@ For detailed flow diagrams and architecture breakdowns:
 |PDF          |Generate and download evaluation reports       |
 |Notifications|List, mark read, unread count, delete          |
 |Admin        |User management, stats, audit log              |
-
-All responses follow a consistent envelope — errors always include a `code` field, never a raw Spring Whitelabel page or stack trace:
-
-```json
-{
-  "success": true,
-  "data": { ... },
-  "timestamp": "2026-03-17T14:22:00Z"
-}
-```
 
 -----
 
@@ -155,7 +146,7 @@ cd Reviewflow
 cp .env.example .env
 ```
 
-Edit `.env`
+Edit `.env` with your values — see `.env.example` for all required variables.
 
 ### 2. Start dependencies
 
@@ -176,16 +167,7 @@ mysql -u root -p reviewflow_dev < src/main/resources/db/seed/seed.sql
 ```
 
 API: `http://localhost:8081/api/v1`  
-Swagger UI: `http://localhost:8081/swagger-ui.html
-## Environment Profiles
-
-|Setting             |Local               |Production                   |
-|--------------------|--------------------|-----------------------------|
-|ClamAV              |Fail-open (disabled)|Fail-closed (required)       |
-|Token fingerprinting|Disabled            |Enabled                      |
-|HSTS header         |Off                 |On                           |
-|Actuator path       |`/actuator`         |`/internal/actuator`         |
-|CORS fallback       |`localhost:5173`    |None — must be set explicitly|
+Swagger UI: `http://localhost:8081/swagger-ui.html`
 
 -----
 
@@ -194,16 +176,16 @@ Swagger UI: `http://localhost:8081/swagger-ui.html
 - [ ] React frontend (15 screens across 3 roles)
 - [ ] Docker Compose production config
 - [ ] VPS deployment
-- [ ] Live demo URL
+- [ ] Live demo
 
 -----
 
-## About
+## License
 
-Built by **Roqeeb Olamide Ayorinde** — a full-stack developer targeting backend-heavy roles.
+This project is licensed under the [MIT License](./LICENSE).
 
-This project was built to go beyond typical portfolio work: the architecture handles real production concerns (security, caching, real-time, file safety, ID obfuscation) rather than just demonstrating framework familiarity.
+-----
 
-- GitHub: [github.com/olafabregas](https://github.com/olafabregas)
-- LinkedIn: [linkedin.com/in/roqeeb-olamide-ayorinde](https://www.linkedin.com/in/roqeeb-olamide-ayorinde/)
-- Other projects: [ApexWeather](https://apexweather.vercel.app) · [TechTrainers](https://techtrainers.ca)
+## Contributing
+
+This project is currently in active development and not open for contributions. Feel free to fork it or open an issue if you spot something worth discussing.- Other projects: [ApexWeather](https://apexweather.vercel.app) · [TechTrainers](https://techtrainers.ca)
