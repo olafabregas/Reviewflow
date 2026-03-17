@@ -64,51 +64,25 @@ Built as a portfolio project to demonstrate production-grade backend engineering
 
 ## System Architecture
 
-```mermaid
-graph TD
-    subgraph Client["Client"]
-        A[React SPA]
-    end
+```
+[Client (React SPA)]
+        ↓
+[Security Layer — JWT Filter · Rate Limiter · Token Fingerprinting]
+        ↓
+[REST API Layer (Spring Boot · 52 endpoints · 9 modules)]
+        ↓
+[Service Layer]
+  ├── CourseService          ├── SubmissionService
+  ├── AssignmentService      ├── EvaluationService
+  ├── TeamService            ├── NotificationService
+  ├── AdminStatsService      └── AuthService
+        ↓
+[Infrastructure Layer]
+  ├── MySQL 8 (14 tables · Flyway migrations)
+  ├── AWS S3 (pre-signed URLs)
+  ├── Caffeine Cache (Redis-ready · 4 caches)
+  └── WebSocket (STOMP over SockJS)
 
-    subgraph Security["Security Layer"]
-        B[JWT Filter · Token Fingerprint Validation]
-        C[Rate Limiter · Per-IP Sliding Window]
-    end
-
-    subgraph API["REST API — 52 Endpoints · 9 Modules"]
-        D[Auth · Courses · Assignments]
-        E[Teams · Submissions · Evaluations]
-        F[Notifications · Admin · PDF]
-    end
-
-    subgraph Services["Service Layer"]
-        G[Business Services\nCourse · Assignment · Team · Submission · Evaluation]
-        H[Security Services\nFileSecurityValidator · ClamAV · HashidService · AuditService]
-        I[Async Services\nNotificationEventListener · Schedulers]
-    end
-
-    subgraph Cache["Caffeine Cache — Redis-ready"]
-        J[adminStats 60s · unreadCount 30s\nuserCourses 5min · assignmentDetail 10min]
-    end
-
-    subgraph Infra["Infrastructure"]
-        K[(MySQL 8 · 14 tables · Flyway)]
-        L[AWS S3 · Pre-signed URLs]
-        M[WebSocket · STOMP over SockJS]
-    end
-
-    A -->|HTTP-only cookies| B
-    A -->|WS upgrade| M
-    B --> C
-    C --> API
-    API --> Services
-    G --> K
-    G --> L
-    G --> J
-    H --> Services
-    I -->|async push| M
-    I -->|persist| K
-    I -->|evict| J
 ```
 
 For detailed flow diagrams and architecture breakdowns:
@@ -181,24 +155,7 @@ cd Reviewflow
 cp .env.example .env
 ```
 
-Edit `.env`:
-
-```env
-DB_URL=jdbc:mysql://localhost:3306/reviewflow_dev
-DB_USERNAME=root
-DB_PASSWORD=your_password
-
-JWT_SECRET=your_256bit_secret
-HASHIDS_SALT=your_random_salt   # Never change after first run
-HASHIDS_MIN_LENGTH=8
-
-AWS_ACCESS_KEY_ID=your_key
-AWS_SECRET_ACCESS_KEY=your_secret
-AWS_S3_BUCKET=your_bucket
-AWS_REGION=us-east-1
-
-CORS_ALLOWED_ORIGINS=http://localhost:5173
-```
+Edit `.env`
 
 ### 2. Start dependencies
 
@@ -219,20 +176,7 @@ mysql -u root -p reviewflow_dev < src/main/resources/db/seed/seed.sql
 ```
 
 API: `http://localhost:8081/api/v1`  
-Swagger UI: `http://localhost:8081/swagger-ui.html`
-
-### 4. Seed accounts
-
-|Role      |Email                       |Password |
-|----------|----------------------------|---------|
-|Admin     |admin@university.edu        |Test@1234|
-|Instructor|sarah.johnson@university.edu|Test@1234|
-|Student   |jane.smith@university.edu   |Test@1234|
-
-36 users · 6 courses · 7 assignments · 40 teams · 21 submissions
-
------
-
+Swagger UI: `http://localhost:8081/swagger-ui.html
 ## Environment Profiles
 
 |Setting             |Local               |Production                   |
