@@ -65,7 +65,10 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
 -----
 
 ## System Architecture
+![ReviewFlow System Architecture](https://res.cloudinary.com/dwij0smbq/image/upload/v1773799191/diagram-export-3-17-2026-9_56_37-PM_s5fytp.png)
 
+<details>
+<summary>Text representation</summary>
 ```
 [Client (React SPA)]
         ↓
@@ -84,8 +87,9 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
   ├── AWS S3 (pre-signed URLs)
   ├── Caffeine Cache (Redis-ready · 4 caches)
   └── WebSocket (STOMP over SockJS)
+   ...     
 ```
-
+</details>
 For detailed flow diagrams and architecture breakdowns:
 
 - 📐 [ARCHITECTURE.md](./ARCHITECTURE.md) — all system flows with diagrams and summaries
