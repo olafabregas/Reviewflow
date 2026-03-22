@@ -1,4 +1,4 @@
-# ReviewFlow
+ # ReviewFlow
 
 > A university project submission and evaluation platform built for real academic workflows.
 
@@ -90,10 +90,9 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
    ...     
 ```
 </details>
-For detailed flow diagrams and architecture breakdowns:
+For designed descisions and tradeoffs reasoning:
 
-- 📐 [ARCHITECTURE.md](./ARCHITECTURE.md) — all system flows with diagrams and summaries
-- 🧠 [DECISIONS.md](./DECISIONS.md) — design decisions and tradeoff reasoning
+-  [DECISIONS.md](./DECISIONS.md) — design decisions and tradeoff reasoning
 
 -----
 
@@ -192,4 +191,12 @@ This project is licensed under the [MIT License](./LICENSE).
 
 ## Contributing
 
-This project is currently in active development and not open for contributions. Feel free to fork it or open an issue if you spot something worth discussing.- Other projects: [ApexWeather](https://apexweather.vercel.app) · [TechTrainers](https://techtrainers.ca)
+This project is currently in active development and not open for contributions.
+
+Feel free to fork it or open an issue if you spot something worth discussing.
+
+---
+
+**Other projects:** [ApexWeather](https://apexweather.vercel.app) · [TechTrainers](https://techtrainers.ca)
+
+
