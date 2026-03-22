@@ -86,7 +86,8 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
   ├── Caffeine Cache (Redis-ready · 4 caches)
   └── WebSocket (STOMP over SockJS)
 ```
-> Design decisions and tradeoff reasoning: [DECISIONS.md](./DECISIONS.md)
+> System Flows with diagrams and summaries: [ARCHITECTURE.md](./ARCHITECTURE.md)
+Design decisions and tradeoff reasoning: [DECISIONS.md](./DECISIONS.md)
 
 -----
 
