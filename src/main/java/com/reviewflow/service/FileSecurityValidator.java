@@ -22,6 +22,8 @@ import org.apache.tika.Tika;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.reviewflow.exception.AvatarInvalidTypeException;
+import com.reviewflow.exception.AvatarTooLargeException;
 import com.lowagie.text.pdf.PdfReader;
 import com.reviewflow.config.FileSecurityProperties;
 import com.reviewflow.exception.ArchiveTooLargeException;
@@ -36,10 +38,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Three-gate file security validation pipeline:
- * Gate 1: Denylist + Allowlist
- * Gate 2: MIME Type Detection (Apache Tika)
- * Gate 3: Structural Validation (format-specific)
+ * Three-gate file security validation pipeline: Gate 1: Denylist + Allowlist
+ * Gate 2: MIME Type Detection (Apache Tika) Gate 3: Structural Validation
+ * (format-specific)
  */
 @Slf4j
 @Service
@@ -53,7 +54,6 @@ public class FileSecurityValidator {
     // ═══════════════════════════════════════════════════════════════════════════
     // GATE 1: Denylist and Allowlist
     // ═══════════════════════════════════════════════════════════════════════════
-
     private static final Set<String> BLOCKED_EXTENSIONS = Set.of(
             // Windows executables & installers
             "exe", "msi", "com", "scr", "pif",
@@ -103,7 +103,6 @@ public class FileSecurityValidator {
     // ═══════════════════════════════════════════════════════════════════════════
     // GATE 2: MIME Type Detection
     // ═══════════════════════════════════════════════════════════════════════════
-
     private static final Map<String, String> EXTENSION_TO_MIME = Map.ofEntries(
             // Archives
             Map.entry("zip", "application/zip"),
@@ -167,7 +166,6 @@ public class FileSecurityValidator {
     // ═══════════════════════════════════════════════════════════════════════════
     // Main Validation Entry Point
     // ═══════════════════════════════════════════════════════════════════════════
-
     public void validate(MultipartFile file, Long userId, String ipAddress) throws IOException {
         String filename = file.getOriginalFilename();
         if (filename == null || filename.isBlank()) {
@@ -176,7 +174,7 @@ public class FileSecurityValidator {
 
         // Extract just the filename from path (Postman often sends full paths)
         filename = extractFilenameFromPath(filename);
-        
+
         // Normalize and sanitize filename
         filename = normalizeFilename(filename);
         String extension = extractExtension(filename);
@@ -199,14 +197,42 @@ public class FileSecurityValidator {
     }
 
     /**
-     * Validates a file from a Path (for use when file is already saved to disk).
+     * Reusable validation flow for non-submission uploads (e.g. avatars).
+     */
+    public void validateWithConfig(MultipartFile file, ValidationConfig config) throws IOException {
+        String filename = file.getOriginalFilename();
+        if (filename == null || filename.isBlank()) {
+            throw new AvatarInvalidTypeException("Avatar file name is required");
+        }
+
+        if (file.getSize() > config.maxFileSizeBytes()) {
+            throw new AvatarTooLargeException("Avatar exceeds maximum size of " + config.maxFileSizeBytes() + " bytes");
+        }
+
+        filename = extractFilenameFromPath(filename);
+        filename = normalizeFilename(filename);
+        String extension = extractExtension(filename);
+
+        if (!config.allowedExtensions().contains(extension)) {
+            throw new AvatarInvalidTypeException("Avatar extension ." + extension + " is not allowed");
+        }
+
+        String detectedMime = tika.detect(file.getInputStream(), filename);
+        if (!config.allowedMimeTypes().contains(detectedMime)) {
+            throw new AvatarInvalidTypeException("Avatar MIME type " + detectedMime + " is not allowed");
+        }
+    }
+
+    /**
+     * Validates a file from a Path (for use when file is already saved to
+     * disk).
      */
     public void validateFromPath(Path filePath, Long userId, String ipAddress) throws IOException {
         String filename = filePath.getFileName().toString();
-        
+
         // Extract just the filename from path
         filename = extractFilenameFromPath(filename);
-        
+
         // Normalize and sanitize filename
         filename = normalizeFilename(filename);
         String extension = extractExtension(filename);
@@ -232,8 +258,8 @@ public class FileSecurityValidator {
     /**
      * Core validation logic that works with an InputStream.
      */
-    private void validateFromStream(InputStream inputStream, String filename, String extension, 
-                                     Long userId, String ipAddress) throws IOException {
+    private void validateFromStream(InputStream inputStream, String filename, String extension,
+            Long userId, String ipAddress) throws IOException {
 
         // ── GATE 2 — MIME Detection (Tika) ───────────────────────────────
         // Need to read stream twice, so save to temp file
@@ -266,10 +292,14 @@ public class FileSecurityValidator {
             // ── GATE 3 — Structural Validation ───────────────────────────────
             try (InputStream is = Files.newInputStream(tempFile)) {
                 switch (extension) {
-                    case "zip", "rar", "tar", "gz", "7z" -> validateArchive(is, extension);
-                    case "pdf" -> validatePdf(is);
-                    case "docx", "xlsx", "pptx" -> validateOfficeFile(is, extension);
-                    default -> { /* text-based files — no structural check needed */ }
+                    case "zip", "rar", "tar", "gz", "7z" ->
+                        validateArchive(is, extension);
+                    case "pdf" ->
+                        validatePdf(is);
+                    case "docx", "xlsx", "pptx" ->
+                        validateOfficeFile(is, extension);
+                    default -> {
+                        /* text-based files — no structural check needed */ }
                 }
             }
 
@@ -286,29 +316,28 @@ public class FileSecurityValidator {
     // ═══════════════════════════════════════════════════════════════════════════
     // Filename Normalization & Validation
     // ═══════════════════════════════════════════════════════════════════════════
-
     /**
-     * Extracts just the filename from a full path.
-     * Handles both Windows (C:\path\file.txt) and Unix (/path/file.txt) paths.
-     * This is necessary because Postman and some clients send full file paths.
+     * Extracts just the filename from a full path. Handles both Windows
+     * (C:\path\file.txt) and Unix (/path/file.txt) paths. This is necessary
+     * because Postman and some clients send full file paths.
      */
     private String extractFilenameFromPath(String filename) {
         if (filename == null) {
             return null;
         }
-        
+
         // Handle Windows paths (e.g., C:\Users\...\file.txt)
         int lastBackslash = filename.lastIndexOf('\\');
         if (lastBackslash != -1) {
             filename = filename.substring(lastBackslash + 1);
         }
-        
+
         // Handle Unix paths (e.g., /home/user/file.txt)
         int lastForwardSlash = filename.lastIndexOf('/');
         if (lastForwardSlash != -1) {
             filename = filename.substring(lastForwardSlash + 1);
         }
-        
+
         return filename;
     }
 
@@ -361,7 +390,6 @@ public class FileSecurityValidator {
     // ═══════════════════════════════════════════════════════════════════════════
     // GATE 2: MIME Validation Logic
     // ═══════════════════════════════════════════════════════════════════════════
-
     private boolean isExecutableMime(String mimeType) {
         return EXECUTABLE_MIME_TYPES.contains(mimeType);
     }
@@ -374,24 +402,29 @@ public class FileSecurityValidator {
         }
 
         // Loose matching for text-based files
-        return detectedMime.startsWith("text/") ||
-                detectedMime.equals("application/json") ||
-                detectedMime.equals("application/xml");
+        return detectedMime.startsWith("text/")
+                || detectedMime.equals("application/json")
+                || detectedMime.equals("application/xml");
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // GATE 3: Structural Validation
     // ═══════════════════════════════════════════════════════════════════════════
-
     private void validateArchive(InputStream stream, String extension) {
         try {
             switch (extension) {
-                case "7z" -> validate7z(stream);
-                case "zip" -> validateZip(stream);
-                case "rar" -> validateRar(stream);
-                case "tar" -> validateTar(stream);
-                case "gz" -> validateGz(stream);
-                default -> throw new InvalidFileStructureException("Unknown archive format");
+                case "7z" ->
+                    validate7z(stream);
+                case "zip" ->
+                    validateZip(stream);
+                case "rar" ->
+                    validateRar(stream);
+                case "tar" ->
+                    validateTar(stream);
+                case "gz" ->
+                    validateGz(stream);
+                default ->
+                    throw new InvalidFileStructureException("Unknown archive format");
             }
         } catch (InvalidFileStructureException | ArchiveTooLargeException e) {
             throw e;
@@ -477,8 +510,8 @@ public class FileSecurityValidator {
 
             if (totalUncompressedSize > securityProperties.getMaxArchiveUncompressedSize()) {
                 throw new ArchiveTooLargeException(
-                        "Archive uncompressed content exceeds the maximum allowed size of " +
-                                (securityProperties.getMaxArchiveUncompressedSize() / (1024 * 1024)) + "MB"
+                        "Archive uncompressed content exceeds the maximum allowed size of "
+                        + (securityProperties.getMaxArchiveUncompressedSize() / (1024 * 1024)) + "MB"
                 );
             }
         }
@@ -514,10 +547,14 @@ public class FileSecurityValidator {
     private void validateOfficeFile(InputStream stream, String extension) {
         try (ZipInputStream zis = new ZipInputStream(stream)) {
             Set<String> requiredParts = switch (extension) {
-                case "docx" -> Set.of("[Content_Types].xml", "word/document.xml");
-                case "xlsx" -> Set.of("[Content_Types].xml", "xl/workbook.xml");
-                case "pptx" -> Set.of("[Content_Types].xml", "ppt/presentation.xml");
-                default -> Set.of("[Content_Types].xml");
+                case "docx" ->
+                    Set.of("[Content_Types].xml", "word/document.xml");
+                case "xlsx" ->
+                    Set.of("[Content_Types].xml", "xl/workbook.xml");
+                case "pptx" ->
+                    Set.of("[Content_Types].xml", "ppt/presentation.xml");
+                default ->
+                    Set.of("[Content_Types].xml");
             };
 
             Set<String> foundParts = new HashSet<>();

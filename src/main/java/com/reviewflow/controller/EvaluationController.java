@@ -146,8 +146,8 @@ public class EvaluationController {
         List<RubricScore> scores = rubricScoreRepository.findByEvaluation_Id(ev.getId());
         BigDecimal maxPossible = scores.stream()
                 .map(s -> s.getCriterion() != null && s.getCriterion().getMaxScore() != null
-                        ? BigDecimal.valueOf(s.getCriterion().getMaxScore())
-                        : BigDecimal.ZERO)
+                ? BigDecimal.valueOf(s.getCriterion().getMaxScore())
+                : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         return getEvaluationResponse(ev, scores, maxPossible, hashidService);
     }

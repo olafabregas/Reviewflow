@@ -9,10 +9,12 @@ import java.time.Instant;
 @Data
 @Builder
 public class UserDetailResponse {
+
     private String id;
     private String email;
     private String firstName;
     private String lastName;
+    private String avatarUrl;
     private UserRole role;
     private Boolean isActive;
     private Instant createdAt;

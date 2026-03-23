@@ -19,6 +19,7 @@ import com.reviewflow.service.AuthService;
 import com.reviewflow.service.AuthService.LoginResult;
 import com.reviewflow.service.AuthService.RefreshResult;
 import com.reviewflow.service.HashidService;
+import com.reviewflow.service.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -38,16 +39,17 @@ public class AuthController {
 
     private final AuthService authService;
     private final HashidService hashidService;
+    private final UserService userService;
 
     @Value("${app.cookie.secure:false}")
     private boolean cookieSecure;
 
     @Operation(summary = "Login", description = "Authenticate with email and password. Sets HTTP-only cookies for access and refresh tokens.")
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Login successful"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Invalid credentials"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Account deactivated"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "Too many failed attempts")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Login successful"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Invalid credentials"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Account deactivated"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "Too many failed attempts")
     })
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthUserResponse>> login(
@@ -65,8 +67,8 @@ public class AuthController {
 
     @Operation(summary = "Refresh token", description = "Issue new access token using refresh cookie. Optionally rotates refresh token.")
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Token refreshed"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Invalid or expired refresh token")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Token refreshed"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Invalid or expired refresh token")
     })
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<Map<String, String>>> refresh(
@@ -82,7 +84,8 @@ public class AuthController {
     }
 
     @Operation(summary = "Logout", description = "Revoke refresh token and clear cookies. Requires valid access token.")
-    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Logged out successfully"))
+    @ApiResponses(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Logged out successfully"))
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Map<String, String>>> logout(
             @AuthenticationPrincipal ReviewFlowUserDetails user,
@@ -99,8 +102,8 @@ public class AuthController {
 
     @Operation(summary = "Current user", description = "Return the authenticated user's profile. Used by frontend on app load.")
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "User profile"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "User profile"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated")
     })
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<AuthUserResponse>> me(@AuthenticationPrincipal ReviewFlowUserDetails user) {
@@ -108,12 +111,14 @@ public class AuthController {
             return ResponseEntity.status(401)
                     .body(ApiResponse.error("UNAUTHORIZED", "Not authenticated"));
         }
-        
+
         AuthUserResponse data = AuthUserResponse.builder()
                 .userId(hashidService.encode(user.getUserId()))
                 .email(user.getUsername())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
+                .avatarUrl(userService.getUserById(user.getUserId()).getAvatarUrl())
+                .isActive(user.isEnabled())
                 .role(user.getRole())
                 .build();
         return ResponseEntity.ok(ApiResponse.ok(data));
@@ -152,9 +157,13 @@ public class AuthController {
     }
 
     private String getCookieValue(HttpServletRequest request, String name) {
-        if (request.getCookies() == null) return null;
+        if (request.getCookies() == null) {
+            return null;
+        }
         for (jakarta.servlet.http.Cookie c : request.getCookies()) {
-            if (name.equals(c.getName())) return c.getValue();
+            if (name.equals(c.getName())) {
+                return c.getValue();
+            }
         }
         return null;
     }

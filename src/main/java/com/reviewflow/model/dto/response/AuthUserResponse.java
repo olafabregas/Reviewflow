@@ -12,5 +12,7 @@ public class AuthUserResponse {
     String firstName;
     String lastName;
     String email;
+    String avatarUrl;
+    Boolean isActive;
     UserRole role;
 }

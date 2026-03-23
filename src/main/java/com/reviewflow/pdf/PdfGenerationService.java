@@ -9,6 +9,8 @@ import com.itextpdf.layout.properties.UnitValue;
 import com.reviewflow.model.entity.Evaluation;
 import com.reviewflow.model.entity.RubricScore;
 import com.reviewflow.storage.StorageService;
+import com.reviewflow.util.S3KeyBuilder;
+import com.reviewflow.service.HashidService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -27,12 +29,11 @@ public class PdfGenerationService {
             .withZone(ZoneId.systemDefault());
 
     private final StorageService storageService;
+    private final HashidService hashidService;
 
     public String generateEvaluationPdf(Evaluation evaluation, List<RubricScore> scores) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try (PdfWriter writer = new PdfWriter(baos);
-             PdfDocument pdf = new PdfDocument(writer);
-             Document document = new Document(pdf)) {
+        try (PdfWriter writer = new PdfWriter(baos); PdfDocument pdf = new PdfDocument(writer); Document document = new Document(pdf)) {
 
             document.add(new Paragraph("Evaluation Report").setBold().setFontSize(18));
             document.add(new Paragraph("Assignment: " + evaluation.getSubmission().getAssignment().getTitle()));
@@ -71,7 +72,7 @@ public class PdfGenerationService {
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate PDF for evaluation " + evaluation.getId(), e);
         }
-        String relativePath = "evaluations/pdf/evaluation_" + evaluation.getId() + ".pdf";
+        String relativePath = S3KeyBuilder.pdfKey(hashidService.encode(evaluation.getId()));
         storageService.store(relativePath,
                 new ByteArrayInputStream(baos.toByteArray()), baos.size(), "application/pdf");
         return relativePath;

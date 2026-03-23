@@ -41,7 +41,7 @@ public class AdminUserController {
         Page<AuthUserResponse> data = page.map(this::toResponse);
         return ResponseEntity.ok(ApiResponse.ok(data));
     }
-    
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<UserDetailResponse>> getById(@PathVariable String id) {
         Long userId = hashidService.decodeOrThrow(id);
@@ -81,7 +81,7 @@ public class AdminUserController {
                 "isActive", false
         )));
     }
-    
+
     @PatchMapping("/{id}/reactivate")
     public ResponseEntity<ApiResponse<Map<String, Object>>> reactivate(@PathVariable String id) {
         Long userId = hashidService.decodeOrThrow(id);
@@ -98,6 +98,8 @@ public class AdminUserController {
                 .email(u.getEmail())
                 .firstName(u.getFirstName())
                 .lastName(u.getLastName())
+                .avatarUrl(u.getAvatarUrl())
+                .isActive(u.getIsActive())
                 .role(u.getRole())
                 .build();
     }

@@ -45,7 +45,7 @@ public class AuthService {
             long retryAfter = rateLimiterService.getLoginRetryAfterSeconds(ipAddress);
             throw new TooManyRequestsException("Too many login attempts. Please try again later.", retryAfter);
         }
-        
+
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
                     rateLimiterService.recordFailedLogin(ipAddress);
@@ -63,11 +63,11 @@ public class AuthService {
             auditService.log(user.getId(), "USER_LOGIN_FAILED", "User", user.getId(), "Invalid password", ipAddress);
             throw new BadCredentialsException("Invalid credentials");
         }
-        
+
         // Successful login - clear rate limit for this IP
         rateLimiterService.clearFailedLogins(ipAddress);
         securityMetrics.recordLoginSuccess();
-        
+
         ReviewFlowUserDetails details = new ReviewFlowUserDetails(user);
         String accessToken = jwtService.generateAccessToken(details);
         String refreshTokenValue = jwtService.generateRefreshToken();
@@ -88,13 +88,17 @@ public class AuthService {
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
                 .email(user.getEmail())
+                .avatarUrl(user.getAvatarUrl())
+                .isActive(user.getIsActive())
                 .role(user.getRole())
                 .build();
 
         return new LoginResult(userResponse, accessToken, refreshTokenValue);
     }
 
-    public record LoginResult(AuthUserResponse user, String accessToken, String refreshToken) {}
+    public record LoginResult(AuthUserResponse user, String accessToken, String refreshToken) {
+
+    }
 
     private String hashRefreshToken(String token) {
         try {
@@ -121,7 +125,7 @@ public class AuthService {
         String hash = hashRefreshToken(refreshTokenValue);
         RefreshToken token = refreshTokenRepository.findByTokenHash(hash)
                 .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
-        
+
         // Detect token reuse attack: if token is already revoked, revoke ALL tokens for this user
         if (Boolean.TRUE.equals(token.getRevoked())) {
             User user = token.getUser();
@@ -129,7 +133,7 @@ public class AuthService {
             auditService.log(user.getId(), "TOKEN_REUSE_ATTACK", "User", user.getId(), "Refresh token reuse detected - all tokens revoked", null);
             throw new BadCredentialsException("Invalid refresh token");
         }
-        
+
         if (token.getExpiresAt().isBefore(Instant.now())) {
             throw new BadCredentialsException("Invalid refresh token");
         }
@@ -155,10 +159,14 @@ public class AuthService {
         return new RefreshResult(newAccessToken, newRefreshValue);
     }
 
-    public record RefreshResult(String accessToken, String refreshToken) {}
+    public record RefreshResult(String accessToken, String refreshToken) {
+
+    }
 
     public void logout(String refreshTokenValue) {
-        if (refreshTokenValue == null || refreshTokenValue.isBlank()) return;
+        if (refreshTokenValue == null || refreshTokenValue.isBlank()) {
+            return;
+        }
         String hash = hashRefreshToken(refreshTokenValue);
         refreshTokenRepository.findByTokenHash(hash).ifPresent(t -> {
             t.setRevoked(true);
