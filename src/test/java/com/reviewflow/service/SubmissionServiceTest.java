@@ -75,7 +75,7 @@ class SubmissionServiceTest {
     private SubmissionService submissionService;
 
     @Test
-        void upload_teamAssignmentWithoutTeamId_throwsTeamSubmissionRequired() throws Exception {
+    void upload_teamAssignmentWithoutTeamId_throwsTeamSubmissionRequired() throws Exception {
         Long assignmentId = 10L;
         Long uploaderId = 77L;
 
@@ -102,7 +102,7 @@ class SubmissionServiceTest {
     }
 
     @Test
-        void upload_individualAssignmentWithTeamId_throwsIndividualSubmissionOnly() throws Exception {
+    void upload_individualAssignmentWithTeamId_throwsIndividualSubmissionOnly() throws Exception {
         Long assignmentId = 20L;
         Long uploaderId = 88L;
 

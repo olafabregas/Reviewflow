@@ -12,8 +12,8 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void teamNotAllowed_mapsTo409WithCode() {
-        ResponseEntity<ErrorResponse> response =
-                handler.handleTeamNotAllowed(new TeamNotAllowedException("not allowed"));
+        ResponseEntity<ErrorResponse> response
+                = handler.handleTeamNotAllowed(new TeamNotAllowedException("not allowed"));
 
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
         assertEquals("TEAM_NOT_ALLOWED", response.getBody().getError().getCode());
@@ -21,8 +21,8 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void individualSubmissionOnly_mapsTo409WithCode() {
-        ResponseEntity<ErrorResponse> response =
-                handler.handleIndividualSubmissionOnly(new IndividualSubmissionOnlyException("only individual"));
+        ResponseEntity<ErrorResponse> response
+                = handler.handleIndividualSubmissionOnly(new IndividualSubmissionOnlyException("only individual"));
 
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
         assertEquals("INDIVIDUAL_SUBMISSION_ONLY", response.getBody().getError().getCode());
@@ -30,8 +30,8 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void teamSubmissionRequired_mapsTo409WithCode() {
-        ResponseEntity<ErrorResponse> response =
-                handler.handleTeamSubmissionRequired(new TeamSubmissionRequiredException("team required"));
+        ResponseEntity<ErrorResponse> response
+                = handler.handleTeamSubmissionRequired(new TeamSubmissionRequiredException("team required"));
 
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
         assertEquals("TEAM_SUBMISSION_REQUIRED", response.getBody().getError().getCode());
@@ -39,8 +39,8 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void submissionTypeLocked_mapsTo409WithCode() {
-        ResponseEntity<ErrorResponse> response =
-                handler.handleSubmissionTypeLocked(new SubmissionTypeLockedException("locked"));
+        ResponseEntity<ErrorResponse> response
+                = handler.handleSubmissionTypeLocked(new SubmissionTypeLockedException("locked"));
 
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
         assertEquals("SUBMISSION_TYPE_LOCKED", response.getBody().getError().getCode());

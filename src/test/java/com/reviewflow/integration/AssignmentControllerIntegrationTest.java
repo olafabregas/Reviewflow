@@ -30,11 +30,11 @@ class AssignmentControllerIntegrationTest {
     @Mock
     private HashidService hashidService;
 
-        private AssignmentController controller() {
-                return new AssignmentController(assignmentService, hashidService);
-        }
+    private AssignmentController controller() {
+        return new AssignmentController(assignmentService, hashidService);
+    }
 
-        private ReviewFlowUserDetails instructorPrincipal() {
+    private ReviewFlowUserDetails instructorPrincipal() {
         User user = User.builder()
                 .id(77L)
                 .email("instructor@test.local")
@@ -42,21 +42,21 @@ class AssignmentControllerIntegrationTest {
                 .role(UserRole.INSTRUCTOR)
                 .isActive(true)
                 .build();
-                return new ReviewFlowUserDetails(user);
+        return new ReviewFlowUserDetails(user);
     }
 
     @Test
-        void updateAssignment_changeSubmissionTypeAfterCollaboration_throwsSubmissionTypeLocked() {
+    void updateAssignment_changeSubmissionTypeAfterCollaboration_throwsSubmissionTypeLocked() {
         when(hashidService.decodeOrThrow("ASSIGN4")).thenReturn(505L);
         when(assignmentService.updateAssignment(
-                        eq(505L),
-                        eq("Updated Title"),
-                        eq("Updated Desc"),
-                        any(),
-                        isNull(),
-                        eq(SubmissionType.TEAM),
-                        isNull(),
-                        eq(77L)))
+                eq(505L),
+                eq("Updated Title"),
+                eq("Updated Desc"),
+                any(),
+                isNull(),
+                eq(SubmissionType.TEAM),
+                isNull(),
+                eq(77L)))
                 .thenThrow(new SubmissionTypeLockedException("Assignment submission type cannot be changed after teams or submissions exist"));
 
         CreateAssignmentRequest request = new CreateAssignmentRequest();

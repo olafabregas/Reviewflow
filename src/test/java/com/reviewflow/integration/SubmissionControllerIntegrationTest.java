@@ -30,11 +30,11 @@ class SubmissionControllerIntegrationTest {
     @Mock
     private HashidService hashidService;
 
-        private SubmissionController controller() {
-                return new SubmissionController(submissionService, hashidService);
-        }
+    private SubmissionController controller() {
+        return new SubmissionController(submissionService, hashidService);
+    }
 
-        private ReviewFlowUserDetails studentPrincipal() {
+    private ReviewFlowUserDetails studentPrincipal() {
         User user = User.builder()
                 .id(55L)
                 .email("student@test.local")
@@ -42,31 +42,31 @@ class SubmissionControllerIntegrationTest {
                 .role(UserRole.STUDENT)
                 .isActive(true)
                 .build();
-                return new ReviewFlowUserDetails(user);
+        return new ReviewFlowUserDetails(user);
     }
 
     @Test
-        void upload_teamAssignmentWithoutTeamId_throwsTeamSubmissionRequired() {
+    void upload_teamAssignmentWithoutTeamId_throwsTeamSubmissionRequired() {
         when(hashidService.decodeOrThrow("ASSIGN1")).thenReturn(101L);
         when(submissionService.upload(isNull(), eq(101L), isNull(), any(), eq(55L)))
                 .thenThrow(new TeamSubmissionRequiredException("Team submission is required for this assignment"));
 
-                MultipartFile file = new MockMultipartFile("file", "x.txt", "text/plain", "abc".getBytes());
+        MultipartFile file = new MockMultipartFile("file", "x.txt", "text/plain", "abc".getBytes());
 
-                assertThrows(TeamSubmissionRequiredException.class,
-                                () -> controller().upload(null, "ASSIGN1", null, file, studentPrincipal()));
+        assertThrows(TeamSubmissionRequiredException.class,
+                () -> controller().upload(null, "ASSIGN1", null, file, studentPrincipal()));
     }
 
     @Test
-        void upload_individualAssignmentWithTeamId_throwsIndividualSubmissionOnly() {
+    void upload_individualAssignmentWithTeamId_throwsIndividualSubmissionOnly() {
         when(hashidService.decodeOrThrow("ASSIGN2")).thenReturn(202L);
         when(hashidService.decodeOrThrow("TEAM1")).thenReturn(303L);
         when(submissionService.upload(eq(303L), eq(202L), isNull(), any(), eq(55L)))
                 .thenThrow(new IndividualSubmissionOnlyException("Team submissions are not allowed for this assignment"));
 
-                MultipartFile file = new MockMultipartFile("file", "x.txt", "text/plain", "abc".getBytes());
+        MultipartFile file = new MockMultipartFile("file", "x.txt", "text/plain", "abc".getBytes());
 
-                assertThrows(IndividualSubmissionOnlyException.class,
-                                () -> controller().upload("TEAM1", "ASSIGN2", null, file, studentPrincipal()));
+        assertThrows(IndividualSubmissionOnlyException.class,
+                () -> controller().upload("TEAM1", "ASSIGN2", null, file, studentPrincipal()));
     }
 }
