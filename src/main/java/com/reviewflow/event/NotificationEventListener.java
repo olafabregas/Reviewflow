@@ -4,6 +4,7 @@ import com.reviewflow.config.CacheConfig;
 import com.reviewflow.model.dto.response.NotificationDto;
 import com.reviewflow.model.entity.Notification;
 import com.reviewflow.model.enums.NotificationType;
+import com.reviewflow.model.enums.SubmissionType;
 import com.reviewflow.repository.NotificationRepository;
 import com.reviewflow.service.HashidService;
 import lombok.RequiredArgsConstructor;
@@ -45,13 +46,14 @@ public class NotificationEventListener {
     @Async("notificationExecutor")
     @EventListener
     public void onSubmissionUploaded(SubmissionUploadedEvent event) {
+        String message = event.uploaderName() + " uploaded version " + event.versionNumber()
+            + " for " + event.assignmentTitle();
         saveAndPushMany(
-                event.recipientUserIds(),
-                NotificationType.NEW_SUBMISSION,
-                "New Submission Uploaded",
-                event.uploaderName() + " uploaded version " + event.versionNumber() 
-                    + " for " + event.assignmentTitle(),
-                "/assignments/" + event.assignmentId() + "/submissions"
+            event.recipientUserIds(),
+            NotificationType.NEW_SUBMISSION,
+            "New Submission Uploaded",
+            message,
+            "/assignments/" + event.assignmentId() + "/submissions"
         );
     }
 
@@ -59,13 +61,25 @@ public class NotificationEventListener {
     @Async("notificationExecutor")
     @EventListener
     public void onEvaluationPublished(EvaluationPublishedEvent event) {
-        saveAndPushMany(
-                event.recipientUserIds(),
+        String message = "Your evaluation for " + event.assignmentTitle() + " is now available. Score: "
+            + event.totalScore() + "/" + event.maxPossibleScore();
+        if (event.submissionType() == SubmissionType.INDIVIDUAL && event.studentId() != null) {
+            saveAndPush(
+                event.studentId(),
                 NotificationType.FEEDBACK_PUBLISHED,
                 "Feedback Published",
-                "Your evaluation for " + event.assignmentTitle() + " is now available. Score: " 
-                    + event.totalScore() + "/" + event.maxPossibleScore(),
+                message,
                 "/assignments/" + event.assignmentId() + "/feedback"
+            );
+            return;
+        }
+
+        saveAndPushMany(
+            event.recipientUserIds(),
+            NotificationType.FEEDBACK_PUBLISHED,
+            "Feedback Published",
+            message,
+            "/assignments/" + event.assignmentId() + "/feedback"
         );
     }
 

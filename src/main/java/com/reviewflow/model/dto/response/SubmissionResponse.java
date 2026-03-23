@@ -1,14 +1,18 @@
 package com.reviewflow.model.dto.response;
 
+import java.time.Instant;
+
+import com.reviewflow.model.enums.SubmissionType;
+
 import lombok.Builder;
 import lombok.Value;
-
-import java.time.Instant;
 
 @Value
 @Builder
 public class SubmissionResponse {
     String id;
+    SubmissionType submissionType;
+    String studentId;
     String teamId;
     String teamName;
     String assignmentId;

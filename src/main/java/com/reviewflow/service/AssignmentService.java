@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.reviewflow.exception.BusinessRuleException;
 import com.reviewflow.exception.ResourceNotFoundException;
+import com.reviewflow.exception.SubmissionTypeLockedException;
 import com.reviewflow.exception.ValidationException;
 import com.reviewflow.model.dto.response.AssignmentResponse;
 import com.reviewflow.model.dto.response.GradebookEntryResponse;
@@ -24,6 +25,7 @@ import com.reviewflow.model.entity.RubricCriterion;
 import com.reviewflow.model.entity.Submission;
 import com.reviewflow.model.entity.Team;
 import com.reviewflow.model.entity.UserRole;
+import com.reviewflow.model.enums.SubmissionType;
 import com.reviewflow.repository.AssignmentRepository;
 import com.reviewflow.repository.CourseEnrollmentRepository;
 import com.reviewflow.repository.CourseInstructorRepository;
@@ -53,19 +55,27 @@ public class AssignmentService {
 
     @Transactional
     public Assignment createAssignment(Long courseId, String title, String description, Instant dueAt,
-                                       Integer maxTeamSize, Instant teamLockAt, Boolean isPublished, Long creatorId) {
+                           Integer maxTeamSize, SubmissionType submissionType,
+                           Instant teamLockAt, Boolean isPublished, Long creatorId) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", courseId));
         ensureInstructor(courseId, creatorId);
+
+        SubmissionType resolvedSubmissionType = submissionType != null ? submissionType : SubmissionType.INDIVIDUAL;
         
         // Validate dueAt must be in the future
         if (dueAt != null && dueAt.isBefore(Instant.now())) {
             throw new ValidationException("Due date must be in the future", "INVALID_DUE_DATE");
         }
         
-        // Validate maxTeamSize between 1 and 10
-        if (maxTeamSize == null || maxTeamSize < 1 || maxTeamSize > 10) {
-            throw new ValidationException("Max team size must be between 1 and 10", "VALIDATION_ERROR");
+        if (resolvedSubmissionType == SubmissionType.TEAM) {
+            // Validate maxTeamSize between 1 and 10 for team assignments
+            if (maxTeamSize == null || maxTeamSize < 1 || maxTeamSize > 10) {
+                throw new ValidationException("Max team size must be between 1 and 10", "VALIDATION_ERROR");
+            }
+        } else {
+            // Individual assignments do not use team size.
+            maxTeamSize = null;
         }
         
         // Validate teamLockAt must be before dueAt
@@ -79,6 +89,7 @@ public class AssignmentService {
                 .description(description)
                 .dueAt(dueAt)
                 .maxTeamSize(maxTeamSize)
+                .submissionType(resolvedSubmissionType)
                 .teamLockAt(teamLockAt)
                 .isPublished(isPublished != null ? isPublished : false)
                 .createdAt(Instant.now())
@@ -86,10 +97,18 @@ public class AssignmentService {
         return assignmentRepository.save(a);
     }
 
+            @Transactional
+            public Assignment createAssignment(Long courseId, String title, String description, Instant dueAt,
+                               Integer maxTeamSize, Instant teamLockAt, Boolean isPublished, Long creatorId) {
+            return createAssignment(courseId, title, description, dueAt, maxTeamSize, SubmissionType.INDIVIDUAL,
+                teamLockAt, isPublished, creatorId);
+            }
+
     @CacheEvict(value = CacheConfig.CACHE_ASSIGNMENT, key = "#assignmentId")
     @Transactional
     public Assignment updateAssignment(Long assignmentId, String title, String description, Instant dueAt,
-                                       Integer maxTeamSize, Instant teamLockAt, Long updaterId) {
+                                       Integer maxTeamSize, SubmissionType submissionType,
+                                       Instant teamLockAt, Long updaterId) {
         Assignment a = getAssignmentById(assignmentId);
         ensureInstructor(a.getCourse().getId(), updaterId);
         
@@ -112,9 +131,35 @@ public class AssignmentService {
         if (title != null) a.setTitle(title);
         if (description != null) a.setDescription(description);
         if (dueAt != null) a.setDueAt(dueAt);
-        if (maxTeamSize != null) a.setMaxTeamSize(maxTeamSize);
+
+        if (submissionType != null && submissionType != a.getSubmissionType()) {
+            boolean hasTeams = !teamRepository.findByAssignment_Id(assignmentId).isEmpty();
+            boolean hasSubmissions = !submissionRepository.findByAssignment_Id(assignmentId).isEmpty();
+            if (hasTeams || hasSubmissions) {
+                throw new SubmissionTypeLockedException(
+                        "Assignment submission type cannot be changed after teams or submissions exist");
+            }
+            a.setSubmissionType(submissionType);
+            if (submissionType == SubmissionType.INDIVIDUAL) {
+                a.setMaxTeamSize(null);
+            }
+        }
+
+        if (a.getSubmissionType() == SubmissionType.INDIVIDUAL) {
+            a.setMaxTeamSize(null);
+        } else if (maxTeamSize != null) {
+            a.setMaxTeamSize(maxTeamSize);
+        }
+
         if (teamLockAt != null) a.setTeamLockAt(teamLockAt);
         return assignmentRepository.save(a);
+    }
+
+    @CacheEvict(value = CacheConfig.CACHE_ASSIGNMENT, key = "#assignmentId")
+    @Transactional
+    public Assignment updateAssignment(Long assignmentId, String title, String description, Instant dueAt,
+                                       Integer maxTeamSize, Instant teamLockAt, Long updaterId) {
+        return updateAssignment(assignmentId, title, description, dueAt, maxTeamSize, null, teamLockAt, updaterId);
     }
 
     @CacheEvict(value = CacheConfig.CACHE_ASSIGNMENT, key = "#assignmentId")
@@ -324,6 +369,7 @@ public class AssignmentService {
                 .title(a.getTitle())
                 .description(a.getDescription())
                 .dueAt(a.getDueAt())
+            .submissionType(a.getSubmissionType())
                 .maxTeamSize(a.getMaxTeamSize())
                 .isPublished(a.getIsPublished())
                 .teamLockAt(a.getTeamLockAt())

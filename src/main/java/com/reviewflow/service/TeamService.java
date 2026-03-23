@@ -6,7 +6,9 @@ import com.reviewflow.exception.AccessDeniedException;
 import com.reviewflow.exception.BusinessRuleException;
 import com.reviewflow.exception.DuplicateResourceException;
 import com.reviewflow.exception.ResourceNotFoundException;
+import com.reviewflow.exception.TeamNotAllowedException;
 import com.reviewflow.model.entity.*;
+import com.reviewflow.model.enums.SubmissionType;
 import com.reviewflow.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -34,6 +36,10 @@ public class TeamService {
     public Team createTeam(Long assignmentId, String teamName, Long creatorId) {
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Assignment", assignmentId));
+
+        if (assignment.getSubmissionType() == SubmissionType.INDIVIDUAL) {
+            throw new TeamNotAllowedException("This assignment does not allow team formation");
+        }
         
         // Check if assignment is published
         if (!Boolean.TRUE.equals(assignment.getIsPublished())) {
@@ -149,6 +155,10 @@ public class TeamService {
     public TeamMember inviteMember(Long teamId, String inviteeEmail, Long inviterId) {
         Team team = getTeamById(teamId);
         Assignment assignment = team.getAssignment();
+
+        if (assignment.getSubmissionType() == SubmissionType.INDIVIDUAL) {
+            throw new TeamNotAllowedException("This assignment does not allow team formation");
+        }
         
         // Check if team is locked
         if (Boolean.TRUE.equals(team.getIsLocked())

@@ -8,6 +8,7 @@ import com.reviewflow.exception.ResourceNotFoundException;
 import com.reviewflow.exception.ValidationException;
 import com.reviewflow.model.dto.request.UpdateScoresRequest;
 import com.reviewflow.model.entity.*;
+import com.reviewflow.model.enums.SubmissionType;
 import com.reviewflow.pdf.PdfGenerationService;
 import com.reviewflow.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -85,14 +86,22 @@ public class EvaluationService {
             if (Boolean.TRUE.equals(evaluation.getIsDraft())) {
                 throw new ResourceNotFoundException("Evaluation", id);
             }
-            
-            // Check if student is a member of the team
-            Long teamId = evaluation.getSubmission().getTeam().getId();
-            boolean isMember = teamMemberRepository.findByTeam_IdAndUser_Id(teamId, userId).isPresent();
-            if (!isMember) {
-                throw new AccessDeniedException("Not authorized to access this evaluation");
+
+            Submission submission = evaluation.getSubmission();
+            SubmissionType submissionType = submission.getAssignment().getSubmissionType();
+            if (submissionType == SubmissionType.INDIVIDUAL) {
+                if (submission.getStudent() == null || !submission.getStudent().getId().equals(userId)) {
+                    throw new AccessDeniedException("Not authorized to access this evaluation");
+                }
+            } else {
+                // Check if student is a member of the team
+                Long teamId = submission.getTeam().getId();
+                boolean isMember = teamMemberRepository.findByTeam_IdAndUser_Id(teamId, userId).isPresent();
+                if (!isMember) {
+                    throw new AccessDeniedException("Not authorized to access this evaluation");
+                }
             }
-            
+
             return evaluation;
         }
         
@@ -223,14 +232,16 @@ public class EvaluationService {
         evaluation.setPublishedAt(Instant.now());
         Evaluation saved = evaluationRepository.save(evaluation);
         
-        // Notify all accepted team members
-        Long teamId = evaluation.getSubmission().getTeam().getId();
-        Assignment assignment = evaluation.getSubmission().getAssignment();
-        
-        List<Long> memberIds = teamMemberRepository.findByTeam_Id(teamId).stream()
+        Submission submission = evaluation.getSubmission();
+        Assignment assignment = submission.getAssignment();
+        SubmissionType submissionType = assignment.getSubmissionType();
+
+        List<Long> memberIds = submissionType == SubmissionType.TEAM
+            ? teamMemberRepository.findByTeam_Id(submission.getTeam().getId()).stream()
                 .filter(m -> m.getStatus() == TeamMemberStatus.ACCEPTED)
                 .map(m -> m.getUser().getId())
-                .toList();
+                .toList()
+            : List.of();
         
         int maxPossibleScore = assignment.getRubricCriteria().stream()
                 .mapToInt(RubricCriterion::getMaxScore)
@@ -238,11 +249,15 @@ public class EvaluationService {
         
         eventPublisher.publishEvent(new EvaluationPublishedEvent(
                 memberIds,
+            submissionType == SubmissionType.INDIVIDUAL && submission.getStudent() != null
+                ? submission.getStudent().getId()
+                : null,
                 evaluation.getId(),
                 assignment.getId(),
                 assignment.getTitle(),
                 evaluation.getTotalScore() != null ? evaluation.getTotalScore().intValue() : 0,
-                maxPossibleScore
+            maxPossibleScore,
+            submissionType
         ));
         
         return saved;
@@ -293,10 +308,19 @@ public class EvaluationService {
             if (Boolean.TRUE.equals(evaluation.getIsDraft())) {
                 throw new ResourceNotFoundException("Evaluation", evalId);
             }
-            Long teamId = evaluation.getSubmission().getTeam().getId();
-            boolean isMember = teamMemberRepository.findByTeam_IdAndUser_Id(teamId, userId).isPresent();
-            if (!isMember) {
-                throw new AccessDeniedException("Not authorized to access this evaluation");
+
+            Submission submission = evaluation.getSubmission();
+            SubmissionType submissionType = submission.getAssignment().getSubmissionType();
+            if (submissionType == SubmissionType.INDIVIDUAL) {
+                if (submission.getStudent() == null || !submission.getStudent().getId().equals(userId)) {
+                    throw new AccessDeniedException("Not authorized to access this evaluation");
+                }
+            } else {
+                Long teamId = submission.getTeam().getId();
+                boolean isMember = teamMemberRepository.findByTeam_IdAndUser_Id(teamId, userId).isPresent();
+                if (!isMember) {
+                    throw new AccessDeniedException("Not authorized to access this evaluation");
+                }
             }
         } else if (role == UserRole.INSTRUCTOR) {
             // Instructor can only download their own evaluation PDFs

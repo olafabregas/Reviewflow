@@ -86,6 +86,8 @@ public class StudentController {
     private SubmissionResponse toSubmissionResponse(Submission s) {
         return SubmissionResponse.builder()
                 .id(hashidService.encode(s.getId()))
+                                .submissionType(s.getAssignment() != null ? s.getAssignment().getSubmissionType() : null)
+                                .studentId(s.getStudent() != null ? hashidService.encode(s.getStudent().getId()) : null)
                 .teamId(s.getTeam() != null ? hashidService.encode(s.getTeam().getId()) : null)
                 .teamName(s.getTeam() != null ? s.getTeam().getName() : null)
                 .assignmentId(s.getAssignment() != null ? hashidService.encode(s.getAssignment().getId()) : null)

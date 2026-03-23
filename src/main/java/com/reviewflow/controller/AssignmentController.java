@@ -62,7 +62,8 @@ public class AssignmentController {
         Long courseIdLong = hashidService.decodeOrThrow(courseId);
         Assignment a = assignmentService.createAssignment(
                 courseIdLong, request.getTitle(), request.getDescription(), request.getDueAt(),
-                request.getMaxTeamSize(), request.getTeamLockAt(), request.getIsPublished(), user.getUserId());
+            request.getMaxTeamSize(), request.getSubmissionType(), request.getTeamLockAt(),
+            request.getIsPublished(), user.getUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(toResponse(a)));
     }
 
@@ -83,7 +84,7 @@ public class AssignmentController {
         Long assignmentId = hashidService.decodeOrThrow(id);
         Assignment a = assignmentService.updateAssignment(
                 assignmentId, request.getTitle(), request.getDescription(), request.getDueAt(),
-                request.getMaxTeamSize(), request.getTeamLockAt(), user.getUserId());
+            request.getMaxTeamSize(), request.getSubmissionType(), request.getTeamLockAt(), user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(toResponse(a)));
     }
 
@@ -194,6 +195,8 @@ public class AssignmentController {
     private SubmissionResponse toSubmissionResponse(Submission s) {
         return SubmissionResponse.builder()
                 .id(hashidService.encode(s.getId()))
+            .submissionType(s.getAssignment() != null ? s.getAssignment().getSubmissionType() : null)
+            .studentId(hashidService.encode(s.getStudent() != null ? s.getStudent().getId() : null))
                 .teamId(hashidService.encode(s.getTeam() != null ? s.getTeam().getId() : null))
                 .teamName(s.getTeam() != null ? s.getTeam().getName() : null)
                 .assignmentId(hashidService.encode(s.getAssignment() != null ? s.getAssignment().getId() : null))
@@ -248,6 +251,7 @@ public class AssignmentController {
                 .title(a.getTitle())
                 .description(a.getDescription())
                 .dueAt(a.getDueAt())
+                .submissionType(a.getSubmissionType())
                 .maxTeamSize(a.getMaxTeamSize())
                 .isPublished(a.getIsPublished())
                 .teamLockAt(a.getTeamLockAt())

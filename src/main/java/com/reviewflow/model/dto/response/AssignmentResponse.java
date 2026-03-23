@@ -1,10 +1,12 @@
 package com.reviewflow.model.dto.response;
 
-import lombok.Builder;
-import lombok.Value;
-
 import java.time.Instant;
 import java.util.List;
+
+import com.reviewflow.model.enums.SubmissionType;
+
+import lombok.Builder;
+import lombok.Value;
 
 @Value
 @Builder
@@ -17,6 +19,7 @@ public class AssignmentResponse {
     String title;
     String description;
     Instant dueAt;
+    SubmissionType submissionType;
     Integer maxTeamSize;
     Boolean isPublished;
     Instant teamLockAt;

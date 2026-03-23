@@ -1,5 +1,6 @@
 package com.reviewflow.model.dto.request;
 
+import com.reviewflow.model.enums.SubmissionType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -16,9 +17,10 @@ public class CreateAssignmentRequest {
     
     @NotNull
     private Instant dueAt;
-    
-    @NotNull
+
     private Integer maxTeamSize;
+
+    private SubmissionType submissionType;
     
     private Instant teamLockAt;
     

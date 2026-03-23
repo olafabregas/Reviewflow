@@ -28,12 +28,12 @@ public class SubmissionController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<SubmissionResponse>> upload(
-            @RequestParam String teamId,
+                        @RequestParam(required = false) String teamId,
             @RequestParam String assignmentId,
             @RequestParam(required = false) String changeNote,
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        Long teamIdLong = hashidService.decodeOrThrow(teamId);
+                Long teamIdLong = teamId != null ? hashidService.decodeOrThrow(teamId) : null;
         Long assignmentIdLong = hashidService.decodeOrThrow(assignmentId);
         Submission sub = submissionService.upload(teamIdLong, assignmentIdLong, changeNote, file, user.getUserId());
         return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
@@ -78,6 +78,8 @@ public class SubmissionController {
     private SubmissionResponse toResponse(Submission s) {
         return SubmissionResponse.builder()
                 .id(hashidService.encode(s.getId()))
+                .submissionType(s.getAssignment() != null ? s.getAssignment().getSubmissionType() : null)
+                .studentId(hashidService.encode(s.getStudent() != null ? s.getStudent().getId() : null))
                 .teamId(hashidService.encode(s.getTeam() != null ? s.getTeam().getId() : null))
                 .teamName(s.getTeam() != null ? s.getTeam().getName() : null)
                 .assignmentId(hashidService.encode(s.getAssignment() != null ? s.getAssignment().getId() : null))

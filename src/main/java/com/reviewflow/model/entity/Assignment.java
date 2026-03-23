@@ -1,5 +1,6 @@
 package com.reviewflow.model.entity;
 
+import com.reviewflow.model.enums.SubmissionType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -33,8 +34,12 @@ public class Assignment {
     private Instant dueAt;
 
     @Column(name = "max_team_size")
+    private Integer maxTeamSize;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "submission_type", nullable = false)
     @Builder.Default
-    private Integer maxTeamSize = 1;
+    private SubmissionType submissionType = SubmissionType.INDIVIDUAL;
 
     @Column(name = "is_published", nullable = false)
     @Builder.Default

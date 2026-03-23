@@ -41,7 +41,6 @@ build/
 !.env.example
 application-local.properties
 
-<<<<<<< HEAD
 ### Logs ###
 logs/
 *.log
@@ -68,6 +67,8 @@ Desktop.ini
 controller_specs/
 workflow/
 postman/
+tasks/
+
 
 # Local file uploads / generated submission assets
 /storage/submissions/
@@ -80,7 +81,6 @@ hs_err_pid*
 *.pid
 *.seed
 
-=======
 /Controller-Specs
->>>>>>> 9717bb559077f8faac8be2910522342bc46ccb91
+
 

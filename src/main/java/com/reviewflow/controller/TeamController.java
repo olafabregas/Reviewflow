@@ -202,6 +202,8 @@ public class TeamController {
     private SubmissionResponse toSubmissionResponse(Submission s) {
         return SubmissionResponse.builder()
                 .id(hashidService.encode(s.getId()))
+                .submissionType(s.getAssignment() != null ? s.getAssignment().getSubmissionType() : null)
+                .studentId(hashidService.encode(s.getStudent() != null ? s.getStudent().getId() : null))
                 .teamId(hashidService.encode(s.getTeam() != null ? s.getTeam().getId() : null))
                 .teamName(s.getTeam() != null ? s.getTeam().getName() : null)
                 .assignmentId(hashidService.encode(s.getAssignment() != null ? s.getAssignment().getId() : null))

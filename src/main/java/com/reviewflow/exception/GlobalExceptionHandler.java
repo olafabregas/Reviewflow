@@ -152,6 +152,54 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
+    @ExceptionHandler(TeamNotAllowedException.class)
+    public ResponseEntity<ErrorResponse> handleTeamNotAllowed(TeamNotAllowedException ex) {
+        ErrorResponse body = ErrorResponse.builder()
+                .error(ErrorResponse.ErrorDetail.builder()
+                        .code(ex.getCode())
+                        .message(ex.getMessage())
+                        .build())
+                .timestamp(Instant.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
+    @ExceptionHandler(IndividualSubmissionOnlyException.class)
+    public ResponseEntity<ErrorResponse> handleIndividualSubmissionOnly(IndividualSubmissionOnlyException ex) {
+        ErrorResponse body = ErrorResponse.builder()
+                .error(ErrorResponse.ErrorDetail.builder()
+                        .code(ex.getCode())
+                        .message(ex.getMessage())
+                        .build())
+                .timestamp(Instant.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
+    @ExceptionHandler(TeamSubmissionRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleTeamSubmissionRequired(TeamSubmissionRequiredException ex) {
+        ErrorResponse body = ErrorResponse.builder()
+                .error(ErrorResponse.ErrorDetail.builder()
+                        .code(ex.getCode())
+                        .message(ex.getMessage())
+                        .build())
+                .timestamp(Instant.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
+    @ExceptionHandler(SubmissionTypeLockedException.class)
+    public ResponseEntity<ErrorResponse> handleSubmissionTypeLocked(SubmissionTypeLockedException ex) {
+        ErrorResponse body = ErrorResponse.builder()
+                .error(ErrorResponse.ErrorDetail.builder()
+                        .code(ex.getCode())
+                        .message(ex.getMessage())
+                        .build())
+                .timestamp(Instant.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
     @ExceptionHandler(BusinessRuleException.class)
     public ResponseEntity<ErrorResponse> handleBusinessRule(BusinessRuleException ex) {
         ErrorResponse body = ErrorResponse.builder()
