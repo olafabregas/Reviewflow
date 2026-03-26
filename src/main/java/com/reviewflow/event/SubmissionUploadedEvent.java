@@ -12,5 +12,6 @@ public record SubmissionUploadedEvent(
         Long       assignmentId,
         String     assignmentTitle,
         int        versionNumber,
-        SubmissionType submissionType
+        SubmissionType submissionType,
+        Long       submissionId
 ) {}

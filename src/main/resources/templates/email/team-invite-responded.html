@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{email/base :: layout(~{::section}, 'Team Invite Response', true, ${preferencesUrl})}">
+<section>
+    <p>Hi <strong th:text="${recipientName}">there</strong>,</p>
+    <p><strong th:text="${inviteeName}">Invitee</strong> has <strong th:text="${accepted ? 'accepted' : 'declined'}">responded</strong> your team invitation for <strong th:text="${assignmentTitle}">Assignment</strong>.</p>
+    <p>Team: <strong th:text="${teamName}">Team</strong></p>
+</section>
+</body>
+</html>

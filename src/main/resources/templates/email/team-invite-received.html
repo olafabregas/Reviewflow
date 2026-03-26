@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{email/base :: layout(~{::section}, 'Team Invitation', true, ${preferencesUrl})}">
+<section>
+    <p>Hi <strong th:text="${recipientName}">there</strong>,</p>
+    <p><strong th:text="${inviterName}">A teammate</strong> invited you to join <strong th:text="${teamName}">Team</strong> for <strong th:text="${assignmentTitle}">Assignment</strong>.</p>
+    <p><a th:href="${appBaseUrl + '/team-members/' + teamMemberHashId}" style="color:#2563eb;text-decoration:none;">Review invitation</a></p>
+</section>
+</body>
+</html>

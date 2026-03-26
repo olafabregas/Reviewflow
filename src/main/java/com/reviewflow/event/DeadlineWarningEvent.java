@@ -1,5 +1,6 @@
 package com.reviewflow.event;
 
+import java.time.Instant;
 import java.util.List;
 
 public record DeadlineWarningEvent(
@@ -7,5 +8,6 @@ public record DeadlineWarningEvent(
         Long       assignmentId,
         String     assignmentTitle,
         String     courseCode,
-        int        hoursUntilDue        // 48 or 24
+        int        hoursUntilDue,       // 48 or 24
+        Instant    dueAt
 ) {}

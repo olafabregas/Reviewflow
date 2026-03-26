@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{email/base :: layout(~{::section}, 'Evaluation Published', false, ${preferencesUrl})}">
+<section>
+    <p>Hi <strong th:text="${recipientName}">student</strong>,</p>
+    <p>Your evaluation for <strong th:text="${assignmentTitle}">Assignment</strong> is now available.</p>
+    <p>
+        Course: <strong th:text="${courseCode}">N/A</strong><br>
+        Score: <strong th:text="${totalScore}">0</strong>
+    </p>
+    <p>
+        <a th:href="${appBaseUrl + '/evaluations/' + evaluationHashId}" style="color:#2563eb;text-decoration:none;">View evaluation</a>
+    </p>
+</section>
+</body>
+</html>

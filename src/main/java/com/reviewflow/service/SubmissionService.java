@@ -280,7 +280,8 @@ public class SubmissionService {
                     assignment.getId(),
                     assignment.getTitle(),
                     nextVersion,
-                    submissionType
+                    submissionType,
+                    saved.getId()
             ));
 
             auditService.log(

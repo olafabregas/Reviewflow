@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{email/base :: layout(~{::section}, 'Extension Request Received', true, ${preferencesUrl})}">
+<section>
+    <p>Hi <strong th:text="${recipientName}">there</strong>,</p>
+    <p><strong th:text="${studentName}">A student</strong> requested an extension for <strong th:text="${assignmentTitle}">Assignment</strong>.</p>
+    <p>Requested due date: <strong th:text="${requestedDueAt}">2026-01-01T00:00:00Z</strong></p>
+    <p th:text="${reason}">Reason</p>
+    <p><a th:href="${appBaseUrl + '/extensions/' + extensionRequestHashId}" style="color:#2563eb;text-decoration:none;">Review request</a></p>
+</section>
+</body>
+</html>

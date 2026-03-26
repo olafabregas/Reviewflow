@@ -1,15 +1,22 @@
 package com.reviewflow.event;
 
 import com.reviewflow.config.CacheConfig;
+import com.reviewflow.event.email.AssignmentDueSoonEmailEvent;
+import com.reviewflow.event.email.EvaluationPublishedEmailEvent;
+import com.reviewflow.event.email.SubmissionReceivedEmailEvent;
+import com.reviewflow.event.email.TeamInviteReceivedEmailEvent;
 import com.reviewflow.model.dto.response.NotificationDto;
 import com.reviewflow.model.entity.Notification;
+import com.reviewflow.model.entity.User;
 import com.reviewflow.model.enums.NotificationType;
 import com.reviewflow.model.enums.SubmissionType;
 import com.reviewflow.repository.NotificationRepository;
+import com.reviewflow.repository.UserRepository;
 import com.reviewflow.service.HashidService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.CacheManager;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Async;
@@ -23,9 +30,11 @@ import java.util.List;
 public class NotificationEventListener {
 
     private final NotificationRepository notificationRepository;
-    private final SimpMessagingTemplate  messagingTemplate;
-    private final CacheManager           cacheManager;
-    private final HashidService          hashidService;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final CacheManager cacheManager;
+    private final HashidService hashidService;
+    private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     // ── TEAM INVITE ───────────────────────────────────────────────
     @Async("notificationExecutor")
@@ -35,11 +44,20 @@ public class NotificationEventListener {
                 event.inviteeUserId(),
                 NotificationType.TEAM_INVITE,
                 "Team Invitation",
-                event.invitedByFirstName() + " invited you to join team \"" + event.teamName() 
-                    + "\" for " + event.assignmentTitle(),
+                event.invitedByFirstName() + " invited you to join team \"" + event.teamName()
+                + "\" for " + event.assignmentTitle(),
                 "/teams/{id}",
-                event.teamId()  // targetId - will be hashed in action URL
+                event.teamId() // targetId - will be hashed in action URL
         );
+
+        userRepository.findById(event.inviteeUserId()).ifPresent(user
+                -> eventPublisher.publishEvent(new TeamInviteReceivedEmailEvent(
+                        user.getEmail(),
+                        fullNameOrEmail(user),
+                        event.invitedByFirstName(),
+                        event.assignmentTitle(),
+                        event.teamName(),
+                        hashidService.encode(event.teamId()))));
     }
 
     // ── NEW SUBMISSION ────────────────────────────────────────────
@@ -47,14 +65,25 @@ public class NotificationEventListener {
     @EventListener
     public void onSubmissionUploaded(SubmissionUploadedEvent event) {
         String message = event.uploaderName() + " uploaded version " + event.versionNumber()
-            + " for " + event.assignmentTitle();
+                + " for " + event.assignmentTitle();
         saveAndPushMany(
-            event.recipientUserIds(),
-            NotificationType.NEW_SUBMISSION,
-            "New Submission Uploaded",
-            message,
-            "/assignments/" + event.assignmentId() + "/submissions"
+                event.recipientUserIds(),
+                NotificationType.NEW_SUBMISSION,
+                "New Submission Uploaded",
+                message,
+                "/assignments/" + event.assignmentId() + "/submissions"
         );
+
+        for (Long recipientUserId : event.recipientUserIds()) {
+            userRepository.findById(recipientUserId).ifPresent(user
+                    -> eventPublisher.publishEvent(new SubmissionReceivedEmailEvent(
+                            user.getEmail(),
+                            fullNameOrEmail(user),
+                            event.uploaderName(),
+                            event.assignmentTitle(),
+                            hashidService.encode(event.submissionId()),
+                            event.versionNumber())));
+        }
     }
 
     // ── FEEDBACK PUBLISHED ────────────────────────────────────────
@@ -62,25 +91,45 @@ public class NotificationEventListener {
     @EventListener
     public void onEvaluationPublished(EvaluationPublishedEvent event) {
         String message = "Your evaluation for " + event.assignmentTitle() + " is now available. Score: "
-            + event.totalScore() + "/" + event.maxPossibleScore();
+                + event.totalScore() + "/" + event.maxPossibleScore();
         if (event.submissionType() == SubmissionType.INDIVIDUAL && event.studentId() != null) {
             saveAndPush(
-                event.studentId(),
-                NotificationType.FEEDBACK_PUBLISHED,
-                "Feedback Published",
-                message,
-                "/assignments/" + event.assignmentId() + "/feedback"
+                    event.studentId(),
+                    NotificationType.FEEDBACK_PUBLISHED,
+                    "Feedback Published",
+                    message,
+                    "/assignments/" + event.assignmentId() + "/feedback"
             );
+
+            userRepository.findById(event.studentId()).ifPresent(user
+                    -> eventPublisher.publishEvent(new EvaluationPublishedEmailEvent(
+                            user.getEmail(),
+                            fullNameOrEmail(user),
+                            event.assignmentTitle(),
+                            "N/A",
+                            event.totalScore(),
+                            hashidService.encode(event.evaluationId()))));
             return;
         }
 
         saveAndPushMany(
-            event.recipientUserIds(),
-            NotificationType.FEEDBACK_PUBLISHED,
-            "Feedback Published",
-            message,
-            "/assignments/" + event.assignmentId() + "/feedback"
+                event.recipientUserIds(),
+                NotificationType.FEEDBACK_PUBLISHED,
+                "Feedback Published",
+                message,
+                "/assignments/" + event.assignmentId() + "/feedback"
         );
+
+        for (Long recipientUserId : event.recipientUserIds()) {
+            userRepository.findById(recipientUserId).ifPresent(user
+                    -> eventPublisher.publishEvent(new EvaluationPublishedEmailEvent(
+                            user.getEmail(),
+                            fullNameOrEmail(user),
+                            event.assignmentTitle(),
+                            "N/A",
+                            event.totalScore(),
+                            hashidService.encode(event.evaluationId()))));
+        }
     }
 
     // ── TEAM LOCKED ───────────────────────────────────────────────
@@ -108,35 +157,47 @@ public class NotificationEventListener {
                 event.recipientUserIds(),
                 type,
                 "Assignment Due Soon",
-                event.assignmentTitle() + " (" + event.courseCode() + ") is due in " 
-                    + event.hoursUntilDue() + " hours. You have not submitted yet.",
+                event.assignmentTitle() + " (" + event.courseCode() + ") is due in "
+                + event.hoursUntilDue() + " hours. You have not submitted yet.",
                 "/assignments/" + event.assignmentId() + "/submit"
         );
+
+        for (Long recipientUserId : event.recipientUserIds()) {
+            userRepository.findById(recipientUserId).ifPresent(user
+                    -> eventPublisher.publishEvent(new AssignmentDueSoonEmailEvent(
+                            user.getEmail(),
+                            fullNameOrEmail(user),
+                            event.assignmentTitle(),
+                            event.dueAt(),
+                            event.courseCode(),
+                            hashidService.encode(event.assignmentId()))));
+        }
     }
 
     // ── HELPERS ───────────────────────────────────────────────────
-
     private void saveAndPush(Long userId, NotificationType type,
-                              String title, String message, String actionUrl) {
+            String title, String message, String actionUrl) {
         saveAndPush(userId, type, title, message, actionUrl, null);
     }
 
     private void saveAndPush(Long userId, NotificationType type,
-                              String title, String message, String actionUrl, Long targetId) {
+            String title, String message, String actionUrl, Long targetId) {
         Notification notification = Notification.builder()
                 .userId(userId)
                 .type(type)
                 .title(title)
                 .message(message)
                 .actionUrl(actionUrl)
-                .targetId(targetId)  // Optional - for action URL rewriting with hashed IDs
+                .targetId(targetId) // Optional - for action URL rewriting with hashed IDs
                 .build();
 
         notificationRepository.save(notification);
 
         // Evict stale unread count for this user — it just increased by 1
         var cache = cacheManager.getCache(CacheConfig.CACHE_UNREAD_COUNT);
-        if (cache != null) cache.evict(userId);
+        if (cache != null) {
+            cache.evict(userId);
+        }
 
         // Push via WebSocket — if user is offline this is silently ignored
         // The notification is safely persisted in DB and delivered via
@@ -154,9 +215,16 @@ public class NotificationEventListener {
     }
 
     private void saveAndPushMany(List<Long> userIds, NotificationType type,
-                                  String title, String message, String actionUrl) {
+            String title, String message, String actionUrl) {
         for (Long userId : userIds) {
             saveAndPush(userId, type, title, message, actionUrl);
         }
+    }
+
+    private String fullNameOrEmail(User user) {
+        String firstName = user.getFirstName() == null ? "" : user.getFirstName().trim();
+        String lastName = user.getLastName() == null ? "" : user.getLastName().trim();
+        String fullName = (firstName + " " + lastName).trim();
+        return fullName.isBlank() ? user.getEmail() : fullName;
     }
 }

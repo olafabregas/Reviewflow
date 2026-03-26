@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{email/base :: layout(~{::section}, 'Welcome to ReviewFlow', false, ${preferencesUrl})}">
+<section>
+    <p>Hi <strong th:text="${firstName}">there</strong>,</p>
+    <p>Welcome to ReviewFlow. Your account is now ready.</p>
+    <p>
+        <a th:href="${appBaseUrl}" style="display:inline-block;padding:10px 14px;border-radius:8px;background:#2563eb;color:#ffffff;text-decoration:none;">Open ReviewFlow</a>
+    </p>
+</section>
+</body>
+</html>

@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{email/base :: layout(~{::section}, 'New Announcement', false, ${preferencesUrl})}">
+<section>
+    <p>Hi <strong th:text="${recipientName}">there</strong>,</p>
+    <p><strong th:text="${senderName}">Instructor</strong> posted a new announcement in <strong th:text="${courseCode}">COURSE</strong>.</p>
+    <p>Title: <strong th:text="${announcementTitle}">Announcement</strong></p>
+    <p th:text="${body}">Body</p>
+    <p><a th:href="${appBaseUrl}" style="color:#2563eb;text-decoration:none;">Open course page</a></p>
+</section>
+</body>
+</html>

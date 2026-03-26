@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(content, title, isStandard, preferencesUrl)">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title}">ReviewFlow</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f6fb;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f6fb;padding:24px 12px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+                    <tr>
+                        <td style="padding:20px 24px;background:#111827;color:#ffffff;font-size:18px;font-weight:700;">
+                            ReviewFlow
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:24px;line-height:1.55;font-size:15px;" th:replace="${content}">
+                            Content
+                        </td>
+                    </tr>
+                    <tr th:if="${isStandard and preferencesUrl != null}">
+                        <td style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#f9fafb;font-size:13px;color:#6b7280;">
+                            You are receiving this update based on your notification settings.
+                            <a th:href="${preferencesUrl}" style="color:#2563eb;text-decoration:none;">Manage email preferences</a>.
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

@@ -1,6 +1,7 @@
 package com.reviewflow.integration;
 
 import com.reviewflow.controller.AvatarController;
+import com.reviewflow.model.dto.request.UpdateEmailPreferenceRequest;
 import com.reviewflow.model.dto.response.ApiResponse;
 import com.reviewflow.model.dto.response.AuthUserResponse;
 import com.reviewflow.model.entity.User;
@@ -91,5 +92,29 @@ class AvatarControllerIntegrationTest {
         assertEquals(true, response.getBody().isSuccess());
         assertEquals("HASH15", response.getBody().getData().getUserId());
         assertEquals(null, response.getBody().getData().getAvatarUrl());
+    }
+
+    @Test
+    void updateMyPreferences_happyPath_returns200WithUpdatedPreference() {
+        ReviewFlowUserDetails principal = studentPrincipal(88L);
+        UpdateEmailPreferenceRequest prefRequest = new UpdateEmailPreferenceRequest();
+        prefRequest.setEmailNotificationsEnabled(false);
+
+        AuthUserResponse payload = AuthUserResponse.builder()
+                .userId("HASH88")
+                .email("student@test.local")
+                .emailNotificationsEnabled(false)
+                .role(UserRole.STUDENT)
+                .isActive(true)
+                .build();
+
+        when(userService.updateEmailPreference(88L, false)).thenReturn(payload);
+
+        ResponseEntity<ApiResponse<AuthUserResponse>> response = controller().updateMyPreferences(principal, prefRequest);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(true, response.getBody().isSuccess());
+        assertEquals("HASH88", response.getBody().getData().getUserId());
+        assertEquals(false, response.getBody().getData().getEmailNotificationsEnabled());
     }
 }

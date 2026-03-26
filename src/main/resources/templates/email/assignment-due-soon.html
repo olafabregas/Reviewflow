@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{email/base :: layout(~{::section}, 'Assignment Due Soon', true, ${preferencesUrl})}">
+<section>
+    <p>Hi <strong th:text="${recipientName}">there</strong>,</p>
+    <p><strong th:text="${assignmentTitle}">Assignment</strong> in <strong th:text="${courseCode}">COURSE</strong> is due soon.</p>
+    <p>Due at: <strong th:text="${dueAt}">2026-01-01T00:00:00Z</strong></p>
+    <p><a th:href="${appBaseUrl + '/assignments/' + assignmentHashId}" style="color:#2563eb;text-decoration:none;">Open assignment</a></p>
+</section>
+</body>
+</html>

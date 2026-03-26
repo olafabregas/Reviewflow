@@ -42,6 +42,10 @@ public class User {
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
 
+    @Column(name = "email_notifications_enabled", nullable = false)
+    @Builder.Default
+    private Boolean emailNotificationsEnabled = true;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private UserRole role;

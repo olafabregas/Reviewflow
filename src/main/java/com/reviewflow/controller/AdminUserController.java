@@ -99,6 +99,7 @@ public class AdminUserController {
                 .firstName(u.getFirstName())
                 .lastName(u.getLastName())
                 .avatarUrl(u.getAvatarUrl())
+                .emailNotificationsEnabled(u.getEmailNotificationsEnabled())
                 .isActive(u.getIsActive())
                 .role(u.getRole())
                 .build();

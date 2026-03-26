@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{email/base :: layout(~{::section}, 'Account Reactivated', false, ${preferencesUrl})}">
+<section>
+    <p>Hi <strong th:text="${firstName}">there</strong>,</p>
+    <p>Your ReviewFlow account has been reactivated. You can sign in again.</p>
+    <p><a th:href="${appBaseUrl}" style="color:#2563eb;text-decoration:none;">Sign in</a></p>
+</section>
+</body>
+</html>

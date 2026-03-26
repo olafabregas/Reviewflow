@@ -112,12 +112,15 @@ public class AuthController {
                     .body(ApiResponse.error("UNAUTHORIZED", "Not authenticated"));
         }
 
+        var persistedUser = userService.getUserById(user.getUserId());
+
         AuthUserResponse data = AuthUserResponse.builder()
                 .userId(hashidService.encode(user.getUserId()))
                 .email(user.getUsername())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
-                .avatarUrl(userService.getUserById(user.getUserId()).getAvatarUrl())
+                .avatarUrl(persistedUser.getAvatarUrl())
+                .emailNotificationsEnabled(persistedUser.getEmailNotificationsEnabled())
                 .isActive(user.isEnabled())
                 .role(user.getRole())
                 .build();

@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,6 +21,8 @@ import com.reviewflow.exception.BusinessRuleException;
 import com.reviewflow.exception.DuplicateResourceException;
 import com.reviewflow.exception.ResourceNotFoundException;
 import com.reviewflow.exception.ValidationException;
+import com.reviewflow.event.email.AccountReactivatedEmailEvent;
+import com.reviewflow.event.email.WelcomeEmailEvent;
 import com.reviewflow.model.dto.response.AuthUserResponse;
 import com.reviewflow.model.dto.response.UserDetailResponse;
 import com.reviewflow.model.entity.User;
@@ -50,6 +53,7 @@ public class UserService {
     private final AuditService auditService;
     private final AdminStatsService adminStatsService;
     private final HashidService hashidService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Value("${app.avatar.max-size-bytes}")
     private long avatarMaxSizeBytes;
@@ -127,12 +131,26 @@ public class UserService {
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
                 .avatarUrl(user.getAvatarUrl())
+                .emailNotificationsEnabled(user.getEmailNotificationsEnabled())
                 .role(user.getRole())
                 .isActive(user.getIsActive())
                 .createdAt(user.getCreatedAt())
                 .courseCount(courseCount)
                 .teamCount(teamCount)
                 .build();
+    }
+
+    @Transactional
+    public AuthUserResponse updateEmailPreference(Long userId, Boolean emailNotificationsEnabled) {
+        if (emailNotificationsEnabled == null) {
+            throw new ValidationException("emailNotificationsEnabled is required", "VALIDATION_ERROR");
+        }
+
+        User user = getUserById(userId);
+        user.setEmailNotificationsEnabled(emailNotificationsEnabled);
+        user.setUpdatedAt(Instant.now());
+        userRepository.save(user);
+        return toAuthUserResponse(user);
     }
 
     @Transactional
@@ -241,6 +259,7 @@ public class UserService {
                 .build();
         user = userRepository.save(user);
         adminStatsService.evictStats();
+        eventPublisher.publishEvent(new WelcomeEmailEvent(user.getId(), user.getEmail(), user.getFirstName()));
         return user;
     }
 
@@ -297,6 +316,7 @@ public class UserService {
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
         adminStatsService.evictStats();
+        eventPublisher.publishEvent(new AccountReactivatedEmailEvent(user.getEmail(), user.getFirstName()));
     }
 
     private AuthUserResponse toAuthUserResponse(User user) {
@@ -306,6 +326,7 @@ public class UserService {
                 .lastName(user.getLastName())
                 .email(user.getEmail())
                 .avatarUrl(user.getAvatarUrl())
+                .emailNotificationsEnabled(user.getEmailNotificationsEnabled())
                 .isActive(user.getIsActive())
                 .role(user.getRole())
                 .build();

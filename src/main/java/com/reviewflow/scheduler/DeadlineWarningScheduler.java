@@ -62,7 +62,8 @@ public class DeadlineWarningScheduler {
                     assignmentId,
                     assignment.getTitle(),
                     courseCode,
-                    hoursUntilDue
+                    hoursUntilDue,
+                    assignment.getDueAt()
             ));
 
             log.info("Sent {}h deadline warning for assignment {} to {} students",

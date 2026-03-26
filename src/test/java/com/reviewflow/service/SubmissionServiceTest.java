@@ -336,6 +336,7 @@ class SubmissionServiceTest {
         assertEquals(SubmissionType.INDIVIDUAL, event.submissionType());
         assertEquals(77L, event.studentId());
         assertEquals(null, event.teamId());
+        assertEquals(501L, event.submissionId());
         verify(adminStatsService).evictStats();
         verify(auditService, times(1)).log(eq(uploaderId), eq("SUBMISSION_UPLOADED"), eq("SUBMISSION"), eq(501L), anyString(), eq(null));
     }
@@ -399,6 +400,7 @@ class SubmissionServiceTest {
         assertEquals(SubmissionType.TEAM, event.submissionType());
         assertEquals(teamId, event.teamId());
         assertEquals(null, event.studentId());
+                assertEquals(777L, event.submissionId());
     }
 
     @Test

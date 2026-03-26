@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{email/base :: layout(~{::section}, 'Submission Received', true, ${preferencesUrl})}">
+<section>
+    <p>Hi <strong th:text="${instructorName}">Instructor</strong>,</p>
+    <p><strong th:text="${submitterName}">A student</strong> submitted a new version for <strong th:text="${assignmentTitle}">Assignment</strong>.</p>
+    <p>Version: <strong th:text="${versionNumber}">1</strong></p>
+    <p><a th:href="${appBaseUrl + '/submissions/' + submissionHashId}" style="color:#2563eb;text-decoration:none;">View submission</a></p>
+</section>
+</body>
+</html>

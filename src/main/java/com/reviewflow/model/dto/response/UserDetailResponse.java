@@ -15,6 +15,7 @@ public class UserDetailResponse {
     private String firstName;
     private String lastName;
     private String avatarUrl;
+    private Boolean emailNotificationsEnabled;
     private UserRole role;
     private Boolean isActive;
     private Instant createdAt;

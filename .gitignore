@@ -68,7 +68,7 @@ controller_specs/
 workflow/
 postman/
 tasks/
-
+orchestration/
 
 # Local file uploads / generated submission assets
 /storage/submissions/

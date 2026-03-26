@@ -89,6 +89,7 @@ public class AuthService {
                 .lastName(user.getLastName())
                 .email(user.getEmail())
                 .avatarUrl(user.getAvatarUrl())
+                .emailNotificationsEnabled(user.getEmailNotificationsEnabled())
                 .isActive(user.getIsActive())
                 .role(user.getRole())
                 .build();
