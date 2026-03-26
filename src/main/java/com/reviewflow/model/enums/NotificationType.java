@@ -14,6 +14,7 @@ public enum NotificationType {
 
     // ── ANNOUNCEMENTS ──────────────────────────────────────────────
     ANNOUNCEMENT, // Announcement published (course or platform)
+    SYSTEM, // Generic system workflow notifications (e.g., extension requests/decisions)
 
     // ── DEADLINES ─────────────────────────────────────────────────
     DEADLINE_WARNING_48H, // Assignment due in 48 hours — student has not submitted

@@ -4,6 +4,8 @@ import com.reviewflow.config.CacheConfig;
 import com.reviewflow.event.email.AnnouncementPostedEmailEvent;
 import com.reviewflow.event.email.AssignmentDueSoonEmailEvent;
 import com.reviewflow.event.email.EvaluationPublishedEmailEvent;
+import com.reviewflow.event.email.ExtensionDecisionEmailEvent;
+import com.reviewflow.event.email.ExtensionRequestReceivedEmailEvent;
 import com.reviewflow.event.email.SubmissionReceivedEmailEvent;
 import com.reviewflow.event.email.TeamInviteReceivedEmailEvent;
 import com.reviewflow.model.dto.response.NotificationDto;
@@ -220,6 +222,61 @@ public class NotificationEventListener {
                             event.dueAt(),
                             event.courseCode(),
                             hashidService.encode(event.assignmentId()))));
+        }
+    }
+
+    // ── EXTENSION REQUESTED ───────────────────────────────────────
+    @Async("notificationExecutor")
+    @EventListener
+    public void onExtensionRequested(ExtensionRequestedEvent event) {
+        for (Long instructorUserId : event.instructorUserIds()) {
+            saveAndPush(
+                    instructorUserId,
+                    NotificationType.SYSTEM,
+                    "Extension Request",
+                    "Extension request from " + event.studentName() + " for " + event.assignmentTitle(),
+                    "/extension-requests/{id}",
+                    event.extensionRequestId()
+            );
+
+            userRepository.findById(instructorUserId).ifPresent(user
+                    -> eventPublisher.publishEvent(new ExtensionRequestReceivedEmailEvent(
+                            user.getEmail(),
+                            fullNameOrEmail(user),
+                            event.studentName(),
+                            event.assignmentTitle(),
+                            event.requestedDueAt(),
+                            event.reason(),
+                            hashidService.encode(event.extensionRequestId()))));
+        }
+    }
+
+    // ── EXTENSION DECIDED ─────────────────────────────────────────
+    @Async("notificationExecutor")
+    @EventListener
+    public void onExtensionDecided(ExtensionDecidedEvent event) {
+        String title = event.approved() ? "Extension Approved" : "Extension Denied";
+        String message = event.approved()
+                ? "Your extension request for " + event.assignmentTitle() + " was approved"
+                : "Your extension request for " + event.assignmentTitle() + " was denied";
+
+        saveAndPushMany(
+                event.recipientUserIds(),
+                NotificationType.SYSTEM,
+                title,
+                message,
+                "/extension-requests/{id}"
+        );
+
+        for (Long recipientUserId : event.recipientUserIds()) {
+            userRepository.findById(recipientUserId).ifPresent(user
+                    -> eventPublisher.publishEvent(new ExtensionDecisionEmailEvent(
+                            user.getEmail(),
+                            fullNameOrEmail(user),
+                            event.assignmentTitle(),
+                            event.approved(),
+                            event.instructorNote(),
+                            event.newDueAt())));
         }
     }
 

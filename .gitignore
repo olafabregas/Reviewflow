@@ -82,5 +82,6 @@ hs_err_pid*
 *.seed
 
 /Controller-Specs
+/Features
 
 

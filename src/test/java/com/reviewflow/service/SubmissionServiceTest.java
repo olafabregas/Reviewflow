@@ -11,17 +11,20 @@ import com.reviewflow.exception.ValidationException;
 import com.reviewflow.model.entity.Assignment;
 import com.reviewflow.model.entity.Course;
 import com.reviewflow.model.entity.CourseInstructor;
+import com.reviewflow.model.entity.ExtensionRequest;
 import com.reviewflow.model.entity.Submission;
 import com.reviewflow.model.entity.Team;
 import com.reviewflow.model.entity.TeamMember;
 import com.reviewflow.model.entity.TeamMemberStatus;
 import com.reviewflow.model.entity.User;
 import com.reviewflow.model.entity.UserRole;
+import com.reviewflow.model.enums.ExtensionRequestStatus;
 import com.reviewflow.model.enums.SubmissionType;
 import com.reviewflow.monitoring.SecurityMetrics;
 import com.reviewflow.repository.AssignmentRepository;
 import com.reviewflow.repository.CourseEnrollmentRepository;
 import com.reviewflow.repository.CourseInstructorRepository;
+import com.reviewflow.repository.ExtensionRequestRepository;
 import com.reviewflow.repository.SubmissionRepository;
 import com.reviewflow.repository.TeamMemberRepository;
 import com.reviewflow.repository.TeamRepository;
@@ -75,6 +78,8 @@ class SubmissionServiceTest {
     @Mock
     private AssignmentRepository assignmentRepository;
     @Mock
+    private ExtensionRequestRepository extensionRequestRepository;
+    @Mock
     private StorageService storageService;
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -105,6 +110,10 @@ class SubmissionServiceTest {
         lenient().doNothing().when(fileSecurityValidator).validateFromPath(any(), anyLong(), anyString());
         lenient().doNothing().when(clamAvScanService).scanAndThrow(any(), anyLong());
         lenient().when(hashidService.encode(anyLong())).thenAnswer(inv -> "H" + inv.getArgument(0));
+        lenient().when(extensionRequestRepository.findTopByAssignment_IdAndStudent_IdAndStatusOrderByRespondedAtDesc(anyLong(), anyLong(), eq(ExtensionRequestStatus.APPROVED)))
+                .thenReturn(Optional.empty());
+        lenient().when(extensionRequestRepository.findTopByAssignment_IdAndTeam_IdAndStatusOrderByRespondedAtDesc(anyLong(), anyLong(), eq(ExtensionRequestStatus.APPROVED)))
+                .thenReturn(Optional.empty());
     }
 
     @Test
@@ -415,6 +424,80 @@ class SubmissionServiceTest {
 
         verify(securityMetrics).recordFileBlocked();
         verify(rateLimiterService).recordBlockedUpload("user_" + uploaderId);
+    }
+
+    @Test
+    void upload_individualWithApprovedExtension_marksNotLateAgainstExtendedDueAt() {
+        Long assignmentId = 10L;
+        Long uploaderId = 77L;
+        Instant originalDueAt = Instant.now().minusSeconds(600);
+        Instant extendedDueAt = Instant.now().plusSeconds(3600);
+
+        Assignment assignment = individualAssignment(assignmentId, 99L, originalDueAt);
+        User uploader = user(uploaderId, "Alice", "Lee");
+
+        when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
+        when(userRepository.findById(uploaderId)).thenReturn(Optional.of(uploader));
+        when(courseEnrollmentRepository.existsByCourse_IdAndUser_Id(99L, uploaderId)).thenReturn(true);
+        when(submissionRepository.findMaxVersionNumberByStudent(uploaderId, assignmentId)).thenReturn(Optional.of(0));
+        when(storageService.store(anyString(), any(), eq(3L), anyString())).thenReturn("submissions/H10/H77/v1/essay.pdf");
+        when(extensionRequestRepository.findTopByAssignment_IdAndStudent_IdAndStatusOrderByRespondedAtDesc(
+                assignmentId,
+                uploaderId,
+                ExtensionRequestStatus.APPROVED
+        )).thenReturn(Optional.of(ExtensionRequest.builder().requestedDueAt(extendedDueAt).build()));
+        when(submissionRepository.save(any(Submission.class))).thenAnswer(inv -> {
+            Submission s = inv.getArgument(0);
+            s.setId(601L);
+            return s;
+        });
+
+        Submission saved = submissionService.upload(null, assignmentId, null, validFile("essay.pdf"), uploaderId);
+
+        assertEquals(601L, saved.getId());
+        assertFalse(saved.getIsLate());
+    }
+
+    @Test
+    void upload_teamWithApprovedExtension_marksNotLateAgainstExtendedDueAt() {
+        Long assignmentId = 10L;
+        Long teamId = 500L;
+        Long uploaderId = 77L;
+        Instant originalDueAt = Instant.now().minusSeconds(600);
+        Instant extendedDueAt = Instant.now().plusSeconds(3600);
+
+        Assignment assignment = teamAssignment(assignmentId, 99L, originalDueAt);
+        Team team = Team.builder().id(teamId).name("Team A").assignment(assignment).build();
+        User uploader = user(uploaderId, "Alice", "Lee");
+        TeamMember uploaderMember = TeamMember.builder()
+                .team(team)
+                .user(uploader)
+                .assignment(assignment)
+                .status(TeamMemberStatus.ACCEPTED)
+                .build();
+
+        when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
+        when(userRepository.findById(uploaderId)).thenReturn(Optional.of(uploader));
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
+        when(teamMemberRepository.findByTeam_IdAndUser_Id(teamId, uploaderId)).thenReturn(Optional.of(uploaderMember));
+        when(submissionRepository.findMaxVersionNumber(teamId, assignmentId)).thenReturn(Optional.of(0));
+        when(storageService.store(anyString(), any(), eq(3L), anyString())).thenReturn("submissions/H10/H500/v1/team.zip");
+        when(extensionRequestRepository.findTopByAssignment_IdAndTeam_IdAndStatusOrderByRespondedAtDesc(
+                assignmentId,
+                teamId,
+                ExtensionRequestStatus.APPROVED
+        )).thenReturn(Optional.of(ExtensionRequest.builder().requestedDueAt(extendedDueAt).build()));
+        when(teamMemberRepository.findByTeam_Id(teamId)).thenReturn(List.of(uploaderMember));
+        when(submissionRepository.save(any(Submission.class))).thenAnswer(inv -> {
+            Submission s = inv.getArgument(0);
+            s.setId(602L);
+            return s;
+        });
+
+        Submission saved = submissionService.upload(teamId, assignmentId, null, validFile("team.zip"), uploaderId);
+
+        assertEquals(602L, saved.getId());
+        assertFalse(saved.getIsLate());
     }
 
     private MockMultipartFile validFile(String name) {

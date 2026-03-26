@@ -80,4 +80,49 @@ class GlobalExceptionHandlerTest {
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertEquals("FILE_NOT_FOUND", response.getBody().getError().getCode());
     }
+
+    @Test
+    void extensionCutoffPassed_mapsTo409WithCode() {
+        ResponseEntity<ErrorResponse> response
+                = handler.handleExtensionCutoffPassed(new ExtensionCutoffPassedException("cutoff passed"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("EXTENSION_CUTOFF_PASSED", response.getBody().getError().getCode());
+    }
+
+    @Test
+    void extensionRequestExists_mapsTo409WithCode() {
+        ResponseEntity<ErrorResponse> response
+                = handler.handleExtensionRequestExists(new ExtensionRequestExistsException("exists"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("EXTENSION_REQUEST_EXISTS", response.getBody().getError().getCode());
+    }
+
+    @Test
+    void alreadyResponded_mapsTo409WithCode() {
+        ResponseEntity<ErrorResponse> response
+                = handler.handleAlreadyResponded(new AlreadyRespondedException("already responded"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("ALREADY_RESPONDED", response.getBody().getError().getCode());
+    }
+
+    @Test
+    void invalidRequestedDate_mapsTo400WithCode() {
+        ResponseEntity<ErrorResponse> response
+                = handler.handleInvalidRequestedDate(new InvalidRequestedDateException("bad date"));
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("INVALID_REQUESTED_DATE", response.getBody().getError().getCode());
+    }
+
+    @Test
+    void notInTeam_mapsTo409WithCode() {
+        ResponseEntity<ErrorResponse> response
+                = handler.handleNotInTeam(new NotInTeamException("not in team"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("NOT_IN_TEAM", response.getBody().getError().getCode());
+    }
 }

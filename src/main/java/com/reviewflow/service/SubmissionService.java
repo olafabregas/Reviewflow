@@ -27,6 +27,7 @@ import com.reviewflow.exception.TeamSubmissionRequiredException;
 import com.reviewflow.exception.ValidationException;
 import com.reviewflow.model.entity.Assignment;
 import com.reviewflow.model.entity.CourseInstructor;
+import com.reviewflow.model.entity.ExtensionRequest;
 import com.reviewflow.model.entity.Submission;
 import com.reviewflow.model.entity.Team;
 import com.reviewflow.model.entity.TeamMember;
@@ -34,10 +35,12 @@ import com.reviewflow.model.entity.TeamMemberStatus;
 import com.reviewflow.model.entity.User;
 import com.reviewflow.model.entity.UserRole;
 import com.reviewflow.model.enums.SubmissionType;
+import com.reviewflow.model.enums.ExtensionRequestStatus;
 import com.reviewflow.monitoring.SecurityMetrics;
 import com.reviewflow.repository.AssignmentRepository;
 import com.reviewflow.repository.CourseEnrollmentRepository;
 import com.reviewflow.repository.CourseInstructorRepository;
+import com.reviewflow.repository.ExtensionRequestRepository;
 import com.reviewflow.repository.SubmissionRepository;
 import com.reviewflow.repository.TeamMemberRepository;
 import com.reviewflow.repository.TeamRepository;
@@ -64,6 +67,7 @@ public class SubmissionService {
     private final CourseEnrollmentRepository courseEnrollmentRepository;
     private final CourseInstructorRepository courseInstructorRepository;
     private final AssignmentRepository assignmentRepository;
+    private final ExtensionRequestRepository extensionRequestRepository;
     private final StorageService storageService;
     private final ApplicationEventPublisher eventPublisher;
     private final UserRepository userRepository;
@@ -218,7 +222,29 @@ public class SubmissionService {
                     ? submissionRepository.findMaxVersionNumberByStudent(uploaderId, assignmentId).orElse(0) + 1
                     : submissionRepository.findMaxVersionNumber(teamId, assignmentId).orElse(0) + 1;
             Instant now = Instant.now();
-            boolean isLate = assignment.getDueAt() != null && now.isAfter(assignment.getDueAt());
+
+            Instant effectiveDueAt = assignment.getDueAt();
+            if (submissionType == SubmissionType.INDIVIDUAL) {
+                effectiveDueAt = extensionRequestRepository
+                        .findTopByAssignment_IdAndStudent_IdAndStatusOrderByRespondedAtDesc(
+                                assignmentId,
+                                uploaderId,
+                                ExtensionRequestStatus.APPROVED
+                        )
+                        .map(ExtensionRequest::getRequestedDueAt)
+                        .orElse(assignment.getDueAt());
+            } else if (teamId != null) {
+                effectiveDueAt = extensionRequestRepository
+                        .findTopByAssignment_IdAndTeam_IdAndStatusOrderByRespondedAtDesc(
+                                assignmentId,
+                                teamId,
+                                ExtensionRequestStatus.APPROVED
+                        )
+                        .map(ExtensionRequest::getRequestedDueAt)
+                        .orElse(assignment.getDueAt());
+            }
+
+            boolean isLate = effectiveDueAt != null && now.isAfter(effectiveDueAt);
 
             // Store the file (use temp file since MultipartFile was already consumed)
             String hashedAssignmentId = hashidService.encode(assignmentId);
