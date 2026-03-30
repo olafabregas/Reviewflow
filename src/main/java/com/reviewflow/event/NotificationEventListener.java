@@ -8,6 +8,10 @@ import com.reviewflow.event.email.ExtensionDecisionEmailEvent;
 import com.reviewflow.event.email.ExtensionRequestReceivedEmailEvent;
 import com.reviewflow.event.email.SubmissionReceivedEmailEvent;
 import com.reviewflow.event.email.TeamInviteReceivedEmailEvent;
+import com.reviewflow.event.email.ForceLogoutEmailEvent;
+import com.reviewflow.event.email.TeamUnlockedEmailEvent;
+import com.reviewflow.event.email.EvaluationReopenedInstructorEmailEvent;
+import com.reviewflow.event.email.EvaluationReopenedTeamEmailEvent;
 import com.reviewflow.model.dto.response.NotificationDto;
 import com.reviewflow.model.entity.Notification;
 import com.reviewflow.model.entity.User;
@@ -332,5 +336,130 @@ public class NotificationEventListener {
         String lastName = user.getLastName() == null ? "" : user.getLastName().trim();
         String fullName = (firstName + " " + lastName).trim();
         return fullName.isBlank() ? user.getEmail() : fullName;
+    }
+
+    // -- PRD-09: SYSTEM ADMIN EVENTS --------------------------------
+    /**
+     * PRD-09: Force logout event - notify target user their session was
+     * terminated
+     */
+    @Async("notificationExecutor")
+    @EventListener
+    public void onForceLogout(ForceLogoutEvent event) {
+        String message = "Your session has been terminated by platform administrators. Reason: " + event.getReason();
+        saveAndPush(
+                event.getTargetUserId(),
+                NotificationType.SYSTEM,
+                "Session Terminated",
+                message,
+                "/auth/login"
+        );
+
+        // Also publish email event for audit trail
+        eventPublisher.publishEvent(new ForceLogoutEmailEvent(
+                this,
+                event.getTargetUserEmail(),
+                event.getReason(),
+                event.getRevokedTokenCount()
+        ));
+
+        log.info("Force logout notification sent to user {}", event.getTargetUserId());
+    }
+
+    /**
+     * PRD-09: Team unlock event - notify team members that team has been
+     * unlocked
+     */
+    @Async("notificationExecutor")
+    @EventListener
+    public void onTeamUnlockedBySystem(TeamUnlockedBySystemEvent event) {
+        String message = "Team \"" + event.getTeamName() + "\" has been unlocked by system administrators. Reason: " + event.getReason();
+
+        // Send CRITICAL notification to all team members (ignore email preference)
+        for (com.reviewflow.dto.UserDto member : event.getTeamMembers()) {
+            saveAndPush(
+                    Long.valueOf(member.getId()),
+                    NotificationType.SYSTEM,
+                    "Team Unlocked",
+                    message,
+                    "/teams/" + hashidService.encode(event.getTeamId())
+            );
+
+            // Publish email event (CRITICAL - always send)
+            userRepository.findById(Long.valueOf(member.getId())).ifPresent(user
+                    -> eventPublisher.publishEvent(new TeamUnlockedEmailEvent(
+                            this,
+                            user.getEmail(),
+                            fullNameOrEmail(user),
+                            event.getTeamName(),
+                            event.getReason()
+                    ))
+            );
+        }
+
+        log.info("Team unlock notification sent to {} team members", event.getTeamMembers().size());
+    }
+
+    /**
+     * PRD-09: Evaluation reopen event - notify instructor and team that
+     * evaluation has been reopened
+     */
+    @Async("notificationExecutor")
+    @EventListener
+    public void onEvaluationReopened(EvaluationReopenedEvent event) {
+        // Notify instructor
+        String instructorMessage = "Evaluation has been reopened by system administrators for editing. Reason: " + event.getReason();
+        String instructorEmail = event.getInstructorEmail();
+
+        userRepository.findByEmail(instructorEmail).ifPresent(instructor
+                -> saveAndPush(
+                        instructor.getId(),
+                        NotificationType.SYSTEM,
+                        "Evaluation Reopened",
+                        instructorMessage,
+                        "/evaluations/" + hashidService.encode(event.getEvaluationId())
+                )
+        );
+
+        // Publish instructor email (CRITICAL)
+        eventPublisher.publishEvent(new EvaluationReopenedInstructorEmailEvent(
+                this,
+                instructorEmail,
+                event.getReason(),
+                event.getScoringSnapshot()
+        ));
+
+        // Notify team members
+        String teamMessage = "An evaluation for your team has been reopened by system administrators. Instructor will update the scores. Reason: " + event.getReason();
+        for (String teamMemberEmail : event.getTeamMemberEmails()) {
+            userRepository.findByEmail(teamMemberEmail).ifPresent(member -> {
+                saveAndPush(
+                        member.getId(),
+                        NotificationType.SYSTEM,
+                        "Evaluation Reopened",
+                        teamMessage,
+                        "/evaluations"
+                );
+            });
+
+            // Publish team member email (CRITICAL)
+            eventPublisher.publishEvent(new EvaluationReopenedTeamEmailEvent(
+                    this,
+                    teamMemberEmail,
+                    event.getReason()
+            ));
+        }
+
+        log.info("Evaluation reopen notification sent to {} team members and instructor", event.getTeamMemberEmails().size());
+    }
+
+    /**
+     * PRD-09: Cache evicted event - trigger out-of-cycle WebSocket metrics push
+     */
+    @EventListener
+    public void onCacheEvicted(CacheEvictedEvent event) {
+        log.info("Cache evicted: {} (entries: {})", event.getCacheName(), event.getEntryCount());
+        // Note: SystemMetricsPushScheduler will handle the WebSocket push
+        // This listener just logs the cache eviction event
     }
 }
