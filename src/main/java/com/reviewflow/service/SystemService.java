@@ -1,30 +1,53 @@
 package com.reviewflow.service;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.reviewflow.dto.CacheStatsDto;
-import com.reviewflow.dto.SystemMetricsDto;
-import com.reviewflow.dto.UserDto;
-import com.reviewflow.event.*;
-import com.reviewflow.exception.*;
-import com.reviewflow.model.entity.*;
-import com.reviewflow.repository.*;
-import com.reviewflow.service.HashidService;
-import lombok.extern.slf4j.Slf4j;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.env.Environment;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.reviewflow.dto.AuditLogDto;
+import com.reviewflow.dto.CacheStatsDto;
+import com.reviewflow.dto.SystemMetricsDto;
+import com.reviewflow.dto.UserDto;
+import com.reviewflow.event.CacheEvictedEvent;
+import com.reviewflow.event.EvaluationReopenedEvent;
+import com.reviewflow.event.ForceLogoutEvent;
+import com.reviewflow.event.TeamUnlockedBySystemEvent;
+import com.reviewflow.exception.CacheEvictionThrottledException;
+import com.reviewflow.exception.EvaluationNotFoundException;
+import com.reviewflow.exception.ForceLogoutBlockedException;
+import com.reviewflow.exception.TeamNotFoundException;
+import com.reviewflow.exception.UnknownCacheException;
+import com.reviewflow.model.entity.Evaluation;
+import com.reviewflow.model.entity.Team;
+import com.reviewflow.model.entity.User;
+import com.reviewflow.model.entity.UserRole;
+import com.reviewflow.repository.AuditRepository;
+import com.reviewflow.repository.EvaluationRepository;
+import com.reviewflow.repository.RefreshTokenRepository;
+import com.reviewflow.repository.TeamRepository;
+import com.reviewflow.repository.UserRepository;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
@@ -87,17 +110,57 @@ public class SystemService {
     public List<CacheStatsDto> getCacheStats() {
         return KNOWN_CACHES.stream()
                 .map(cacheName -> {
-                    Cache<Object, Object> cache = (Cache<Object, Object>) cacheManager.getCache(cacheName).getNativeCache();
+                    org.springframework.cache.Cache springCache = cacheManager.getCache(cacheName);
+                    // Null-safe: skip caches that don't exist to prevent NullPointerException
+                    if (springCache == null) {
+                        return CacheStatsDto.builder()
+                                .name(cacheName)
+                                .size(0L)
+                                .hitCount(0L)
+                                .missCount(0L)
+                                .hitRate(0.0)
+                                .evictionCount(0L)
+                                .lastEvictedAt(Instant.EPOCH.toString())
+                                .build();
+                    }
 
-                    return CacheStatsDto.builder()
-                            .name(cacheName)
-                            .size(cache.estimatedSize())
-                            .hitCount(0L)
-                            .missCount(0L)
-                            .hitRate(0.0)
-                            .evictionCount(0L)
-                            .lastEvictedAt(lastEvictionTime.getOrDefault(cacheName, Instant.EPOCH).toString())
-                            .build();
+                    try {
+                        Cache<Object, Object> cache = (Cache<Object, Object>) springCache.getNativeCache();
+
+                        // Additional null-check for native cache
+                        if (cache == null) {
+                            return CacheStatsDto.builder()
+                                    .name(cacheName)
+                                    .size(0L)
+                                    .hitCount(0L)
+                                    .missCount(0L)
+                                    .hitRate(0.0)
+                                    .evictionCount(0L)
+                                    .lastEvictedAt(Instant.EPOCH.toString())
+                                    .build();
+                        }
+
+                        return CacheStatsDto.builder()
+                                .name(cacheName)
+                                .size(cache.estimatedSize())
+                                .hitCount(0L)
+                                .missCount(0L)
+                                .hitRate(0.0)
+                                .evictionCount(0L)
+                                .lastEvictedAt(lastEvictionTime.getOrDefault(cacheName, Instant.EPOCH).toString())
+                                .build();
+                    } catch (Exception e) {
+                        log.warn("Error retrieving cache stats for {}: {}", cacheName, e.getMessage());
+                        return CacheStatsDto.builder()
+                                .name(cacheName)
+                                .size(0L)
+                                .hitCount(0L)
+                                .missCount(0L)
+                                .hitRate(0.0)
+                                .evictionCount(0L)
+                                .lastEvictedAt(Instant.EPOCH.toString())
+                                .build();
+                    }
                 })
                 .collect(Collectors.toList());
     }
@@ -168,7 +231,12 @@ public class SystemService {
      * Get security events from audit log
      */
     public List<Map<String, Object>> getSecurityEvents(int limit) {
-        return auditService.getSecurityEvents(limit).stream()
+        List<AuditLogDto> auditLogs = auditService.getSecurityEvents(limit);
+        if (auditLogs == null) {
+            return Collections.emptyList();
+        }
+
+        return auditLogs.stream()
                 .map(auditDto -> {
                     Map<String, Object> event = new HashMap<>();
                     event.put("action", auditDto.getAction());
@@ -371,7 +439,8 @@ public class SystemService {
                     .build();
 
             // Find all SYSTEM_ADMIN users
-            List<User> systemAdmins = userRepository.findByRoleAndIsActive(UserRole.SYSTEM_ADMIN, true, null).getContent();
+            Page<User> adminPage = userRepository.findByRoleAndIsActive(UserRole.SYSTEM_ADMIN, true, PageRequest.of(0, 1000));
+            List<User> systemAdmins = adminPage != null ? adminPage.getContent() : Collections.emptyList();
 
             // Send to each SYSTEM_ADMIN user
             for (User admin : systemAdmins) {
