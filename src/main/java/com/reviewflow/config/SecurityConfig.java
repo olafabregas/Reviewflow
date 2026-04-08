@@ -6,6 +6,8 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
+import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -37,9 +39,15 @@ public class SecurityConfig {
     private String activeProfile;
 
     /**
-     * PRD-09: Role hierarchy Roles follow Spring Security conventions:
-     * SYSTEM_ADMIN > ADMIN > INSTRUCTOR > STUDENT Explicit hierarchy bean not
-     * needed in this Spring Security version
+     * PRD-09: Role hierarchy — Roles follow Spring Security conventions:
+     * SYSTEM_ADMIN > ADMIN > INSTRUCTOR > STUDENT
+     *
+     * Permission Model: - Use @PreAuthorize("hasAnyRole('ADMIN',
+     * 'SYSTEM_ADMIN')") for endpoints requiring ADMIN or higher - Use
+     * @PreAuthorize("hasRole('INSTRUCTOR')") for INSTRUCTOR+ (auto-includes
+     * ADMIN, SYSTEM_ADMIN via hasAnyRole patterns) - Use
+     * @PreAuthorize("isAuthenticated()") for STUDENT+ (service-layer validates
+     * ownership)
      */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -107,5 +115,11 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
+    }
+
+    @Bean
+    public MethodSecurityExpressionHandler methodSecurityExpressionHandler() {
+        DefaultMethodSecurityExpressionHandler expressionHandler = new DefaultMethodSecurityExpressionHandler();
+        return expressionHandler;
     }
 }
