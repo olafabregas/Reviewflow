@@ -70,7 +70,8 @@ tasks/
 orchestration/
 
 # Local file uploads / generated submission assets
-/storage/submissions/
+/storage/
+
 
 # Local database seed data
 src/main/resources/db/seed/

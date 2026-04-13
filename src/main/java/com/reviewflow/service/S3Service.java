@@ -162,6 +162,9 @@ public class S3Service {
     }
 
     private String buildUrl(String key) {
-        return String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, region, key);
+        String baseUrl = (region != null && !region.isBlank())
+                ? String.format("https://%s.s3.%s.amazonaws.com", bucket, region)
+                : String.format("https://%s.s3.amazonaws.com", bucket);
+        return baseUrl + "/" + key;
     }
 }

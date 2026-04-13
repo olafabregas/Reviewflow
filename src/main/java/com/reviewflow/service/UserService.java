@@ -15,14 +15,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.reviewflow.event.email.AccountReactivatedEmailEvent;
+import com.reviewflow.event.email.WelcomeEmailEvent;
 import com.reviewflow.exception.AvatarNotFoundException;
 import com.reviewflow.exception.AvatarUploadFailedException;
 import com.reviewflow.exception.BusinessRuleException;
 import com.reviewflow.exception.DuplicateResourceException;
 import com.reviewflow.exception.ResourceNotFoundException;
 import com.reviewflow.exception.ValidationException;
-import com.reviewflow.event.email.AccountReactivatedEmailEvent;
-import com.reviewflow.event.email.WelcomeEmailEvent;
 import com.reviewflow.model.dto.response.AuthUserResponse;
 import com.reviewflow.model.dto.response.UserDetailResponse;
 import com.reviewflow.model.entity.User;
@@ -380,7 +380,9 @@ public class UserService {
     private String buildAvatarUrl(String key) {
         String baseUrl = (s3PublicBaseUrl != null && !s3PublicBaseUrl.isBlank())
                 ? s3PublicBaseUrl
-                : "https://" + s3Bucket + ".s3." + s3Region + ".amazonaws.com";
+                : (s3Region != null && !s3Region.isBlank())
+                ? "https://" + s3Bucket + ".s3." + s3Region + ".amazonaws.com"
+                : "https://" + s3Bucket + ".s3.amazonaws.com";
         return baseUrl + "/" + key + "?v=" + Instant.now().toEpochMilli();
     }
 

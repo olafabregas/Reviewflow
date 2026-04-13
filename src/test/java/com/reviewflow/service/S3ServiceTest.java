@@ -1,23 +1,22 @@
 package com.reviewflow.service;
 
+import java.net.URL;
+
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
-
-import java.net.URL;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -61,7 +60,7 @@ class S3ServiceTest {
     @Test
     void putObject_success_returnsObjectUrl() {
         when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
-            .thenReturn(PutObjectResponse.builder().build());
+                .thenReturn(PutObjectResponse.builder().build());
 
         String result = s3Service.putObject("pdfs/H1/report.pdf", "abc".getBytes(), "application/pdf");
 
@@ -69,9 +68,20 @@ class S3ServiceTest {
     }
 
     @Test
+    void putObject_blankRegion_usesRegionlessBucketUrl() {
+        ReflectionTestUtils.setField(s3Service, "region", "");
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenReturn(PutObjectResponse.builder().build());
+
+        String result = s3Service.putObject("avatars/U1/avatar.jpg", "abc".getBytes(), "image/jpeg");
+
+        assertEquals("https://test-bucket.s3.amazonaws.com/avatars/U1/avatar.jpg", result);
+    }
+
+    @Test
     void putObject_s3Failure_throwsStorageException() {
         when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
-            .thenThrow(S3Exception.builder().message("down").build());
+                .thenThrow(S3Exception.builder().message("down").build());
 
         assertThrows(StorageException.class,
                 () -> s3Service.putObject("x", "abc".getBytes(), "application/pdf"));

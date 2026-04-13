@@ -28,6 +28,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -100,6 +101,32 @@ class UserServiceAvatarTest {
         assertEquals("U10HASH", response.getUserId());
         verify(storageService).store(eq("avatars/U10HASH/avatar.jpg"), any(ByteArrayInputStream.class), eq(5L), eq("image/jpeg"));
         verify(auditService).log(eq(userId), eq("AVATAR_UPLOADED"), eq("User"), eq(userId), anyString(), eq("127.0.0.1"));
+    }
+
+    @Test
+    void uploadAvatar_blankRegion_usesRegionlessBucketUrl() throws Exception {
+        ReflectionTestUtils.setField(userService, "s3Region", "");
+
+        Long userId = 18L;
+        User user = User.builder()
+                .id(userId)
+                .email("student@test.local")
+                .passwordHash("x")
+                .role(UserRole.STUDENT)
+                .isActive(true)
+                .build();
+
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.jpg", "image/jpeg", "img".getBytes());
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(hashidService.encode(userId)).thenReturn("U18HASH");
+        when(exifStripperService.strip(file, "jpeg")).thenReturn("clean".getBytes());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AuthUserResponse response = userService.uploadAvatar(userId, file, "127.0.0.1");
+
+        assertNotNull(response.getAvatarUrl());
+        assertTrue(response.getAvatarUrl().startsWith("https://reviewflow-bucket.s3.amazonaws.com/avatars/U18HASH/avatar.jpg?v="));
     }
 
     @Test
