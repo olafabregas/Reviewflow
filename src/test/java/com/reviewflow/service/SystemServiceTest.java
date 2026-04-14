@@ -183,12 +183,12 @@ class SystemServiceTest {
         assertTrue(config.containsKey("security.password.max-length"));
         // Verify no secrets in config
         config.forEach((key, value)
-            -> assertFalse(key.equalsIgnoreCase("jwt.secret")
-                || key.equalsIgnoreCase("spring.datasource.password")
-                || key.equalsIgnoreCase("database.password")
-                || key.equalsIgnoreCase("mail.password")
-                || key.equalsIgnoreCase("hashids.salt"),
-                "Config should not contain secrets: " + key)
+                -> assertFalse(key.equalsIgnoreCase("jwt.secret")
+                        || key.equalsIgnoreCase("spring.datasource.password")
+                        || key.equalsIgnoreCase("database.password")
+                        || key.equalsIgnoreCase("mail.password")
+                        || key.equalsIgnoreCase("hashids.salt"),
+                        "Config should not contain secrets: " + key)
         );
     }
 

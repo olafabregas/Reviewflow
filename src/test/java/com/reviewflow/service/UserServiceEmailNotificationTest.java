@@ -143,7 +143,7 @@ class UserServiceEmailNotificationTest {
     void createUser_shortPassword_throwsValidationException() {
         when(userRepository.findByEmail("new@test.local")).thenReturn(Optional.empty());
         doThrow(new ValidationException("Password must be between 8 and 64 characters", "VALIDATION_ERROR"))
-            .when(passwordPolicyService).validateForCreateOrUpdate(eq("short"), eq("new@test.local"));
+                .when(passwordPolicyService).validateForCreateOrUpdate(eq("short"), eq("new@test.local"));
 
         ValidationException thrown = assertThrows(
                 ValidationException.class,
