@@ -149,10 +149,10 @@ class GlobalExceptionHandlerTest {
     @Test
     void unreadableRequestBody_mapsTo400WithInvalidRequestCode() {
         ResponseEntity<ErrorResponse> response
-            = handler.handleHttpMessageNotReadable(
-                new HttpMessageNotReadableException(
-                    "Required request body is missing",
-                    new MockHttpInputMessage(new byte[0])));
+                = handler.handleHttpMessageNotReadable(
+                        new HttpMessageNotReadableException(
+                                "Required request body is missing",
+                                new MockHttpInputMessage(new byte[0])));
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("INVALID_REQUEST", response.getBody().getError().getCode());
