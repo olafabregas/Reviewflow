@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -60,6 +62,8 @@ class UserServiceEmailNotificationTest {
     @Mock
     private HashidService hashidService;
     @Mock
+    private PasswordPolicyService passwordPolicyService;
+    @Mock
     private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
@@ -99,16 +103,17 @@ class UserServiceEmailNotificationTest {
     @Test
     void createUser_publishesWelcomeEmailEvent() {
         when(userRepository.findByEmail("new@test.local")).thenReturn(Optional.empty());
-        when(passwordEncoder.encode("password123")).thenReturn("encoded");
+        when(passwordEncoder.encode("Strong@123")).thenReturn("encoded");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
             User saved = invocation.getArgument(0);
             ReflectionTestUtils.setField(saved, "id", 40L);
             return saved;
         });
 
-        User created = userService.createUser("new@test.local", "password123", "Ada", "Lovelace", UserRole.STUDENT);
+        User created = userService.createUser("new@test.local", "Strong@123", "Ada", "Lovelace", UserRole.STUDENT);
 
         assertNotNull(created);
+        verify(passwordPolicyService).validateForCreateOrUpdate("Strong@123", "new@test.local");
         ArgumentCaptor<WelcomeEmailEvent> eventCaptor = ArgumentCaptor.forClass(WelcomeEmailEvent.class);
         verify(eventPublisher).publishEvent(eventCaptor.capture());
         assertEquals("new@test.local", eventCaptor.getValue().getRecipientEmail());
@@ -137,6 +142,8 @@ class UserServiceEmailNotificationTest {
     @Test
     void createUser_shortPassword_throwsValidationException() {
         when(userRepository.findByEmail("new@test.local")).thenReturn(Optional.empty());
+        doThrow(new ValidationException("Password must be between 8 and 64 characters", "VALIDATION_ERROR"))
+            .when(passwordPolicyService).validateForCreateOrUpdate(eq("short"), eq("new@test.local"));
 
         ValidationException thrown = assertThrows(
                 ValidationException.class,

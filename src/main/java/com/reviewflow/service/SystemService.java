@@ -101,7 +101,14 @@ public class SystemService {
         "spring.application.name",
         "app.base-url",
         "aws.region",
-        "jwt.token.expiration"
+        "jwt.token.expiration",
+        "security.password.min-length",
+        "security.password.max-length",
+        "security.password.require-uppercase",
+        "security.password.require-lowercase",
+        "security.password.require-number",
+        "security.password.require-special",
+        "security.password.allow-whitespace"
     };
 
     /**

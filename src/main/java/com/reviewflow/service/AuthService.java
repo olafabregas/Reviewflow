@@ -37,10 +37,12 @@ public class AuthService {
     private final RateLimiterService rateLimiterService;
     private final ReviewFlowMetrics metrics;
     private final HashidService hashidService;
+    private final PasswordPolicyService passwordPolicyService;
 
     @Transactional
     public LoginResult login(String email, String password, String ipAddress) {
         String normalizedEmail = email == null ? null : email.trim().toLowerCase(Locale.ROOT);
+        passwordPolicyService.validateLoginInputBounds(password);
 
         // Check rate limiting
         if (rateLimiterService.isLoginRateLimited(ipAddress)) {

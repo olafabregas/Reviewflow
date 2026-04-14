@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -18,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.reviewflow.exception.ValidationException;
 import com.reviewflow.model.entity.RefreshToken;
 import com.reviewflow.model.entity.User;
 import com.reviewflow.model.entity.UserRole;
@@ -45,6 +47,8 @@ class AuthServiceTest {
     private ReviewFlowMetrics metrics;
     @Mock
     private HashidService hashidService;
+    @Mock
+    private PasswordPolicyService passwordPolicyService;
 
     @InjectMocks
     private AuthService authService;
@@ -77,6 +81,7 @@ class AuthServiceTest {
         assertEquals("admin@reviewflow.com", result.user().getEmail());
         verify(userRepository).findByEmail("admin@reviewflow.com");
         verify(passwordEncoder).matches("Test@1234", "hash");
+        verify(passwordPolicyService).validateLoginInputBounds("Test@1234");
         verify(metrics).recordUserLogin();
         verify(auditService).log(1L, "USER_LOGIN", "User", 1L, "Login successful", "127.0.0.1");
     }
@@ -107,7 +112,26 @@ class AuthServiceTest {
 
         verify(passwordEncoder).matches("  Test@1234  ", "hash");
         verify(passwordEncoder, never()).matches("Test@1234", "hash");
+        verify(passwordPolicyService).validateLoginInputBounds("  Test@1234  ");
         verify(metrics).recordFailedLogin();
         verify(auditService).log(2L, "USER_LOGIN_FAILED", "User", 2L, "Invalid password", "127.0.0.1");
+    }
+
+    @Test
+    void login_whenPasswordExceedsBounds_throwsValidationExceptionBeforeLookup() {
+        doThrow(new ValidationException("Password must be between 8 and 64 characters", "VALIDATION_ERROR"))
+                .when(passwordPolicyService).validateLoginInputBounds("x".repeat(65));
+
+        try {
+            authService.login("admin@reviewflow.com", "x".repeat(65), "127.0.0.1");
+            fail("Expected ValidationException");
+        } catch (ValidationException ex) {
+            assertNotNull(ex);
+            assertEquals("VALIDATION_ERROR", ex.getCode());
+        }
+
+        verify(passwordPolicyService).validateLoginInputBounds("x".repeat(65));
+        verify(userRepository, never()).findByEmail(any());
+        verify(passwordEncoder, never()).matches(any(), any());
     }
 }

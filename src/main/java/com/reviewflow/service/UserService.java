@@ -54,6 +54,7 @@ public class UserService {
     private final AdminStatsService adminStatsService;
     private final HashidService hashidService;
     private final ApplicationEventPublisher eventPublisher;
+    private final PasswordPolicyService passwordPolicyService;
 
     @Value("${app.avatar.max-size-bytes}")
     private long avatarMaxSizeBytes;
@@ -242,10 +243,7 @@ public class UserService {
             throw new DuplicateResourceException("User with email already exists", "EMAIL_EXISTS");
         }
 
-        // Validate password length
-        if (password == null || password.length() < 8) {
-            throw new ValidationException("Password must be at least 8 characters", "VALIDATION_ERROR");
-        }
+        passwordPolicyService.validateForCreateOrUpdate(password, email);
 
         User user = User.builder()
                 .email(email)
