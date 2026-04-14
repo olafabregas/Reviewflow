@@ -575,8 +575,8 @@ Content-Type: application/json
 
 ```json
 {
-  "error": "DUPLICATE_EMAIL",
-  "message": "Email already exists: sarah.johnson@university.edu",
+  "error": "EMAIL_EXISTS",
+  "message": "User with email already exists",
   "timestamp": "2026-04-07T10:30:00Z"
 }
 ```
@@ -584,7 +584,7 @@ Content-Type: application/json
 **Validations:**
 
 - ✅ Status 409
-- ✅ Error code is DUPLICATE_EMAIL
+- ✅ Error code is EMAIL_EXISTS
 - ✅ User not created
 - ✅ Original user unchanged
 

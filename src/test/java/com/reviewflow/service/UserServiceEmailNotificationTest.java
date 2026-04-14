@@ -130,6 +130,8 @@ class UserServiceEmailNotificationTest {
                 DuplicateResourceException.class,
                 () -> userService.createUser("new@test.local", "password123", "Ada", "Lovelace", UserRole.STUDENT));
         assertNotNull(thrown);
+        assertEquals("EMAIL_EXISTS", thrown.getCode());
+        assertEquals("User with email already exists", thrown.getMessage());
     }
 
     @Test

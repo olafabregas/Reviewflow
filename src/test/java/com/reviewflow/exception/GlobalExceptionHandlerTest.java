@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.mock.http.MockHttpInputMessage;
 
 class GlobalExceptionHandlerTest {
 
@@ -142,5 +144,18 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertEquals("NO_SUBMISSIONS_FOUND", response.getBody().getError().getCode());
+    }
+
+    @Test
+    void unreadableRequestBody_mapsTo400WithInvalidRequestCode() {
+        ResponseEntity<ErrorResponse> response
+            = handler.handleHttpMessageNotReadable(
+                new HttpMessageNotReadableException(
+                    "Required request body is missing",
+                    new MockHttpInputMessage(new byte[0])));
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("INVALID_REQUEST", response.getBody().getError().getCode());
+        assertEquals("Request body is required and must be valid JSON", response.getBody().getError().getMessage());
     }
 }

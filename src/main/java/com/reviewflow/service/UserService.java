@@ -239,7 +239,7 @@ public class UserService {
     @Transactional
     public User createUser(String email, String password, String firstName, String lastName, UserRole role) {
         if (userRepository.findByEmail(email).isPresent()) {
-            throw new DuplicateResourceException("User with email already exists: " + email, "EMAIL_EXISTS");
+            throw new DuplicateResourceException("User with email already exists", "EMAIL_EXISTS");
         }
 
         // Validate password length

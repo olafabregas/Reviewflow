@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
@@ -24,6 +25,18 @@ public class GlobalExceptionHandler {
                 .error(ErrorResponse.ErrorDetail.builder()
                         .code("VALIDATION_ERROR")
                         .message(message)
+                        .build())
+                .timestamp(Instant.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+        ErrorResponse body = ErrorResponse.builder()
+                .error(ErrorResponse.ErrorDetail.builder()
+                        .code("INVALID_REQUEST")
+                        .message("Request body is required and must be valid JSON")
                         .build())
                 .timestamp(Instant.now())
                 .build();

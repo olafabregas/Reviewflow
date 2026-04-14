@@ -5,6 +5,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.Locale;
 
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -39,6 +40,8 @@ public class AuthService {
 
     @Transactional
     public LoginResult login(String email, String password, String ipAddress) {
+        String normalizedEmail = email == null ? null : email.trim().toLowerCase(Locale.ROOT);
+
         // Check rate limiting
         if (rateLimiterService.isLoginRateLimited(ipAddress)) {
             metrics.recordLoginRateLimited();
@@ -46,10 +49,10 @@ public class AuthService {
             throw new TooManyRequestsException("Too many login attempts. Please try again later.", retryAfter);
         }
 
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> {
                     rateLimiterService.recordFailedLogin(ipAddress);
-                    auditService.log(null, "USER_LOGIN_FAILED", "User", null, "Email: " + email, ipAddress);
+                    auditService.log(null, "USER_LOGIN_FAILED", "User", null, "Email: " + normalizedEmail, ipAddress);
                     return new BadCredentialsException("Invalid credentials");
                 });
         if (!Boolean.TRUE.equals(user.getIsActive())) {

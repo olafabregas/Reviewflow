@@ -107,11 +107,11 @@ public class CourseController {
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "403",
-                description = "Forbidden - ADMIN role required",
+                description = "Forbidden - ADMIN or SYSTEM_ADMIN role required",
                 content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SYSTEM_ADMIN')")
     @PostMapping
     public ResponseEntity<ApiResponse<CourseResponse>> create(
             @Valid @RequestBody CreateCourseRequest request,
@@ -174,7 +174,7 @@ public class CourseController {
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "403",
-                description = "Forbidden - ADMIN role required",
+                description = "Forbidden - ADMIN or SYSTEM_ADMIN role required",
                 content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -183,7 +183,7 @@ public class CourseController {
                 content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SYSTEM_ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<CourseResponse>> update(
             @PathVariable String id,
@@ -195,7 +195,7 @@ public class CourseController {
 
     @Operation(
             summary = "Archive course",
-            description = "Archive (soft delete) a course. Archived courses remain in system but hidden from listings. Requires ADMIN role."
+            description = "Archive (soft delete) a course. Archived courses remain in system but hidden from listings. Requires ADMIN or SYSTEM_ADMIN role."
     )
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -205,7 +205,7 @@ public class CourseController {
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "403",
-                description = "Forbidden - ADMIN role required",
+                description = "Forbidden - ADMIN or SYSTEM_ADMIN role required",
                 content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -214,7 +214,7 @@ public class CourseController {
                 content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SYSTEM_ADMIN')")
     @PatchMapping("/{id}/archive")
     public ResponseEntity<ApiResponse<CourseResponse>> archive(@PathVariable String id) {
         Long courseId = hashidService.decodeOrThrow(id);
@@ -244,7 +244,7 @@ public class CourseController {
                 content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SYSTEM_ADMIN')")
     @PostMapping("/{id}/instructors")
     public ResponseEntity<ApiResponse<Map<String, String>>> assignInstructor(
             @PathVariable String id,
@@ -280,7 +280,7 @@ public class CourseController {
                 content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SYSTEM_ADMIN')")
     @DeleteMapping("/{id}/instructors/{userId}")
     public ResponseEntity<ApiResponse<Map<String, String>>> removeInstructor(
             @PathVariable String id,
@@ -293,7 +293,7 @@ public class CourseController {
 
     @Operation(
             summary = "Enroll student in course",
-            description = "Enroll a single student in a course. If student is already enrolled, operation succeeds silently. Requires ADMIN role."
+            description = "Enroll a single student in a course. If student is already enrolled, operation succeeds silently. Requires ADMIN or SYSTEM_ADMIN role."
     )
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(

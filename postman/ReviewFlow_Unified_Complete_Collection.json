@@ -2176,7 +2176,7 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status ok', () => pm.expect([200, 400]).to.include(pm.response.code));"
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.equal(200));"
                 ]
               }
             }
@@ -2205,7 +2205,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"email\": \"  admin@reviewflow.com  \", \"password\": \"  Test@1234  \"}"
+              "raw": "{\"email\": \"  admin@reviewflow.com  \", \"password\": \"Test@1234\"}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/login",
