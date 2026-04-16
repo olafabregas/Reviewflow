@@ -1,12 +1,12 @@
- # ReviewFlow
+# ReviewFlow
 
 > A university project submission and evaluation platform built for real academic workflows.
 
-**Status:** Backend complete · Frontend in development · Deployment pending  
+**Status:** Backend core complete (including PRD-10) · Frontend not started · Deployment pending
 
 **Live demo:** Coming soon
 
------
+---
 
 ## What It Is
 
@@ -14,26 +14,26 @@ ReviewFlow is a full-stack web application that handles the end-to-end lifecycle
 
 It covers security hardening, caching strategy, real-time notifications, ID obfuscation, PDF generation, and a multi-stage file validation pipeline.
 
------
+---
 
 ## Tech Stack
 
-|Layer           |Technology                      |Notes                                      |
-|----------------|--------------------------------|-------------------------------------------|
-|Backend         |Spring Boot 4, Java 21          |                                           |
-|Database        |MySQL 8                         |14 tables, Flyway migrations               |
-|Auth            |JWT in HTTP-only cookies        |Refresh rotation, token fingerprinting     |
-|File storage    |AWS S3                          |Pre-signed URLs                            |
-|Real-time       |WebSocket — STOMP over SockJS   |                                           |
-|Caching         |Caffeine                        |4 caches, Redis-ready by design            |
-|File security   |`FileSecurityValidator` + ClamAV|4-stage pipeline                           |
-|ID obfuscation  |Hashids                         |8-char opaque IDs on all external endpoints|
-|PDF generation  |OpenPDF                         |Evaluation report export                   |
-|API docs        |SpringDoc OpenAPI / Swagger UI  |                                           |
-|Containerization|Docker + Docker Compose         |                                           |
-|Frontend        |React                           |In development                             |
+| Layer            | Technology                       | Notes                                       |
+| ---------------- | -------------------------------- | ------------------------------------------- |
+| Backend          | Spring Boot 4, Java 21           |                                             |
+| Database         | MySQL 8                          | 14+ tables, Flyway migrations V1-V21        |
+| Auth             | JWT in HTTP-only cookies         | Refresh rotation, token fingerprinting      |
+| File storage     | AWS S3                           | Pre-signed URLs                             |
+| Real-time        | WebSocket — STOMP over SockJS    |                                             |
+| Caching          | Caffeine                         | 5 configured caches, Redis-ready by design  |
+| File security    | `FileSecurityValidator` + ClamAV | Multi-gate validation, profile-based policy |
+| ID obfuscation   | Hashids                          | 8-char opaque IDs on all external endpoints |
+| PDF generation   | OpenPDF                          | Evaluation report export                    |
+| API docs         | SpringDoc OpenAPI / Swagger UI   |                                             |
+| Containerization | Docker + Docker Compose          |                                             |
+| Frontend         | React                            | Not started                                 |
 
------
+---
 
 ## Features
 
@@ -62,9 +62,10 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
 - Audit log of all significant write actions across the system
 - Course and instructor assignment management
 
------
+---
 
 ## System Architecture
+
 ![ReviewFlow System Architecture](https://res.cloudinary.com/dwij0smbq/image/upload/v1773799191/diagram-export-3-17-2026-9_56_37-PM_s5fytp.png)
 
 ```
@@ -72,7 +73,7 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
         ↓
 [Security Layer — JWT Filter · Rate Limiter · Token Fingerprinting]
         ↓
-[REST API Layer (Spring Boot · 52 endpoints · 9 modules)]
+[REST API Layer (Spring Boot · 98 route handlers · 15+ modules)]
         ↓
 [Service Layer]
   ├── CourseService          ├── SubmissionService
@@ -81,33 +82,35 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
   ├── AdminStatsService      └── AuthService
         ↓
 [Infrastructure Layer]
-  ├── MySQL 8 (14 tables · Flyway migrations)
-  ├── AWS S3 (pre-signed URLs)
-  ├── Caffeine Cache (Redis-ready · 4 caches)
-  └── WebSocket (STOMP over SockJS)
+        ├── MySQL 8 (14+ tables · Flyway migrations V1-V21)
+        ├── AWS S3 (pre-signed URLs)
+        ├── Caffeine Cache (Redis-ready · 5 configured caches)
+        └── WebSocket (STOMP over SockJS)
 ```
-> System Flows with diagrams and summaries: [ARCHITECTURE.md](./ARCHITECTURE.md)
-Design decisions and tradeoff reasoning: [DECISIONS.md](./DECISIONS.md)
 
------
+> System Flows with diagrams and summaries: [ARCHITECTURE.md](./ARCHITECTURE.md)
+> Design decisions and tradeoff reasoning: [DECISIONS.md](./DECISIONS.md)
+
+---
 
 ## API Overview
 
-52 endpoints across 9 modules. Full OpenAPI spec at `http://localhost:8081/swagger-ui.html` when running locally.
+98 route handlers across controller modules. Full OpenAPI spec at `http://localhost:8081/swagger-ui.html` when running locally.
 
-|Module       |Endpoints                                      |
-|-------------|-----------------------------------------------|
-|Auth         |Login, logout, refresh, `/me`, WebSocket token |
-|Courses      |CRUD, enrollment, student roster               |
-|Assignments  |CRUD, rubric management, global feed           |
-|Teams        |Create, invite, respond, lock, update          |
-|Submissions  |Upload, version history, download, student view|
-|Evaluations  |Create, score, publish, draft management       |
-|PDF          |Generate and download evaluation reports       |
-|Notifications|List, mark read, unread count, delete          |
-|Admin        |User management, stats, audit log              |
+| Module            | Endpoints                                         |
+| ----------------- | ------------------------------------------------- |
+| Auth              | Login, logout, refresh, `/me`, WebSocket token    |
+| Courses           | CRUD, enrollment, student roster                  |
+| Assignments       | CRUD, rubric management, global feed              |
+| Assignment Groups | Create/list/update/delete groups, move assignment |
+| Teams             | Create, invite, respond, lock, update             |
+| Submissions       | Upload, version history, download, student view   |
+| Evaluations       | Create, score, publish, draft management          |
+| PDF               | Generate and download evaluation reports          |
+| Notifications     | List, mark read, unread count, delete             |
+| Admin             | User management, stats, audit log                 |
 
------
+---
 
 ## Project Structure
 
@@ -126,7 +129,7 @@ src/main/java/com/reviewflow/
 └── util/            # HashidService, FileSecurityValidator, ClamAvScanService
 ```
 
------
+---
 
 ## Running Locally
 
@@ -167,7 +170,7 @@ mysql -u root -p reviewflow_dev < src/main/resources/db/seed/seed.sql
 API: `http://localhost:8081/api/v1`  
 Swagger UI: `http://localhost:8081/swagger-ui.html`
 
------
+---
 
 ## What’s Next
 
@@ -176,13 +179,13 @@ Swagger UI: `http://localhost:8081/swagger-ui.html`
 - [ ] VPS deployment
 - [ ] Live demo
 
------
+---
 
 ## License
 
 This project is licensed under the [MIT License](./LICENSE).
 
------
+---
 
 ## Contributing
 
@@ -193,5 +196,3 @@ Feel free to fork it or open an issue if you spot something worth discussing.
 ---
 
 **Other projects:** [ApexWeather](https://apexweather.vercel.app) · [TechTrainers](https://techtrainers.ca)
-
-
