@@ -59,15 +59,15 @@ GET  /api/v1/system/security/events    → SYSTEM_ADMIN required (403 if STUDENT
 
 ## 11.3 API Endpoints Summary
 
-| Endpoint                                   | Method | Purpose                                                       | Auth         | Rate Limit  |
-| ------------------------------------------ | ------ | ------------------------------------------------------------- | ------------ | ----------- |
-| `/cache/stats`                             | GET    | Retrieve cache hit/miss/size stats for all caches             | SYSTEM_ADMIN | Standard    |
-| `/cache/evict/{cacheName}`                 | POST   | Evict a single cache; throttled 60s per cache                 | SYSTEM_ADMIN | 429 if <60s |
-| `/config`                                  | GET    | List available caches and configuration metadata              | SYSTEM_ADMIN | Standard    |
-| `/security/events`                         | GET    | Last 100 security events (login failures, denials, overrides) | SYSTEM_ADMIN | Standard    |
-| `/users/{targetUserId}/force-logout`       | POST   | Terminate all active sessions for a user                      | SYSTEM_ADMIN | Standard    |
-| `/teams/{teamId}/unlock`                   | POST   | Unlock a locked team (manual bypass for deadlock scenarios)   | SYSTEM_ADMIN | Standard    |
-| `/evaluations/{evaluationId}/reopen`       | POST   | Reopen a published evaluation to draft state                  | SYSTEM_ADMIN | Standard    |
+| Endpoint                             | Method | Purpose                                                       | Auth         | Rate Limit  |
+| ------------------------------------ | ------ | ------------------------------------------------------------- | ------------ | ----------- |
+| `/cache/stats`                       | GET    | Retrieve cache hit/miss/size stats for all caches             | SYSTEM_ADMIN | Standard    |
+| `/cache/evict/{cacheName}`           | POST   | Evict a single cache; throttled 60s per cache                 | SYSTEM_ADMIN | 429 if <60s |
+| `/config`                            | GET    | List available caches and configuration metadata              | SYSTEM_ADMIN | Standard    |
+| `/security/events`                   | GET    | Last 100 security events (login failures, denials, overrides) | SYSTEM_ADMIN | Standard    |
+| `/users/{targetUserId}/force-logout` | POST   | Terminate all active sessions for a user                      | SYSTEM_ADMIN | Standard    |
+| `/teams/{teamId}/unlock`             | POST   | Unlock a locked team (manual bypass for deadlock scenarios)   | SYSTEM_ADMIN | Standard    |
+| `/evaluations/{evaluationId}/reopen` | POST   | Reopen a published evaluation to draft state                  | SYSTEM_ADMIN | Standard    |
 
 ---
 
@@ -808,14 +808,14 @@ When threshold breached, `alarmState` transitions to `WARNING` or `CRITICAL`, an
 
 All error codes listed below plus base codes from [GLOBAL_RULES](./00_Global_Rules_and_Reference.md#comprehensive-error-codes-reference).
 
-| Code                               | HTTP                  | Trigger                                                                                                                                                | Recovery                                                                                                                  |
-| ---------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| Code                               | HTTP                  | Trigger                                                                                                                                                                   | Recovery                                                                                                                  |
+| ---------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `UNKNOWN_CACHE`                    | 400 Bad Request       | POST /system/cache/evict with cache name not recognized by Spring Cache Manager (not in list: adminStats, unreadCount, userCourses, assignmentDetail, courseGradeGroups). | Verify cache name. Call GET /system/config to list available caches.                                                      |
-| `EVICTION_TOO_SOON`                | 429 Too Many Requests | Cache eviction attempted within 60 seconds of last eviction of the same cache. Anti-DDoS throttle per-cache. Response includes `Retry-After` header.   | Wait 60 seconds since last eviction. Throttle protects against abuse. Retry header indicates safe wait time.              |
-| `SYSTEM_ADMIN_LIMIT_EXCEEDED`      | 409 Conflict          | Flyway migration or hypothetical API attempt to create SYSTEM_ADMIN account when 5 accounts already exist. Hard ceiling enforced.                      | Remove/deactivate existing SYSTEM_ADMIN account first. Manage via direct DB migration rollback. Cannot exceed 5 accounts. |
-| `CANNOT_FORCE_LOGOUT_SYSTEM_ADMIN` | 403 Forbidden         | SYSTEM_ADMIN attempts POST /system/users/{id}/force-logout on another SYSTEM_ADMIN account (peer protection).                                          | Cannot force-logout peer admins. Only deactivation via manual DB/migration intervention.                                  |
-| `TEAM_NOT_LOCKED`                  | 409 Conflict          | POST /system/teams/{id}/unlock called on team with is_locked=false (already unlocked). No-op; team is not in locked state.                             | Verify team lock status. Team is already unlocked; no action needed.                                                      |
-| `EVALUATION_NOT_PUBLISHED`         | 409 Conflict          | POST /system/evaluations/{id}/reopen called on evaluation with is_draft=true (already draft). Cannot reopen a draft.                                   | Verify evaluation state. Only published evaluations (is_draft=false) can be reopened.                                     |
+| `EVICTION_TOO_SOON`                | 429 Too Many Requests | Cache eviction attempted within 60 seconds of last eviction of the same cache. Anti-DDoS throttle per-cache. Response includes `Retry-After` header.                      | Wait 60 seconds since last eviction. Throttle protects against abuse. Retry header indicates safe wait time.              |
+| `SYSTEM_ADMIN_LIMIT_EXCEEDED`      | 409 Conflict          | Flyway migration or hypothetical API attempt to create SYSTEM_ADMIN account when 5 accounts already exist. Hard ceiling enforced.                                         | Remove/deactivate existing SYSTEM_ADMIN account first. Manage via direct DB migration rollback. Cannot exceed 5 accounts. |
+| `CANNOT_FORCE_LOGOUT_SYSTEM_ADMIN` | 403 Forbidden         | SYSTEM_ADMIN attempts POST /system/users/{id}/force-logout on another SYSTEM_ADMIN account (peer protection).                                                             | Cannot force-logout peer admins. Only deactivation via manual DB/migration intervention.                                  |
+| `TEAM_NOT_LOCKED`                  | 409 Conflict          | POST /system/teams/{id}/unlock called on team with is_locked=false (already unlocked). No-op; team is not in locked state.                                                | Verify team lock status. Team is already unlocked; no action needed.                                                      |
+| `EVALUATION_NOT_PUBLISHED`         | 409 Conflict          | POST /system/evaluations/{id}/reopen called on evaluation with is_draft=true (already draft). Cannot reopen a draft.                                                      | Verify evaluation state. Only published evaluations (is_draft=false) can be reopened.                                     |
 
 **Note:** All base codes (`UNAUTHORIZED`, `FORBIDDEN`, `ACCOUNT_DEACTIVATED`, `NOT_FOUND`, `VALIDATION_ERROR`) still apply.
 
