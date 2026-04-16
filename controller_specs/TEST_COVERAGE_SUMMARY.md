@@ -57,9 +57,9 @@ This adds coverage guidance for 5 implemented Assignment Groups routes while pre
 
 ### Incremental Expansion
 
-| # | Module | File | Endpoints | Test Cases | Coverage |
-|---|---|---|---|---|---|
-| 13 | Assignment Groups | TEST_SPEC_13_AssignmentGroups.md | 5 | 50+ | Documentation expansion |
+| #   | Module            | File                             | Endpoints | Test Cases | Coverage                |
+| --- | ----------------- | -------------------------------- | --------- | ---------- | ----------------------- |
+| 13  | Assignment Groups | TEST_SPEC_13_AssignmentGroups.md | 5         | 50+        | Documentation expansion |
 
 ---
 

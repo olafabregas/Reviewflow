@@ -22,21 +22,21 @@ A complete testing reference guide for the ReviewFlow learning management system
 
 ### Test Specification Files (Core 12 + Incremental)
 
-| File                         | Module           | Endpoints | Test Cases |
-| ---------------------------- | ---------------- | --------- | ---------- |
-| TEST_SPEC_01_Auth.md         | Authentication   | 4         | 30+        |
-| TEST_SPEC_02_User.md         | User Management  | 6         | 37+        |
-| TEST_SPEC_03_Course.md       | Courses          | 11        | 50+        |
-| TEST_SPEC_04_Assignment.md   | Assignments      | 12        | 60+        |
-| TEST_SPEC_05_Team.md         | Teams            | 10        | 50+        |
-| TEST_SPEC_06_Submission.md   | Submissions      | 5         | 40+        |
-| TEST_SPEC_07_Evaluation.md   | Evaluations      | 10        | 55+        |
-| TEST_SPEC_08_Notification.md | Notifications    | 5         | 35+        |
-| TEST_SPEC_09_AdminStats.md   | Admin Statistics | 1         | 20+        |
-| TEST_SPEC_10_AuditLog.md     | Audit Logs       | 1         | 25+        |
-| TEST_SPEC_11_GradeExport.md  | Grade Export     | 1         | 30+        |
-| TEST_SPEC_12_System.md       | System Admin     | 7         | 45+        |
-| TEST_SPEC_13_AssignmentGroups.md | Assignment Groups | 5      | 50+        |
+| File                             | Module            | Endpoints | Test Cases |
+| -------------------------------- | ----------------- | --------- | ---------- |
+| TEST_SPEC_01_Auth.md             | Authentication    | 4         | 30+        |
+| TEST_SPEC_02_User.md             | User Management   | 6         | 37+        |
+| TEST_SPEC_03_Course.md           | Courses           | 11        | 50+        |
+| TEST_SPEC_04_Assignment.md       | Assignments       | 12        | 60+        |
+| TEST_SPEC_05_Team.md             | Teams             | 10        | 50+        |
+| TEST_SPEC_06_Submission.md       | Submissions       | 5         | 40+        |
+| TEST_SPEC_07_Evaluation.md       | Evaluations       | 10        | 55+        |
+| TEST_SPEC_08_Notification.md     | Notifications     | 5         | 35+        |
+| TEST_SPEC_09_AdminStats.md       | Admin Statistics  | 1         | 20+        |
+| TEST_SPEC_10_AuditLog.md         | Audit Logs        | 1         | 25+        |
+| TEST_SPEC_11_GradeExport.md      | Grade Export      | 1         | 30+        |
+| TEST_SPEC_12_System.md           | System Admin      | 7         | 45+        |
+| TEST_SPEC_13_AssignmentGroups.md | Assignment Groups | 5         | 50+        |
 
 **Core campaign total: 93 endpoints, 500+ test cases**  
 **Incremental expansion:** Assignment Groups test specification added (+5 documented endpoints).
@@ -56,7 +56,7 @@ A complete testing reference guide for the ReviewFlow learning management system
 | 00_Global_Rules_and_Reference.md | Global constants and rules                                         |
 | 01_Module_Auth.md                | Original auth module spec (now superseded by TEST_SPEC_01_Auth.md) |
 | 02_Module_Courses.md             | Original courses spec (now superseded by TEST_SPEC_03_Course.md)   |
-| 13_Module_AssignmentGroups.md    | Assignment Groups module-level controller specification             |
+| 13_Module_AssignmentGroups.md    | Assignment Groups module-level controller specification            |
 | ...                              | Other legacy module specs                                          |
 
 ## Baseline Update Note

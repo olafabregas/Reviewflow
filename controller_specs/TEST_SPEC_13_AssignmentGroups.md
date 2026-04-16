@@ -10,27 +10,28 @@
 
 ## 1. Endpoints Inventory
 
-| # | Method | Endpoint | Description | Role |
-|---|---|---|---|---|
-| 1 | POST | /api/v1/courses/{courseId}/assignment-groups | Create assignment group for a course | INSTRUCTOR, ADMIN, SYSTEM_ADMIN |
-| 2 | GET | /api/v1/courses/{courseId}/assignment-groups | List groups and group-weight summary | Authenticated users with course access |
-| 3 | PUT | /api/v1/assignment-groups/{id} | Update group settings | INSTRUCTOR, ADMIN, SYSTEM_ADMIN |
-| 4 | DELETE | /api/v1/assignment-groups/{id} | Delete empty non-uncategorized group | INSTRUCTOR, ADMIN, SYSTEM_ADMIN |
-| 5 | PATCH | /api/v1/assignments/{id}/group | Move assignment to target group | INSTRUCTOR, ADMIN, SYSTEM_ADMIN |
+| #   | Method | Endpoint                                     | Description                          | Role                                   |
+| --- | ------ | -------------------------------------------- | ------------------------------------ | -------------------------------------- |
+| 1   | POST   | /api/v1/courses/{courseId}/assignment-groups | Create assignment group for a course | INSTRUCTOR, ADMIN, SYSTEM_ADMIN        |
+| 2   | GET    | /api/v1/courses/{courseId}/assignment-groups | List groups and group-weight summary | Authenticated users with course access |
+| 3   | PUT    | /api/v1/assignment-groups/{id}               | Update group settings                | INSTRUCTOR, ADMIN, SYSTEM_ADMIN        |
+| 4   | DELETE | /api/v1/assignment-groups/{id}               | Delete empty non-uncategorized group | INSTRUCTOR, ADMIN, SYSTEM_ADMIN        |
+| 5   | PATCH  | /api/v1/assignments/{id}/group               | Move assignment to target group      | INSTRUCTOR, ADMIN, SYSTEM_ADMIN        |
 
 ---
 
 ## 2. Role Permission Matrix
 
-| Endpoint | STUDENT | INSTRUCTOR | ADMIN | SYSTEM_ADMIN |
-|---|---|---|---|---|
-| POST /courses/{courseId}/assignment-groups | ❌ | ✅ (own course) | ✅ | ✅ |
-| GET /courses/{courseId}/assignment-groups | ✅ (course scope) | ✅ | ✅ | ✅ |
-| PUT /assignment-groups/{id} | ❌ | ✅ (own course) | ✅ | ✅ |
-| DELETE /assignment-groups/{id} | ❌ | ✅ (own course) | ✅ | ✅ |
-| PATCH /assignments/{id}/group | ❌ | ✅ (own course) | ✅ | ✅ |
+| Endpoint                                   | STUDENT           | INSTRUCTOR      | ADMIN | SYSTEM_ADMIN |
+| ------------------------------------------ | ----------------- | --------------- | ----- | ------------ |
+| POST /courses/{courseId}/assignment-groups | ❌                | ✅ (own course) | ✅    | ✅           |
+| GET /courses/{courseId}/assignment-groups  | ✅ (course scope) | ✅              | ✅    | ✅           |
+| PUT /assignment-groups/{id}                | ❌                | ✅ (own course) | ✅    | ✅           |
+| DELETE /assignment-groups/{id}             | ❌                | ✅ (own course) | ✅    | ✅           |
+| PATCH /assignments/{id}/group              | ❌                | ✅ (own course) | ✅    | ✅           |
 
 Notes:
+
 - SERVICE layer enforces ownership for instructor paths.
 - ADMIN and SYSTEM_ADMIN bypass instructor-course ownership check by role.
 
@@ -49,7 +50,7 @@ Notes:
 ```json
 {
   "name": "Projects",
-  "weight": 40.00,
+  "weight": 40.0,
   "dropLowestN": 0,
   "displayOrder": 1
 }
@@ -63,7 +64,7 @@ Notes:
   "data": {
     "id": "grpAbC123",
     "name": "Projects",
-    "weight": 40.00,
+    "weight": 40.0,
     "dropLowestN": 0,
     "displayOrder": 1,
     "isUncategorized": false,
@@ -109,7 +110,7 @@ Notes:
 ```json
 {
   "name": "Projects Updated",
-  "weight": 35.00,
+  "weight": 35.0,
   "dropLowestN": 0,
   "displayOrder": 2
 }
@@ -239,18 +240,18 @@ Notes:
 
 ## 5. Error Code Matrix
 
-| Code | HTTP | Trigger |
-|---|---|---|
-| INVALID_REQUEST | 400 | Missing/invalid JSON body |
-| VALIDATION_ERROR | 400 | Bean validation failures |
-| INVALID_ID | 400 | Invalid hashid in path/body |
-| INVALID_GROUP_WEIGHT | 400 | Weight outside 0..100 |
-| DROP_LOWEST_EXCEEDS_GROUP_SIZE | 400 | Invalid `dropLowestN` constraints |
-| GROUP_NOT_IN_COURSE | 400 | Assignment move target from different course |
-| FORBIDDEN | 403 | Role/ownership denial |
-| NOT_FOUND | 404 | Course/group/assignment/user missing |
-| CANNOT_DELETE_UNCATEGORIZED | 409 | Attempt to delete uncategorized group |
-| GROUP_NOT_EMPTY | 409 | Attempt to delete group with assignments |
+| Code                           | HTTP | Trigger                                      |
+| ------------------------------ | ---- | -------------------------------------------- |
+| INVALID_REQUEST                | 400  | Missing/invalid JSON body                    |
+| VALIDATION_ERROR               | 400  | Bean validation failures                     |
+| INVALID_ID                     | 400  | Invalid hashid in path/body                  |
+| INVALID_GROUP_WEIGHT           | 400  | Weight outside 0..100                        |
+| DROP_LOWEST_EXCEEDS_GROUP_SIZE | 400  | Invalid `dropLowestN` constraints            |
+| GROUP_NOT_IN_COURSE            | 400  | Assignment move target from different course |
+| FORBIDDEN                      | 403  | Role/ownership denial                        |
+| NOT_FOUND                      | 404  | Course/group/assignment/user missing         |
+| CANNOT_DELETE_UNCATEGORIZED    | 409  | Attempt to delete uncategorized group        |
+| GROUP_NOT_EMPTY                | 409  | Attempt to delete group with assignments     |
 
 ---
 

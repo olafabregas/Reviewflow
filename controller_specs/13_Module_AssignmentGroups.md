@@ -26,15 +26,16 @@ Implemented endpoints:
 
 ## Role Permission Matrix
 
-| Endpoint | STUDENT | INSTRUCTOR | ADMIN | SYSTEM_ADMIN |
-|---|---|---|---|---|
-| POST /courses/{courseId}/assignment-groups | ✗ | ✓ (own course) | ✓ | ✓ |
-| GET /courses/{courseId}/assignment-groups | ✓ (course access path) | ✓ | ✓ | ✓ |
-| PUT /assignment-groups/{id} | ✗ | ✓ (own course) | ✓ | ✓ |
-| DELETE /assignment-groups/{id} | ✗ | ✓ (own course) | ✓ | ✓ |
-| PATCH /assignments/{id}/group | ✗ | ✓ (own course) | ✓ | ✓ |
+| Endpoint                                   | STUDENT                | INSTRUCTOR     | ADMIN | SYSTEM_ADMIN |
+| ------------------------------------------ | ---------------------- | -------------- | ----- | ------------ |
+| POST /courses/{courseId}/assignment-groups | ✗                      | ✓ (own course) | ✓     | ✓            |
+| GET /courses/{courseId}/assignment-groups  | ✓ (course access path) | ✓              | ✓     | ✓            |
+| PUT /assignment-groups/{id}                | ✗                      | ✓ (own course) | ✓     | ✓            |
+| DELETE /assignment-groups/{id}             | ✗                      | ✓ (own course) | ✓     | ✓            |
+| PATCH /assignments/{id}/group              | ✗                      | ✓ (own course) | ✓     | ✓            |
 
 Notes:
+
 - Instructor authorization is verified by course-instructor membership.
 - ADMIN and SYSTEM_ADMIN are allowed by role check in service layer.
 
@@ -192,14 +193,14 @@ Notes:
 
 ## Validation Rules
 
-| Rule | Outcome |
-|---|---|
-| `weight` < 0 or > 100 | `400 INVALID_GROUP_WEIGHT` |
-| `dropLowestN` < 0 | `400 DROP_LOWEST_EXCEEDS_GROUP_SIZE` |
+| Rule                                               | Outcome                              |
+| -------------------------------------------------- | ------------------------------------ |
+| `weight` < 0 or > 100                              | `400 INVALID_GROUP_WEIGHT`           |
+| `dropLowestN` < 0                                  | `400 DROP_LOWEST_EXCEEDS_GROUP_SIZE` |
 | `dropLowestN` >= assignment count (when count > 0) | `400 DROP_LOWEST_EXCEEDS_GROUP_SIZE` |
-| Cross-course move target | `400 GROUP_NOT_IN_COURSE` |
-| Delete uncategorized group | `409 CANNOT_DELETE_UNCATEGORIZED` |
-| Delete non-empty group | `409 GROUP_NOT_EMPTY` |
+| Cross-course move target                           | `400 GROUP_NOT_IN_COURSE`            |
+| Delete uncategorized group                         | `409 CANNOT_DELETE_UNCATEGORIZED`    |
+| Delete non-empty group                             | `409 GROUP_NOT_EMPTY`                |
 
 ---
 
@@ -229,6 +230,7 @@ Key schema points:
   - assignment move between groups
 
 Additional affected caches:
+
 - `assignmentDetail` (on assignment move and name-change cascade)
 - `gradeOverview` (if configured in cache manager)
 

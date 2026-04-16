@@ -18,15 +18,14 @@
 - [x] Role permission matrix complete
 - [x] Validation boundaries covered (weight, dropLowestN)
 - [x] Error code coverage includes:
-	- [x] INVALID_GROUP_WEIGHT
-	- [x] DROP_LOWEST_EXCEEDS_GROUP_SIZE
-	- [x] CANNOT_DELETE_UNCATEGORIZED
-	- [x] GROUP_NOT_EMPTY
-	- [x] GROUP_NOT_IN_COURSE
+  - [x] INVALID_GROUP_WEIGHT
+  - [x] DROP_LOWEST_EXCEEDS_GROUP_SIZE
+  - [x] CANNOT_DELETE_UNCATEGORIZED
+  - [x] GROUP_NOT_EMPTY
+  - [x] GROUP_NOT_IN_COURSE
 - [x] Cache and eviction behavior checks included
 - [x] Audit event verification included
 - [x] Linked module contract present in 13_Module_AssignmentGroups.md
-
 
 ### ✅ MODULE 1: Authentication (TEST_SPEC_01_Auth.md)
 

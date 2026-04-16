@@ -156,15 +156,17 @@ This expansion documents 5 additional implemented routes for Assignment Groups a
 ## INCREMENTAL DELIVERABLES (POST-PHASE EXPANSION)
 
 16. **13_Module_AssignmentGroups.md**
-   - Purpose: Assignment Groups controller/module specification
-   - Endpoints: 5
-   - Status: ✅ Complete
+
+- Purpose: Assignment Groups controller/module specification
+- Endpoints: 5
+- Status: ✅ Complete
 
 17. **TEST_SPEC_13_AssignmentGroups.md**
-   - Purpose: Assignment Groups test specification
-   - Endpoints: 5
-   - Test Cases: 50+
-   - Status: ✅ Complete
+
+- Purpose: Assignment Groups test specification
+- Endpoints: 5
+- Test Cases: 50+
+- Status: ✅ Complete
 
 ---
 
