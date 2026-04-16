@@ -24,6 +24,12 @@ public class Assignment {
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id", nullable = false)
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    private AssignmentGroup assignmentGroup;
+
     @Column(nullable = false, length = 255)
     private String title;
 

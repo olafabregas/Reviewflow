@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import com.reviewflow.config.CacheConfig;
+import com.reviewflow.exception.GroupNotInCourseException;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import com.reviewflow.exception.ValidationException;
 import com.reviewflow.model.dto.response.AssignmentResponse;
 import com.reviewflow.model.dto.response.GradebookEntryResponse;
 import com.reviewflow.model.entity.Assignment;
+import com.reviewflow.model.entity.AssignmentGroup;
 import com.reviewflow.model.entity.Course;
 import com.reviewflow.model.entity.Evaluation;
 import com.reviewflow.model.entity.RubricCriterion;
@@ -27,6 +29,7 @@ import com.reviewflow.model.entity.Team;
 import com.reviewflow.model.entity.UserRole;
 import com.reviewflow.model.enums.SubmissionType;
 import com.reviewflow.repository.AssignmentRepository;
+import com.reviewflow.repository.AssignmentGroupRepository;
 import com.reviewflow.repository.CourseEnrollmentRepository;
 import com.reviewflow.repository.CourseInstructorRepository;
 import com.reviewflow.repository.CourseRepository;
@@ -51,12 +54,20 @@ public class AssignmentService {
     private final EvaluationRepository evaluationRepository;
     private final RubricScoreRepository rubricScoreRepository;
     private final TeamRepository teamRepository;
+    private final AssignmentGroupRepository assignmentGroupRepository;
     private final HashidService hashidService;
 
     @Transactional
     public Assignment createAssignment(Long courseId, String title, String description, Instant dueAt,
                            Integer maxTeamSize, SubmissionType submissionType,
                            Instant teamLockAt, Boolean isPublished, Long creatorId) {
+        return createAssignment(courseId, title, description, dueAt, maxTeamSize, submissionType, teamLockAt, isPublished, creatorId, null);
+        }
+
+        @Transactional
+        public Assignment createAssignment(Long courseId, String title, String description, Instant dueAt,
+                   Integer maxTeamSize, SubmissionType submissionType,
+                   Instant teamLockAt, Boolean isPublished, Long creatorId, Long groupId) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", courseId));
         ensureInstructor(courseId, creatorId);
@@ -82,9 +93,12 @@ public class AssignmentService {
         if (teamLockAt != null && dueAt != null && !teamLockAt.isBefore(dueAt)) {
             throw new ValidationException("Team lock date must be before due date", "INVALID_LOCK_DATE");
         }
+
+        AssignmentGroup assignmentGroup = resolveAssignmentGroup(courseId, groupId, true);
         
         Assignment a = Assignment.builder()
                 .course(course)
+            .assignmentGroup(assignmentGroup)
                 .title(title)
                 .description(description)
                 .dueAt(dueAt)
@@ -109,6 +123,14 @@ public class AssignmentService {
     public Assignment updateAssignment(Long assignmentId, String title, String description, Instant dueAt,
                                        Integer maxTeamSize, SubmissionType submissionType,
                                        Instant teamLockAt, Long updaterId) {
+        return updateAssignment(assignmentId, title, description, dueAt, maxTeamSize, submissionType, teamLockAt, updaterId, null);
+    }
+
+    @CacheEvict(value = CacheConfig.CACHE_ASSIGNMENT, key = "#assignmentId")
+    @Transactional
+    public Assignment updateAssignment(Long assignmentId, String title, String description, Instant dueAt,
+                                       Integer maxTeamSize, SubmissionType submissionType,
+                                       Instant teamLockAt, Long updaterId, Long groupId) {
         Assignment a = getAssignmentById(assignmentId);
         ensureInstructor(a.getCourse().getId(), updaterId);
         
@@ -126,6 +148,10 @@ public class AssignmentService {
         Instant finalDueAt = dueAt != null ? dueAt : a.getDueAt();
         if (teamLockAt != null && finalDueAt != null && !teamLockAt.isBefore(finalDueAt)) {
             throw new ValidationException("Team lock date must be before due date", "INVALID_LOCK_DATE");
+        }
+
+        if (groupId != null) {
+            a.setAssignmentGroup(resolveAssignmentGroup(a.getCourse().getId(), groupId, false));
         }
         
         if (title != null) a.setTitle(title);
@@ -186,7 +212,7 @@ public class AssignmentService {
     @Cacheable(value = CacheConfig.CACHE_ASSIGNMENT, key = "#id")
     @Transactional(readOnly = true)
     public Assignment getAssignmentById(Long id) {
-        return assignmentRepository.findById(id)
+        return assignmentRepository.findWithDetailsById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Assignment", id));
     }
 
@@ -289,17 +315,15 @@ public class AssignmentService {
         Instant now = Instant.now();
         if (status != null) {
             switch (status.toUpperCase()) {
-                case "UPCOMING":
-                    assignments = assignments.stream()
-                            .filter(a -> a.getDueAt() != null && a.getDueAt().isAfter(now))
-                            .collect(Collectors.toList());
-                    break;
-                case "PAST_DUE":
-                    assignments = assignments.stream()
-                            .filter(a -> a.getDueAt() != null && a.getDueAt().isBefore(now))
-                            .collect(Collectors.toList());
-                    break;
-                // "ALL" or null - no filtering
+                case "UPCOMING" -> assignments = assignments.stream()
+                        .filter(a -> a.getDueAt() != null && a.getDueAt().isAfter(now))
+                        .collect(Collectors.toList());
+                case "PAST_DUE" -> assignments = assignments.stream()
+                        .filter(a -> a.getDueAt() != null && a.getDueAt().isBefore(now))
+                        .collect(Collectors.toList());
+                default -> {
+                    // "ALL" or any unrecognised value - no filtering
+                }
             }
         }
         
@@ -507,5 +531,22 @@ public class AssignmentService {
         if (!courseInstructorRepository.existsByCourse_IdAndUser_Id(courseId, userId)) {
             throw new org.springframework.security.access.AccessDeniedException("Not instructor of this course");
         }
+    }
+
+    private AssignmentGroup resolveAssignmentGroup(Long courseId, Long groupId, boolean defaultToUncategorized) {
+        if (groupId == null) {
+            if (!defaultToUncategorized) {
+                return null;
+            }
+            return assignmentGroupRepository.findByCourse_IdAndIsUncategorizedTrue(courseId)
+                    .orElseThrow(() -> new ResourceNotFoundException("AssignmentGroup", courseId));
+        }
+
+        AssignmentGroup assignmentGroup = assignmentGroupRepository.findById(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException("AssignmentGroup", groupId));
+        if (!assignmentGroup.getCourse().getId().equals(courseId)) {
+            throw new GroupNotInCourseException("Assignment group does not belong to this course");
+        }
+        return assignmentGroup;
     }
 }

@@ -27,6 +27,9 @@ public class CreateAssignmentRequest {
 
     @Schema(description = "Type of submission format (e.g., FILE, URL, TEXT)", example = "FILE", requiredMode = io.swagger.v3.oas.annotations.media.Schema.RequiredMode.NOT_REQUIRED)
     private SubmissionType submissionType;
+
+    @Schema(description = "Hashid of the assignment group; defaults to the course Uncategorized group when omitted", example = "grp12345", requiredMode = io.swagger.v3.oas.annotations.media.Schema.RequiredMode.NOT_REQUIRED)
+    private String groupId;
     
     @Schema(description = "Deadline for team formation before submissions are locked", example = "2026-04-10T23:59:59Z", requiredMode = io.swagger.v3.oas.annotations.media.Schema.RequiredMode.NOT_REQUIRED)
     private Instant teamLockAt;

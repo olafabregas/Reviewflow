@@ -124,10 +124,11 @@ public class AssignmentController {
             @Valid @RequestBody CreateAssignmentRequest request,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
         Long courseIdLong = hashidService.decodeOrThrow(courseId);
+        Long groupId = request.getGroupId() != null ? hashidService.decodeOrThrow(request.getGroupId()) : null;
         Assignment a = assignmentService.createAssignment(
                 courseIdLong, request.getTitle(), request.getDescription(), request.getDueAt(),
             request.getMaxTeamSize(), request.getSubmissionType(), request.getTeamLockAt(),
-            request.getIsPublished(), user.getUserId());
+            request.getIsPublished(), user.getUserId(), groupId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(toResponse(a)));
     }
 
@@ -205,9 +206,10 @@ public class AssignmentController {
             @RequestBody CreateAssignmentRequest request,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
         Long assignmentId = hashidService.decodeOrThrow(id);
+        Long groupId = request.getGroupId() != null ? hashidService.decodeOrThrow(request.getGroupId()) : null;
         Assignment a = assignmentService.updateAssignment(
                 assignmentId, request.getTitle(), request.getDescription(), request.getDueAt(),
-            request.getMaxTeamSize(), request.getSubmissionType(), request.getTeamLockAt(), user.getUserId());
+            request.getMaxTeamSize(), request.getSubmissionType(), request.getTeamLockAt(), user.getUserId(), groupId);
         return ResponseEntity.ok(ApiResponse.ok(toResponse(a)));
     }
 
@@ -540,6 +542,7 @@ public class AssignmentController {
                 .build();
     }
 
+    @SuppressWarnings("unused")
     private EvaluationResponse toEvalResponse(Evaluation e) {
         List<EvaluationResponse.RubricScoreResponse> scores = e.getRubricScores() != null
                 ? e.getRubricScores().stream().map(rs -> EvaluationResponse.RubricScoreResponse.builder()
@@ -580,6 +583,8 @@ public class AssignmentController {
                 .dueAt(a.getDueAt())
                 .submissionType(a.getSubmissionType())
                 .maxTeamSize(a.getMaxTeamSize())
+            .groupId(hashidService.encode(a.getAssignmentGroup() != null ? a.getAssignmentGroup().getId() : null))
+            .groupName(a.getAssignmentGroup() != null ? a.getAssignmentGroup().getName() : null)
                 .isPublished(a.getIsPublished())
                 .teamLockAt(a.getTeamLockAt())
                 .rubricCriteria(criteria)

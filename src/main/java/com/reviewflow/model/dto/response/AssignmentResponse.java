@@ -7,7 +7,6 @@ import com.reviewflow.model.enums.SubmissionType;
 
 import lombok.Builder;
 import lombok.Value;
-import io.swagger.v3.oas.annotations.media.Schema;
 
 @Value
 @Builder
@@ -22,6 +21,8 @@ public class AssignmentResponse {
     Instant dueAt;
     SubmissionType submissionType;
     Integer maxTeamSize;
+    String groupId;
+    String groupName;
     Boolean isPublished;
     Instant teamLockAt;
     List<RubricCriterionResponse> rubricCriteria;

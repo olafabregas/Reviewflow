@@ -16,6 +16,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,9 +31,12 @@ public class CourseService {
     private final CourseInstructorRepository courseInstructorRepository;
     private final CourseEnrollmentRepository courseEnrollmentRepository;
     private final UserRepository userRepository;
+    private final AssignmentGroupRepository assignmentGroupRepository;
     private final AssignmentRepository assignmentRepository;
     private final AuditService auditService;
     private final AdminStatsService adminStatsService;
+
+    private static final int UNCATEGORIZED_DISPLAY_ORDER = 999;
 
     @Transactional
     public Course createCourse(String code, String name, String term, String description, Long createdById) {
@@ -56,9 +60,24 @@ public class CourseService {
                 .createdAt(Instant.now())
                 .build();
         course = courseRepository.save(course);
+
+            AssignmentGroup uncategorized = AssignmentGroup.builder()
+                .course(course)
+                .name("Uncategorized")
+                .weight(BigDecimal.ZERO)
+                .dropLowestN(0)
+                .displayOrder(UNCATEGORIZED_DISPLAY_ORDER)
+                .isUncategorized(true)
+                .createdBy(creator)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+            uncategorized = assignmentGroupRepository.save(uncategorized);
         
         auditService.log(createdById, "COURSE_CREATED", "Course", course.getId(), 
             "Created course: " + code, null);
+            auditService.log(createdById, "ASSIGNMENT_GROUP_CREATED", "AssignmentGroup", uncategorized.getId(),
+                "Created group: Uncategorized", null);
         
         adminStatsService.evictStats();
         return course;

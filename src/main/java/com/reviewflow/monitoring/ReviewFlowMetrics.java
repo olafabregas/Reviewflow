@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -61,6 +60,12 @@ public class ReviewFlowMetrics {
     // ──── SUBMISSION & EVALUATION ─────────────────────────────────
     private final Counter submissionUploadedCounter;
     private final Counter evaluationPublishedCounter;
+
+    // ──── ASSIGNMENT GROUPS ───────────────────────────────────────
+    private final Counter assignmentGroupCreatedCounter;
+    private final Counter assignmentGroupUpdatedCounter;
+    private final Counter assignmentGroupDeletedCounter;
+    private final Counter assignmentGroupMovedCounter;
 
     // ──── CONSTRUCTOR ────────────────────────────────────────────
     public ReviewFlowMetrics(MeterRegistry meterRegistry) {
@@ -176,6 +181,22 @@ public class ReviewFlowMetrics {
         this.evaluationPublishedCounter = Counter.builder("reviewflow.evaluations.published")
                 .description("Evaluations published")
                 .register(meterRegistry);
+
+        this.assignmentGroupCreatedCounter = Counter.builder("reviewflow.assignment_groups.created")
+            .description("Assignment groups created")
+            .register(meterRegistry);
+
+        this.assignmentGroupUpdatedCounter = Counter.builder("reviewflow.assignment_groups.updated")
+            .description("Assignment groups updated")
+            .register(meterRegistry);
+
+        this.assignmentGroupDeletedCounter = Counter.builder("reviewflow.assignment_groups.deleted")
+            .description("Assignment groups deleted")
+            .register(meterRegistry);
+
+        this.assignmentGroupMovedCounter = Counter.builder("reviewflow.assignment_groups.moved")
+            .description("Assignments moved between groups")
+            .register(meterRegistry);
     }
 
     // ──── LOGIN METRICS ────────────────────────────────────────────
@@ -203,38 +224,22 @@ public class ReviewFlowMetrics {
     // ──── FILE UPLOAD SECURITY ────────────────────────────────────
     public void recordBlockedFileUpload(String reason) {
         switch (reason) {
-            case "extension":
-                fileBlockedCounter.increment();
-                break;
-            case "executable":
-                fileExecutableCounter.increment();
-                break;
-            case "mime_mismatch":
-                fileMimeMismatchCounter.increment();
-                break;
-            case "rate_limited":
-                uploadBlockRateLimitedCounter.increment();
-                break;
-            default:
-                fileBlockedCounter.increment();
-                break;
+            case "extension" -> fileBlockedCounter.increment();
+            case "executable" -> fileExecutableCounter.increment();
+            case "mime_mismatch" -> fileMimeMismatchCounter.increment();
+            case "rate_limited" -> uploadBlockRateLimitedCounter.increment();
+            default -> fileBlockedCounter.increment();
         }
     }
 
     // ──── CLAMAV SCAN RESULTS ─────────────────────────────────────
     public void recordClamAvScanResult(String result) {
         switch (result) {
-            case "clean":
-                clamavCleanCounter.increment();
-                break;
-            case "infected":
-                clamavInfectedCounter.increment();
-                break;
-            case "error":
-                clamavErrorCounter.increment();
-                break;
-            default:
-                break;
+            case "clean" -> clamavCleanCounter.increment();
+            case "infected" -> clamavInfectedCounter.increment();
+            case "error" -> clamavErrorCounter.increment();
+            default -> {
+            }
         }
     }
 
@@ -289,5 +294,22 @@ public class ReviewFlowMetrics {
 
     public void recordEvaluationPublished() {
         evaluationPublishedCounter.increment();
+    }
+
+    // ──── ASSIGNMENT GROUPS ───────────────────────────────────────
+    public void recordAssignmentGroupCreated() {
+        assignmentGroupCreatedCounter.increment();
+    }
+
+    public void recordAssignmentGroupUpdated() {
+        assignmentGroupUpdatedCounter.increment();
+    }
+
+    public void recordAssignmentGroupDeleted() {
+        assignmentGroupDeletedCounter.increment();
+    }
+
+    public void recordAssignmentGroupMoved() {
+        assignmentGroupMovedCounter.increment();
     }
 }
