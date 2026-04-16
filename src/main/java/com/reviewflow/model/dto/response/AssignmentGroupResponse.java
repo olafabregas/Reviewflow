@@ -25,6 +25,7 @@ public class AssignmentGroupResponse {
     @Value
     @Builder
     public static class AssignmentSummary {
+
         String id;
         String title;
         Instant dueAt;

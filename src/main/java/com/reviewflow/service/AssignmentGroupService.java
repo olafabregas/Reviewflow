@@ -131,7 +131,7 @@ public class AssignmentGroupService {
 
         return AssignmentGroupListResponse.builder()
                 .groups(groups.stream()
-                    .map(group -> toResponse(group, countAssignments(group.getId()), null, true))
+                        .map(group -> toResponse(group, countAssignments(group.getId()), null, true))
                         .toList())
                 .totalConfiguredWeight(totalConfiguredWeight)
                 .weightWarning(weightWarning)
@@ -169,9 +169,9 @@ public class AssignmentGroupService {
     private AssignmentGroupResponse toResponse(AssignmentGroup group, long assignmentCount, String weightWarning, boolean includeAssignments) {
         List<AssignmentGroupResponse.AssignmentSummary> assignments = includeAssignments && group.getAssignments() != null
                 ? group.getAssignments().stream()
-                .sorted(Comparator.comparing(Assignment::getTitle, Comparator.nullsLast(String::compareToIgnoreCase)))
-                .map(this::toSummary)
-                .toList()
+                        .sorted(Comparator.comparing(Assignment::getTitle, Comparator.nullsLast(String::compareToIgnoreCase)))
+                        .map(this::toSummary)
+                        .toList()
                 : List.of();
 
         return AssignmentGroupResponse.builder()

@@ -41,9 +41,9 @@ public class AssignmentGroupController {
 
     @Operation(summary = "Create assignment group", description = "Create a grade group for a course.")
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Assignment group created successfully", content = @Content(schema = @Schema(implementation = AssignmentGroupResponse.class))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Bad Request", content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden", content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Assignment group created successfully", content = @Content(schema = @Schema(implementation = AssignmentGroupResponse.class))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Bad Request", content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden", content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
     })
     @PostMapping("/courses/{courseId}/assignment-groups")
     public ResponseEntity<ApiResponse<AssignmentGroupResponse>> create(
@@ -62,7 +62,7 @@ public class AssignmentGroupController {
 
     @Operation(summary = "List assignment groups", description = "Return all grade groups for a course.")
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Assignment groups retrieved successfully", content = @Content(schema = @Schema(implementation = AssignmentGroupListResponse.class)))
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Assignment groups retrieved successfully", content = @Content(schema = @Schema(implementation = AssignmentGroupListResponse.class)))
     })
     @GetMapping("/courses/{courseId}/assignment-groups")
     public ResponseEntity<ApiResponse<AssignmentGroupListResponse>> list(
@@ -74,7 +74,7 @@ public class AssignmentGroupController {
 
     @Operation(summary = "Update assignment group", description = "Update a course grade group.")
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Assignment group updated successfully", content = @Content(schema = @Schema(implementation = AssignmentGroupResponse.class)))
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Assignment group updated successfully", content = @Content(schema = @Schema(implementation = AssignmentGroupResponse.class)))
     })
     @PutMapping("/assignment-groups/{id}")
     public ResponseEntity<ApiResponse<AssignmentGroupResponse>> update(
@@ -93,7 +93,7 @@ public class AssignmentGroupController {
 
     @Operation(summary = "Delete assignment group", description = "Delete an empty grade group.")
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Assignment group deleted successfully", content = @Content(schema = @Schema(implementation = Map.class)))
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Assignment group deleted successfully", content = @Content(schema = @Schema(implementation = Map.class)))
     })
     @DeleteMapping("/assignment-groups/{id}")
     public ResponseEntity<ApiResponse<Map<String, String>>> delete(
@@ -105,7 +105,7 @@ public class AssignmentGroupController {
 
     @Operation(summary = "Move assignment to group", description = "Move an assignment into a different grade group.")
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Assignment moved successfully", content = @Content(schema = @Schema(implementation = AssignmentGroupMoveResponse.class)))
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Assignment moved successfully", content = @Content(schema = @Schema(implementation = AssignmentGroupMoveResponse.class)))
     })
     @PatchMapping("/assignments/{id}/group")
     public ResponseEntity<ApiResponse<AssignmentGroupMoveResponse>> moveAssignment(

@@ -26,7 +26,7 @@ public class AssignmentResponse {
     Boolean isPublished;
     Instant teamLockAt;
     List<RubricCriterionResponse> rubricCriteria;
-    
+
     // Student-specific fields (null for instructor/admin views)
     String teamStatus; // HAS_TEAM | NO_TEAM | LOCKED
     String submissionStatus; // NOT_SUBMITTED | SUBMITTED | LATE
@@ -35,6 +35,7 @@ public class AssignmentResponse {
     @Value
     @Builder
     public static class RubricCriterionResponse {
+
         String id;
         String name;
         String description;

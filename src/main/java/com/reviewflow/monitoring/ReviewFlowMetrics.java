@@ -183,20 +183,20 @@ public class ReviewFlowMetrics {
                 .register(meterRegistry);
 
         this.assignmentGroupCreatedCounter = Counter.builder("reviewflow.assignment_groups.created")
-            .description("Assignment groups created")
-            .register(meterRegistry);
+                .description("Assignment groups created")
+                .register(meterRegistry);
 
         this.assignmentGroupUpdatedCounter = Counter.builder("reviewflow.assignment_groups.updated")
-            .description("Assignment groups updated")
-            .register(meterRegistry);
+                .description("Assignment groups updated")
+                .register(meterRegistry);
 
         this.assignmentGroupDeletedCounter = Counter.builder("reviewflow.assignment_groups.deleted")
-            .description("Assignment groups deleted")
-            .register(meterRegistry);
+                .description("Assignment groups deleted")
+                .register(meterRegistry);
 
         this.assignmentGroupMovedCounter = Counter.builder("reviewflow.assignment_groups.moved")
-            .description("Assignments moved between groups")
-            .register(meterRegistry);
+                .description("Assignments moved between groups")
+                .register(meterRegistry);
     }
 
     // ──── LOGIN METRICS ────────────────────────────────────────────
@@ -224,20 +224,28 @@ public class ReviewFlowMetrics {
     // ──── FILE UPLOAD SECURITY ────────────────────────────────────
     public void recordBlockedFileUpload(String reason) {
         switch (reason) {
-            case "extension" -> fileBlockedCounter.increment();
-            case "executable" -> fileExecutableCounter.increment();
-            case "mime_mismatch" -> fileMimeMismatchCounter.increment();
-            case "rate_limited" -> uploadBlockRateLimitedCounter.increment();
-            default -> fileBlockedCounter.increment();
+            case "extension" ->
+                fileBlockedCounter.increment();
+            case "executable" ->
+                fileExecutableCounter.increment();
+            case "mime_mismatch" ->
+                fileMimeMismatchCounter.increment();
+            case "rate_limited" ->
+                uploadBlockRateLimitedCounter.increment();
+            default ->
+                fileBlockedCounter.increment();
         }
     }
 
     // ──── CLAMAV SCAN RESULTS ─────────────────────────────────────
     public void recordClamAvScanResult(String result) {
         switch (result) {
-            case "clean" -> clamavCleanCounter.increment();
-            case "infected" -> clamavInfectedCounter.increment();
-            case "error" -> clamavErrorCounter.increment();
+            case "clean" ->
+                clamavCleanCounter.increment();
+            case "infected" ->
+                clamavInfectedCounter.increment();
+            case "error" ->
+                clamavErrorCounter.increment();
             default -> {
             }
         }

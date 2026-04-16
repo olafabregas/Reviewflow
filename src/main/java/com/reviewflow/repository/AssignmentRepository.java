@@ -31,14 +31,14 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
 
     @Query("SELECT DISTINCT a FROM Assignment a JOIN FETCH a.course JOIN FETCH a.assignmentGroup JOIN a.course c JOIN c.enrollments e WHERE e.user.id = :userId")
     List<Assignment> findByCourseEnrollmentUserId(@Param("userId") Long userId);
-    
+
     long countByIsPublishedTrue();
-    
-    @Query("SELECT a.id FROM Assignment a " +
-           "WHERE a.isPublished = true " +
-           "AND a.dueAt BETWEEN :start AND :end")
+
+    @Query("SELECT a.id FROM Assignment a "
+            + "WHERE a.isPublished = true "
+            + "AND a.dueAt BETWEEN :start AND :end")
     List<Long> findPublishedDueBetween(
             @Param("start") Instant start,
-            @Param("end")   Instant end
+            @Param("end") Instant end
     );
 }

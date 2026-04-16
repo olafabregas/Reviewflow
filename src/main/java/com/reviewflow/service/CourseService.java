@@ -43,11 +43,11 @@ public class CourseService {
         // Check for duplicate course code
         if (courseRepository.existsByCode(code)) {
             throw new DuplicateResourceException(
-                "A course with code " + code + " already exists",
-                "COURSE_CODE_EXISTS"
+                    "A course with code " + code + " already exists",
+                    "COURSE_CODE_EXISTS"
             );
         }
-        
+
         User creator = userRepository.findById(createdById)
                 .orElseThrow(() -> new ResourceNotFoundException("User", createdById));
         Course course = Course.builder()
@@ -61,7 +61,7 @@ public class CourseService {
                 .build();
         course = courseRepository.save(course);
 
-            AssignmentGroup uncategorized = AssignmentGroup.builder()
+        AssignmentGroup uncategorized = AssignmentGroup.builder()
                 .course(course)
                 .name("Uncategorized")
                 .weight(BigDecimal.ZERO)
@@ -72,13 +72,13 @@ public class CourseService {
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
-            uncategorized = assignmentGroupRepository.save(uncategorized);
-        
-        auditService.log(createdById, "COURSE_CREATED", "Course", course.getId(), 
-            "Created course: " + code, null);
-            auditService.log(createdById, "ASSIGNMENT_GROUP_CREATED", "AssignmentGroup", uncategorized.getId(),
+        uncategorized = assignmentGroupRepository.save(uncategorized);
+
+        auditService.log(createdById, "COURSE_CREATED", "Course", course.getId(),
+                "Created course: " + code, null);
+        auditService.log(createdById, "ASSIGNMENT_GROUP_CREATED", "AssignmentGroup", uncategorized.getId(),
                 "Created group: Uncategorized", null);
-        
+
         adminStatsService.evictStats();
         return course;
     }
@@ -127,17 +127,17 @@ public class CourseService {
         Course course = getCourseById(courseId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
-        
+
         // Check if user is an instructor
         if (user.getRole() != UserRole.INSTRUCTOR) {
             throw new InvalidRoleException("User is not an instructor", "NOT_AN_INSTRUCTOR");
         }
-        
+
         // Check if already assigned
         if (courseInstructorRepository.existsByCourse_IdAndUser_Id(courseId, userId)) {
             throw new DuplicateResourceException("Instructor already assigned to this course", "ALREADY_ASSIGNED");
         }
-        
+
         CourseInstructor ci = CourseInstructor.builder()
                 .course(course)
                 .user(user)
@@ -152,17 +152,17 @@ public class CourseService {
         Course course = getCourseById(courseId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
-        
+
         // Check if user is a student
         if (user.getRole() != UserRole.STUDENT) {
             throw new InvalidRoleException("User is not a student", "NOT_A_STUDENT");
         }
-        
+
         // Check if already enrolled
         if (courseEnrollmentRepository.existsByCourse_IdAndUser_Id(courseId, userId)) {
             throw new DuplicateResourceException("Student already enrolled in this course", "ALREADY_ENROLLED");
         }
-        
+
         CourseEnrollment en = CourseEnrollment.builder()
                 .course(course)
                 .user(user)
@@ -210,21 +210,27 @@ public class CourseService {
     @Transactional
     public Course updateCourse(Long courseId, String code, String name, String term, String description) {
         Course course = getCourseById(courseId);
-        
+
         // Check for duplicate code if changing code
         if (code != null && !code.isBlank() && !code.equals(course.getCode())) {
             if (courseRepository.existsByCodeAndIdNot(code, courseId)) {
                 throw new DuplicateResourceException(
-                    "A course with code " + code + " already exists",
-                    "COURSE_CODE_EXISTS"
+                        "A course with code " + code + " already exists",
+                        "COURSE_CODE_EXISTS"
                 );
             }
             course.setCode(code);
         }
-        
-        if (name != null && !name.isBlank()) course.setName(name);
-        if (term != null) course.setTerm(term);
-        if (description != null) course.setDescription(description);
+
+        if (name != null && !name.isBlank()) {
+            course.setName(name);
+        }
+        if (term != null) {
+            course.setTerm(term);
+        }
+        if (description != null) {
+            course.setDescription(description);
+        }
         return courseRepository.save(course);
     }
 
@@ -257,12 +263,12 @@ public class CourseService {
 
     public Course getCourseByIdWithAccessCheck(Long courseId, Long userId, UserRole role) {
         Course course = getCourseById(courseId);
-        
+
         // ADMIN can access any course
         if (role == UserRole.ADMIN) {
             return course;
         }
-        
+
         // INSTRUCTOR can only access courses they're assigned to
         if (role == UserRole.INSTRUCTOR) {
             boolean isAssigned = courseInstructorRepository.existsByCourse_IdAndUser_Id(courseId, userId);
@@ -271,7 +277,7 @@ public class CourseService {
             }
             return course;
         }
-        
+
         // STUDENT can only access courses they're enrolled in
         if (role == UserRole.STUDENT) {
             boolean isEnrolled = courseEnrollmentRepository.existsByCourse_IdAndUser_Id(courseId, userId);
@@ -280,7 +286,7 @@ public class CourseService {
             }
             return course;
         }
-        
+
         throw new AccessDeniedException("Access denied");
     }
 
@@ -288,7 +294,7 @@ public class CourseService {
         if (role == UserRole.ADMIN) {
             return; // Admin has access to all courses
         }
-        
+
         if (role == UserRole.INSTRUCTOR) {
             boolean isAssigned = courseInstructorRepository.existsByCourse_IdAndUser_Id(courseId, userId);
             if (!isAssigned) {
@@ -296,7 +302,7 @@ public class CourseService {
             }
             return;
         }
-        
+
         throw new AccessDeniedException("Access denied");
     }
 

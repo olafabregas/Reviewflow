@@ -59,26 +59,26 @@ public class AssignmentService {
 
     @Transactional
     public Assignment createAssignment(Long courseId, String title, String description, Instant dueAt,
-                           Integer maxTeamSize, SubmissionType submissionType,
-                           Instant teamLockAt, Boolean isPublished, Long creatorId) {
+            Integer maxTeamSize, SubmissionType submissionType,
+            Instant teamLockAt, Boolean isPublished, Long creatorId) {
         return createAssignment(courseId, title, description, dueAt, maxTeamSize, submissionType, teamLockAt, isPublished, creatorId, null);
-        }
+    }
 
-        @Transactional
-        public Assignment createAssignment(Long courseId, String title, String description, Instant dueAt,
-                   Integer maxTeamSize, SubmissionType submissionType,
-                   Instant teamLockAt, Boolean isPublished, Long creatorId, Long groupId) {
+    @Transactional
+    public Assignment createAssignment(Long courseId, String title, String description, Instant dueAt,
+            Integer maxTeamSize, SubmissionType submissionType,
+            Instant teamLockAt, Boolean isPublished, Long creatorId, Long groupId) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", courseId));
         ensureInstructor(courseId, creatorId);
 
         SubmissionType resolvedSubmissionType = submissionType != null ? submissionType : SubmissionType.INDIVIDUAL;
-        
+
         // Validate dueAt must be in the future
         if (dueAt != null && dueAt.isBefore(Instant.now())) {
             throw new ValidationException("Due date must be in the future", "INVALID_DUE_DATE");
         }
-        
+
         if (resolvedSubmissionType == SubmissionType.TEAM) {
             // Validate maxTeamSize between 1 and 10 for team assignments
             if (maxTeamSize == null || maxTeamSize < 1 || maxTeamSize > 10) {
@@ -88,17 +88,17 @@ public class AssignmentService {
             // Individual assignments do not use team size.
             maxTeamSize = null;
         }
-        
+
         // Validate teamLockAt must be before dueAt
         if (teamLockAt != null && dueAt != null && !teamLockAt.isBefore(dueAt)) {
             throw new ValidationException("Team lock date must be before due date", "INVALID_LOCK_DATE");
         }
 
         AssignmentGroup assignmentGroup = resolveAssignmentGroup(courseId, groupId, true);
-        
+
         Assignment a = Assignment.builder()
                 .course(course)
-            .assignmentGroup(assignmentGroup)
+                .assignmentGroup(assignmentGroup)
                 .title(title)
                 .description(description)
                 .dueAt(dueAt)
@@ -111,39 +111,39 @@ public class AssignmentService {
         return assignmentRepository.save(a);
     }
 
-            @Transactional
-            public Assignment createAssignment(Long courseId, String title, String description, Instant dueAt,
-                               Integer maxTeamSize, Instant teamLockAt, Boolean isPublished, Long creatorId) {
-            return createAssignment(courseId, title, description, dueAt, maxTeamSize, SubmissionType.INDIVIDUAL,
+    @Transactional
+    public Assignment createAssignment(Long courseId, String title, String description, Instant dueAt,
+            Integer maxTeamSize, Instant teamLockAt, Boolean isPublished, Long creatorId) {
+        return createAssignment(courseId, title, description, dueAt, maxTeamSize, SubmissionType.INDIVIDUAL,
                 teamLockAt, isPublished, creatorId);
-            }
+    }
 
     @CacheEvict(value = CacheConfig.CACHE_ASSIGNMENT, key = "#assignmentId")
     @Transactional
     public Assignment updateAssignment(Long assignmentId, String title, String description, Instant dueAt,
-                                       Integer maxTeamSize, SubmissionType submissionType,
-                                       Instant teamLockAt, Long updaterId) {
+            Integer maxTeamSize, SubmissionType submissionType,
+            Instant teamLockAt, Long updaterId) {
         return updateAssignment(assignmentId, title, description, dueAt, maxTeamSize, submissionType, teamLockAt, updaterId, null);
     }
 
     @CacheEvict(value = CacheConfig.CACHE_ASSIGNMENT, key = "#assignmentId")
     @Transactional
     public Assignment updateAssignment(Long assignmentId, String title, String description, Instant dueAt,
-                                       Integer maxTeamSize, SubmissionType submissionType,
-                                       Instant teamLockAt, Long updaterId, Long groupId) {
+            Integer maxTeamSize, SubmissionType submissionType,
+            Instant teamLockAt, Long updaterId, Long groupId) {
         Assignment a = getAssignmentById(assignmentId);
         ensureInstructor(a.getCourse().getId(), updaterId);
-        
+
         // Validate dueAt must be in the future if provided
         if (dueAt != null && dueAt.isBefore(Instant.now())) {
             throw new ValidationException("Due date must be in the future", "INVALID_DUE_DATE");
         }
-        
+
         // Validate maxTeamSize between 1 and 10 if provided
         if (maxTeamSize != null && (maxTeamSize < 1 || maxTeamSize > 10)) {
             throw new ValidationException("Max team size must be between 1 and 10", "VALIDATION_ERROR");
         }
-        
+
         // Validate teamLockAt must be before dueAt
         Instant finalDueAt = dueAt != null ? dueAt : a.getDueAt();
         if (teamLockAt != null && finalDueAt != null && !teamLockAt.isBefore(finalDueAt)) {
@@ -153,10 +153,16 @@ public class AssignmentService {
         if (groupId != null) {
             a.setAssignmentGroup(resolveAssignmentGroup(a.getCourse().getId(), groupId, false));
         }
-        
-        if (title != null) a.setTitle(title);
-        if (description != null) a.setDescription(description);
-        if (dueAt != null) a.setDueAt(dueAt);
+
+        if (title != null) {
+            a.setTitle(title);
+        }
+        if (description != null) {
+            a.setDescription(description);
+        }
+        if (dueAt != null) {
+            a.setDueAt(dueAt);
+        }
 
         if (submissionType != null && submissionType != a.getSubmissionType()) {
             boolean hasTeams = !teamRepository.findByAssignment_Id(assignmentId).isEmpty();
@@ -177,14 +183,16 @@ public class AssignmentService {
             a.setMaxTeamSize(maxTeamSize);
         }
 
-        if (teamLockAt != null) a.setTeamLockAt(teamLockAt);
+        if (teamLockAt != null) {
+            a.setTeamLockAt(teamLockAt);
+        }
         return assignmentRepository.save(a);
     }
 
     @CacheEvict(value = CacheConfig.CACHE_ASSIGNMENT, key = "#assignmentId")
     @Transactional
     public Assignment updateAssignment(Long assignmentId, String title, String description, Instant dueAt,
-                                       Integer maxTeamSize, Instant teamLockAt, Long updaterId) {
+            Integer maxTeamSize, Instant teamLockAt, Long updaterId) {
         return updateAssignment(assignmentId, title, description, dueAt, maxTeamSize, null, teamLockAt, updaterId);
     }
 
@@ -193,10 +201,10 @@ public class AssignmentService {
     public Assignment publishAssignment(Long assignmentId, Long userId) {
         Assignment a = getAssignmentById(assignmentId);
         ensureInstructor(a.getCourse().getId(), userId);
-        
+
         // Toggle publish state
         boolean newState = !Boolean.TRUE.equals(a.getIsPublished());
-        
+
         // If trying to unpublish, check for submissions
         if (!newState) {
             List<Submission> submissions = submissionRepository.findByAssignment_Id(assignmentId);
@@ -204,7 +212,7 @@ public class AssignmentService {
                 throw new BusinessRuleException("Cannot unpublish assignment with existing submissions", "HAS_SUBMISSIONS");
             }
         }
-        
+
         a.setIsPublished(newState);
         return assignmentRepository.save(a);
     }
@@ -220,7 +228,7 @@ public class AssignmentService {
         // First check if course exists
         courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", courseId));
-        
+
         if (role == UserRole.ADMIN || courseInstructorRepository.existsByCourse_IdAndUser_Id(courseId, userId)) {
             return assignmentRepository.findByCourse_Id(courseId);
         }
@@ -235,12 +243,12 @@ public class AssignmentService {
     public RubricCriterion addRubricCriteria(Long assignmentId, String name, String description, int maxScore, int displayOrder, Long userId) {
         Assignment a = getAssignmentById(assignmentId);
         ensureInstructor(a.getCourse().getId(), userId);
-        
+
         // Validate maxScore
         if (maxScore <= 0) {
             throw new ValidationException("Max score must be greater than 0", "VALIDATION_ERROR");
         }
-        
+
         RubricCriterion c = RubricCriterion.builder()
                 .assignment(a)
                 .name(name)
@@ -261,16 +269,24 @@ public class AssignmentService {
         if (!c.getAssignment().getId().equals(assignmentId)) {
             throw new ResourceNotFoundException("RubricCriterion", criterionId);
         }
-        
+
         // Validate maxScore if provided
         if (maxScore != null && maxScore <= 0) {
             throw new ValidationException("Max score must be greater than 0", "VALIDATION_ERROR");
         }
-        
-        if (name != null) c.setName(name);
-        if (description != null) c.setDescription(description);
-        if (maxScore != null) c.setMaxScore(maxScore);
-        if (displayOrder != null) c.setDisplayOrder(displayOrder);
+
+        if (name != null) {
+            c.setName(name);
+        }
+        if (description != null) {
+            c.setDescription(description);
+        }
+        if (maxScore != null) {
+            c.setMaxScore(maxScore);
+        }
+        if (displayOrder != null) {
+            c.setDisplayOrder(displayOrder);
+        }
         return rubricCriterionRepository.save(c);
     }
 
@@ -284,13 +300,13 @@ public class AssignmentService {
         if (!c.getAssignment().getId().equals(assignmentId)) {
             throw new ResourceNotFoundException("RubricCriterion", criterionId);
         }
-        
+
         // Check if there are evaluation scores for this criterion
         boolean hasScores = rubricScoreRepository.existsByCriterion_Id(criterionId);
         if (hasScores) {
             throw new BusinessRuleException("Cannot delete criterion with existing evaluation scores", "HAS_SCORES");
         }
-        
+
         rubricCriterionRepository.delete(c);
     }
 
@@ -303,33 +319,35 @@ public class AssignmentService {
 
     public List<AssignmentResponse> listAssignmentsForUserWithDetails(Long userId, UserRole role, String status, Long courseId) {
         List<Assignment> assignments = listAssignmentsForUser(userId, role);
-        
+
         // Filter by courseId if provided
         if (courseId != null) {
             assignments = assignments.stream()
                     .filter(a -> a.getCourse() != null && courseId.equals(a.getCourse().getId()))
                     .collect(Collectors.toList());
         }
-        
+
         // Filter by status (UPCOMING, PAST_DUE, ALL)
         Instant now = Instant.now();
         if (status != null) {
             switch (status.toUpperCase()) {
-                case "UPCOMING" -> assignments = assignments.stream()
-                        .filter(a -> a.getDueAt() != null && a.getDueAt().isAfter(now))
-                        .collect(Collectors.toList());
-                case "PAST_DUE" -> assignments = assignments.stream()
-                        .filter(a -> a.getDueAt() != null && a.getDueAt().isBefore(now))
-                        .collect(Collectors.toList());
+                case "UPCOMING" ->
+                    assignments = assignments.stream()
+                            .filter(a -> a.getDueAt() != null && a.getDueAt().isAfter(now))
+                            .collect(Collectors.toList());
+                case "PAST_DUE" ->
+                    assignments = assignments.stream()
+                            .filter(a -> a.getDueAt() != null && a.getDueAt().isBefore(now))
+                            .collect(Collectors.toList());
                 default -> {
                     // "ALL" or any unrecognised value - no filtering
                 }
             }
         }
-        
+
         // Sort by dueAt ASC (most urgent first)
         assignments.sort(Comparator.comparing(Assignment::getDueAt, Comparator.nullsLast(Comparator.naturalOrder())));
-        
+
         // Convert to response with student-specific fields
         boolean isStudent = role == UserRole.STUDENT;
         return assignments.stream()
@@ -340,14 +358,14 @@ public class AssignmentService {
     private AssignmentResponse toAssignmentResponseWithDetails(Assignment a, Long userId, boolean isStudent) {
         List<AssignmentResponse.RubricCriterionResponse> criteria = a.getRubricCriteria() != null
                 ? a.getRubricCriteria().stream()
-                .map(c -> AssignmentResponse.RubricCriterionResponse.builder()
+                        .map(c -> AssignmentResponse.RubricCriterionResponse.builder()
                         .id(hashidService.encode(c.getId()))
                         .name(c.getName())
                         .description(c.getDescription())
                         .maxScore(c.getMaxScore())
                         .displayOrder(c.getDisplayOrder())
                         .build())
-                .toList()
+                        .toList()
                 : List.of();
 
         String teamStatus = null;
@@ -359,7 +377,7 @@ public class AssignmentService {
             Optional<Team> teamOpt = teamRepository.findByAssignmentIdAndMembersUserId(a.getId(), userId);
             Instant now = Instant.now();
             boolean isLocked = a.getTeamLockAt() != null && now.isAfter(a.getTeamLockAt());
-            
+
             if (isLocked && teamOpt.isEmpty()) {
                 teamStatus = "LOCKED";
             } else if (teamOpt.isPresent()) {
@@ -393,7 +411,7 @@ public class AssignmentService {
                 .title(a.getTitle())
                 .description(a.getDescription())
                 .dueAt(a.getDueAt())
-            .submissionType(a.getSubmissionType())
+                .submissionType(a.getSubmissionType())
                 .maxTeamSize(a.getMaxTeamSize())
                 .isPublished(a.getIsPublished())
                 .teamLockAt(a.getTeamLockAt())
@@ -408,18 +426,18 @@ public class AssignmentService {
     public void deleteAssignment(Long assignmentId, Long userId) {
         Assignment a = getAssignmentById(assignmentId);
         ensureInstructor(a.getCourse().getId(), userId);
-        
+
         // Check if published
         if (Boolean.TRUE.equals(a.getIsPublished())) {
             throw new BusinessRuleException("Unpublish the assignment before deleting", "ASSIGNMENT_PUBLISHED");
         }
-        
+
         // Check for submissions
         List<Submission> submissions = submissionRepository.findByAssignment_Id(assignmentId);
         if (!submissions.isEmpty()) {
             throw new BusinessRuleException("Cannot delete an assignment with existing submissions", "HAS_SUBMISSIONS");
         }
-        
+
         assignmentRepository.delete(a);
     }
 
@@ -427,7 +445,7 @@ public class AssignmentService {
         Assignment a = getAssignmentById(assignmentId);
         ensureInstructor(a.getCourse().getId(), userId);
         List<Submission> allSubmissions = submissionRepository.findByAssignment_IdOrderByTeam_IdAscVersionNumberDesc(assignmentId);
-        
+
         // Return only the latest submission per team
         return allSubmissions.stream()
                 .collect(Collectors.groupingBy(
@@ -446,9 +464,9 @@ public class AssignmentService {
     public List<GradebookEntryResponse> getGradebookForAssignment(Long assignmentId, Long userId) {
         Assignment a = getAssignmentById(assignmentId);
         ensureInstructor(a.getCourse().getId(), userId);
-        
+
         List<Team> teams = teamRepository.findByAssignment_Id(assignmentId);
-        
+
         return teams.stream()
                 .map(team -> {
                     // Get member names
@@ -456,15 +474,15 @@ public class AssignmentService {
                             .map(m -> m.getUser().getFirstName() + " " + m.getUser().getLastName())
                             .sorted()
                             .collect(Collectors.toList());
-                    
+
                     // Get latest submission for this team
                     List<Submission> submissions = submissionRepository.findByTeam_IdOrderByVersionNumberDesc(team.getId());
                     Submission latestSubmission = submissions.isEmpty() ? null : submissions.get(0);
-                    
+
                     // Get evaluation status
                     String evaluationStatus = "NOT_STARTED";
                     java.math.BigDecimal totalScore = null;
-                    
+
                     if (latestSubmission != null) {
                         Optional<Evaluation> evalOpt = evaluationRepository.findBySubmission_Id(latestSubmission.getId());
                         if (evalOpt.isPresent()) {
@@ -477,7 +495,7 @@ public class AssignmentService {
                             totalScore = eval.getTotalScore();
                         }
                     }
-                    
+
                     return GradebookEntryResponse.builder()
                             .teamId(hashidService.encode(team.getId()))
                             .teamName(team.getName())
@@ -495,12 +513,12 @@ public class AssignmentService {
 
     public Assignment getAssignmentByIdWithAccessControl(Long assignmentId, Long userId, UserRole role) {
         Assignment a = getAssignmentById(assignmentId);
-        
+
         // ADMIN can access any assignment
         if (role == UserRole.ADMIN) {
             return a;
         }
-        
+
         // INSTRUCTOR can access if assigned to the course
         if (role == UserRole.INSTRUCTOR) {
             if (!courseInstructorRepository.existsByCourse_IdAndUser_Id(a.getCourse().getId(), userId)) {
@@ -508,22 +526,22 @@ public class AssignmentService {
             }
             return a;
         }
-        
+
         // STUDENT can only access published assignments in courses they're enrolled in
         if (role == UserRole.STUDENT) {
             // Check enrollment
             if (!courseEnrollmentRepository.existsByCourse_IdAndUser_Id(a.getCourse().getId(), userId)) {
                 throw new ResourceNotFoundException("Assignment", assignmentId);
             }
-            
+
             // Check if published - return 404 for unpublished (never reveal it exists)
             if (!Boolean.TRUE.equals(a.getIsPublished())) {
                 throw new ResourceNotFoundException("Assignment", assignmentId);
             }
-            
+
             return a;
         }
-        
+
         throw new ResourceNotFoundException("Assignment", assignmentId);
     }
 
