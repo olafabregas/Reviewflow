@@ -49,21 +49,21 @@ class AssignmentGroupServiceTest {
     @Mock
     private UserRepository userRepository;
     @Mock
-        @SuppressWarnings("unused")
+    @SuppressWarnings("unused")
     private AuditService auditService;
     @Mock
-        @SuppressWarnings("unused")
+    @SuppressWarnings("unused")
     private HashidService hashidService;
     @Mock
     private CacheManager cacheManager;
     @Mock
     private Cache assignmentGroupsCache;
     @Mock
-        @SuppressWarnings("unused")
+    @SuppressWarnings("unused")
     private Cache assignmentCache;
-        @Mock
-        @SuppressWarnings("unused")
-        private Cache gradeOverviewCache;
+    @Mock
+    @SuppressWarnings("unused")
+    private Cache gradeOverviewCache;
 
     @InjectMocks
     private AssignmentGroupService assignmentGroupService;

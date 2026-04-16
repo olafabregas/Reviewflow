@@ -57,8 +57,8 @@ class AssignmentControllerIntegrationTest {
                 isNull(),
                 eq(SubmissionType.TEAM),
                 isNull(),
-            eq(77L),
-            isNull()))
+                eq(77L),
+                isNull()))
                 .thenThrow(new SubmissionTypeLockedException("Assignment submission type cannot be changed after teams or submissions exist"));
 
         CreateAssignmentRequest request = new CreateAssignmentRequest();
