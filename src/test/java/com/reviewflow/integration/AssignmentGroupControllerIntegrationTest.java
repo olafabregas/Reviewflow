@@ -108,3 +108,16 @@ class AssignmentGroupControllerIntegrationTest {
         assertEquals("Projects", entity.getBody().getData().getNewGroupName());
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+

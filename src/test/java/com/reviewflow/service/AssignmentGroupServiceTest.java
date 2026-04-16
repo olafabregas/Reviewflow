@@ -1,6 +1,5 @@
 package com.reviewflow.service;
 
-import com.reviewflow.config.CacheConfig;
 import com.reviewflow.exception.CannotDeleteUncategorizedException;
 import com.reviewflow.exception.GroupNotInCourseException;
 import com.reviewflow.model.dto.response.AssignmentGroupListResponse;
@@ -36,6 +35,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("unused")
 class AssignmentGroupServiceTest {
 
     @Mock
@@ -49,20 +49,16 @@ class AssignmentGroupServiceTest {
     @Mock
     private UserRepository userRepository;
     @Mock
-    @SuppressWarnings("unused")
     private AuditService auditService;
     @Mock
-    @SuppressWarnings("unused")
     private HashidService hashidService;
     @Mock
     private CacheManager cacheManager;
     @Mock
     private Cache assignmentGroupsCache;
     @Mock
-    @SuppressWarnings("unused")
     private Cache assignmentCache;
     @Mock
-    @SuppressWarnings("unused")
     private Cache gradeOverviewCache;
 
     @InjectMocks
