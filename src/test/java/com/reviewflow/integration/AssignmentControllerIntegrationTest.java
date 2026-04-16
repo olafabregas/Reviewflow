@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Instant;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -56,7 +57,8 @@ class AssignmentControllerIntegrationTest {
                 isNull(),
                 eq(SubmissionType.TEAM),
                 isNull(),
-                eq(77L)))
+            eq(77L),
+            isNull()))
                 .thenThrow(new SubmissionTypeLockedException("Assignment submission type cannot be changed after teams or submissions exist"));
 
         CreateAssignmentRequest request = new CreateAssignmentRequest();
@@ -65,7 +67,8 @@ class AssignmentControllerIntegrationTest {
         request.setDueAt(Instant.parse("2027-01-01T00:00:00Z"));
         request.setSubmissionType(SubmissionType.TEAM);
 
-        assertThrows(SubmissionTypeLockedException.class,
+        SubmissionTypeLockedException thrown = assertThrows(SubmissionTypeLockedException.class,
                 () -> controller().update("ASSIGN4", request, instructorPrincipal()));
+        assertEquals("Assignment submission type cannot be changed after teams or submissions exist", thrown.getMessage());
     }
 }

@@ -48,6 +48,24 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void cannotDeleteUncategorized_mapsTo409WithCode() {
+        ResponseEntity<ErrorResponse> response
+                = handler.handleCannotDeleteUncategorized(new CannotDeleteUncategorizedException("Cannot delete Uncategorized group"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("CANNOT_DELETE_UNCATEGORIZED", response.getBody().getError().getCode());
+    }
+
+    @Test
+    void groupNotEmpty_mapsTo409WithCode() {
+        ResponseEntity<ErrorResponse> response
+                = handler.handleGroupNotEmpty(new GroupNotEmptyException("Move assignments first"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("GROUP_NOT_EMPTY", response.getBody().getError().getCode());
+    }
+
+    @Test
     void avatarInvalidType_mapsTo400WithCode() {
         ResponseEntity<ErrorResponse> response
                 = handler.handleAvatarInvalidType(new AvatarInvalidTypeException("invalid avatar"));

@@ -3,14 +3,14 @@ package com.reviewflow.service;
 import com.reviewflow.exception.SubmissionTypeLockedException;
 import com.reviewflow.exception.ValidationException;
 import com.reviewflow.model.entity.Assignment;
+import com.reviewflow.model.entity.AssignmentGroup;
 import com.reviewflow.model.entity.Course;
 import com.reviewflow.model.entity.Team;
 import com.reviewflow.model.enums.SubmissionType;
+import com.reviewflow.repository.AssignmentGroupRepository;
 import com.reviewflow.repository.AssignmentRepository;
-import com.reviewflow.repository.CourseEnrollmentRepository;
 import com.reviewflow.repository.CourseInstructorRepository;
 import com.reviewflow.repository.CourseRepository;
-import com.reviewflow.repository.EvaluationRepository;
 import com.reviewflow.repository.RubricCriterionRepository;
 import com.reviewflow.repository.RubricScoreRepository;
 import com.reviewflow.repository.SubmissionRepository;
@@ -37,22 +37,29 @@ class AssignmentServiceTest {
     @Mock
     private AssignmentRepository assignmentRepository;
     @Mock
+    @SuppressWarnings("unused")
     private RubricCriterionRepository rubricCriterionRepository;
     @Mock
     private CourseRepository courseRepository;
     @Mock
     private CourseInstructorRepository courseInstructorRepository;
     @Mock
-    private CourseEnrollmentRepository courseEnrollmentRepository;
+    @SuppressWarnings("unused")
+    private com.reviewflow.repository.CourseEnrollmentRepository courseEnrollmentRepository;
     @Mock
     private SubmissionRepository submissionRepository;
     @Mock
-    private EvaluationRepository evaluationRepository;
+    @SuppressWarnings("unused")
+    private com.reviewflow.repository.EvaluationRepository evaluationRepository;
     @Mock
+    @SuppressWarnings("unused")
     private RubricScoreRepository rubricScoreRepository;
     @Mock
     private TeamRepository teamRepository;
     @Mock
+    private AssignmentGroupRepository assignmentGroupRepository;
+    @Mock
+    @SuppressWarnings("unused")
     private HashidService hashidService;
 
     @InjectMocks
@@ -63,9 +70,11 @@ class AssignmentServiceTest {
         Long courseId = 10L;
         Long creatorId = 20L;
         Course course = Course.builder().id(courseId).build();
+        AssignmentGroup uncategorized = AssignmentGroup.builder().id(901L).course(course).name("Uncategorized").isUncategorized(true).build();
 
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
         when(courseInstructorRepository.existsByCourse_IdAndUser_Id(courseId, creatorId)).thenReturn(true);
+        when(assignmentGroupRepository.findByCourse_IdAndIsUncategorizedTrue(courseId)).thenReturn(Optional.of(uncategorized));
         when(assignmentRepository.save(any(Assignment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Assignment result = assignmentService.createAssignment(
@@ -93,7 +102,7 @@ class AssignmentServiceTest {
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
         when(courseInstructorRepository.existsByCourse_IdAndUser_Id(courseId, creatorId)).thenReturn(true);
 
-        assertThrows(ValidationException.class, () -> assignmentService.createAssignment(
+        ValidationException thrown = assertThrows(ValidationException.class, () -> assignmentService.createAssignment(
                 courseId,
                 "Project",
                 "desc",
@@ -104,6 +113,7 @@ class AssignmentServiceTest {
                 true,
                 creatorId
         ));
+        assertEquals("Max team size must be between 1 and 10", thrown.getMessage());
     }
 
     @Test
@@ -119,12 +129,12 @@ class AssignmentServiceTest {
                 .maxTeamSize(4)
                 .build();
 
-        when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
+        when(assignmentRepository.findWithDetailsById(assignmentId)).thenReturn(Optional.of(assignment));
         when(courseInstructorRepository.existsByCourse_IdAndUser_Id(course.getId(), updaterId)).thenReturn(true);
         when(teamRepository.findByAssignment_Id(assignmentId)).thenReturn(List.of());
         when(submissionRepository.findByAssignment_Id(assignmentId)).thenReturn(List.of(com.reviewflow.model.entity.Submission.builder().id(1L).build()));
 
-        assertThrows(SubmissionTypeLockedException.class, () -> assignmentService.updateAssignment(
+        SubmissionTypeLockedException thrown = assertThrows(SubmissionTypeLockedException.class, () -> assignmentService.updateAssignment(
                 assignmentId,
                 null,
                 null,
@@ -134,6 +144,7 @@ class AssignmentServiceTest {
                 null,
                 updaterId
         ));
+        assertEquals("Assignment submission type cannot be changed after teams or submissions exist", thrown.getMessage());
     }
 
     @Test
@@ -148,11 +159,11 @@ class AssignmentServiceTest {
                 .submissionType(SubmissionType.INDIVIDUAL)
                 .build();
 
-        when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
+        when(assignmentRepository.findWithDetailsById(assignmentId)).thenReturn(Optional.of(assignment));
         when(courseInstructorRepository.existsByCourse_IdAndUser_Id(course.getId(), updaterId)).thenReturn(true);
         when(teamRepository.findByAssignment_Id(assignmentId)).thenReturn(List.of(Team.builder().id(9L).build()));
 
-        assertThrows(SubmissionTypeLockedException.class, () -> assignmentService.updateAssignment(
+        SubmissionTypeLockedException thrown = assertThrows(SubmissionTypeLockedException.class, () -> assignmentService.updateAssignment(
                 assignmentId,
                 null,
                 null,
@@ -162,5 +173,6 @@ class AssignmentServiceTest {
                 null,
                 updaterId
         ));
+        assertEquals("Assignment submission type cannot be changed after teams or submissions exist", thrown.getMessage());
     }
 }
