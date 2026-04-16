@@ -24,6 +24,17 @@ All 12 ReviewFlow backend modules now have comprehensive test specifications. Ea
 - **Performance & caching guidelines** (TTL, cache invalidation)
 - **Security considerations** including data privacy, role isolation, rate limiting
 
+### Baseline Update (2026-04-16)
+
+The 12-module/93-endpoint totals in this document represent the original documentation campaign.
+
+An incremental expansion now adds Assignment Groups documentation artifacts:
+
+- `13_Module_AssignmentGroups.md`
+- `TEST_SPEC_13_AssignmentGroups.md`
+
+This adds coverage guidance for 5 implemented Assignment Groups routes while preserving historical campaign metrics.
+
 ---
 
 ## 12 Test Specifications Created
@@ -43,6 +54,12 @@ All 12 ReviewFlow backend modules now have comprehensive test specifications. Ea
 | 11  | Grade Export     | TEST_SPEC_11_GradeExport.md  | 1         | 30+        | 100%     |
 | 12  | System Admin     | TEST_SPEC_12_System.md       | 7         | 45+        | 100%     |
 |     | **TOTALS**       |                              | **93**    | **500+**   | **100%** |
+
+### Incremental Expansion
+
+| # | Module | File | Endpoints | Test Cases | Coverage |
+|---|---|---|---|---|---|
+| 13 | Assignment Groups | TEST_SPEC_13_AssignmentGroups.md | 5 | 50+ | Documentation expansion |
 
 ---
 

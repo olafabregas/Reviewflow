@@ -2,7 +2,7 @@
 
 ## Overview
 
-This directory contains comprehensive test specifications for all 12 ReviewFlow backend modules, covering 100% of the API endpoints (93 total) with 500+ detailed test cases.
+This directory contains comprehensive test specifications for the original 12-module ReviewFlow backend campaign (93 endpoints) plus incremental expansion artifacts for newly documented modules.
 
 ## What This Is
 
@@ -20,7 +20,7 @@ A complete testing reference guide for the ReviewFlow learning management system
 
 ## Files in This Directory
 
-### Test Specification Files (12 Total - One Per Module)
+### Test Specification Files (Core 12 + Incremental)
 
 | File                         | Module           | Endpoints | Test Cases |
 | ---------------------------- | ---------------- | --------- | ---------- |
@@ -36,8 +36,10 @@ A complete testing reference guide for the ReviewFlow learning management system
 | TEST_SPEC_10_AuditLog.md     | Audit Logs       | 1         | 25+        |
 | TEST_SPEC_11_GradeExport.md  | Grade Export     | 1         | 30+        |
 | TEST_SPEC_12_System.md       | System Admin     | 7         | 45+        |
+| TEST_SPEC_13_AssignmentGroups.md | Assignment Groups | 5      | 50+        |
 
-**Total: 93 endpoints, 500+ test cases**
+**Core campaign total: 93 endpoints, 500+ test cases**  
+**Incremental expansion:** Assignment Groups test specification added (+5 documented endpoints).
 
 ### Documentation Files (2 Total)
 
@@ -54,7 +56,13 @@ A complete testing reference guide for the ReviewFlow learning management system
 | 00_Global_Rules_and_Reference.md | Global constants and rules                                         |
 | 01_Module_Auth.md                | Original auth module spec (now superseded by TEST_SPEC_01_Auth.md) |
 | 02_Module_Courses.md             | Original courses spec (now superseded by TEST_SPEC_03_Course.md)   |
+| 13_Module_AssignmentGroups.md    | Assignment Groups module-level controller specification             |
 | ...                              | Other legacy module specs                                          |
+
+## Baseline Update Note
+
+- The 93-endpoint totals in this file refer to the original Phase 2 documentation campaign.
+- Assignment Groups documentation was added as an incremental expansion in 2026 without rewriting historical campaign metrics.
 
 ## Quick Start
 

@@ -12,6 +12,17 @@
 
 Successfully delivered comprehensive test specification suite for ReviewFlow backend learning management system. Complete test coverage across all 12 modules, 93 API endpoints, with 500+ detailed test cases suitable for QA automation, manual testing, and acceptance validation.
 
+### Baseline Update (2026-04-16)
+
+The original campaign metrics above are preserved as historical delivery evidence.
+
+Incremental documentation expansion completed for Assignment Groups:
+
+- Added `13_Module_AssignmentGroups.md` (module/controller contract)
+- Added `TEST_SPEC_13_AssignmentGroups.md` (campaign-level test specification)
+
+This expansion documents 5 additional implemented routes for Assignment Groups and aligns controller_specs discoverability with the current backend baseline, while preserving the historical 93-endpoint campaign record.
+
 ### Quantified Deliverables
 
 | Metric               | Target | Achieved      | Status |
@@ -139,6 +150,21 @@ Successfully delivered comprehensive test specification suite for ReviewFlow bac
     - Content: File organization, test user directory, next steps
     - Size: 12+ KB
     - Status: ✅ Complete
+
+---
+
+## INCREMENTAL DELIVERABLES (POST-PHASE EXPANSION)
+
+16. **13_Module_AssignmentGroups.md**
+   - Purpose: Assignment Groups controller/module specification
+   - Endpoints: 5
+   - Status: ✅ Complete
+
+17. **TEST_SPEC_13_AssignmentGroups.md**
+   - Purpose: Assignment Groups test specification
+   - Endpoints: 5
+   - Test Cases: 50+
+   - Status: ✅ Complete
 
 ---
 
