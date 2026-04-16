@@ -24,6 +24,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.github.benmanes.caffeine.cache.Cache;
+import static com.reviewflow.config.CacheConfig.CACHE_ADMIN_STATS;
+import static com.reviewflow.config.CacheConfig.CACHE_ASSIGNMENT;
+import static com.reviewflow.config.CacheConfig.CACHE_ASSIGNMENT_GROUPS;
+import static com.reviewflow.config.CacheConfig.CACHE_UNREAD_COUNT;
+import static com.reviewflow.config.CacheConfig.CACHE_USER_COURSES;
 import com.reviewflow.dto.AuditLogDto;
 import com.reviewflow.dto.CacheStatsDto;
 import com.reviewflow.dto.SystemMetricsDto;
@@ -92,7 +97,11 @@ public class SystemService {
     private final ConcurrentHashMap<String, Instant> lastEvictionTime = new ConcurrentHashMap<>();
 
     private static final List<String> KNOWN_CACHES = Arrays.asList(
-            "adminStats", "unreadCount", "userCourses", "assignmentDetail"
+            CACHE_ADMIN_STATS,
+            CACHE_UNREAD_COUNT,
+            CACHE_USER_COURSES,
+            CACHE_ASSIGNMENT,
+            CACHE_ASSIGNMENT_GROUPS
     );
 
     private static final String[] SAFE_CONFIG_KEYS = {

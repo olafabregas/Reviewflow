@@ -10,7 +10,7 @@
 
 ## EXECUTIVE COMPLETION SUMMARY
 
-Successfully delivered comprehensive test specification suite for ReviewFlow backend learning management system. Complete test coverage across all 12 modules, 93 API endpoints, with 500+ detailed test cases suitable for QA automation, manual testing, and acceptance validation.
+Successfully delivered comprehensive test specification suite for ReviewFlow backend learning management system. Complete test coverage across all 12 modules in the original campaign (93 API endpoints), with 500+ detailed test cases suitable for QA automation, manual testing, and acceptance validation.
 
 ### Baseline Update (2026-04-16)
 
@@ -22,6 +22,8 @@ Incremental documentation expansion completed for Assignment Groups:
 - Added `TEST_SPEC_13_AssignmentGroups.md` (campaign-level test specification)
 
 This expansion documents 5 additional implemented routes for Assignment Groups and aligns controller_specs discoverability with the current backend baseline, while preserving the historical 93-endpoint campaign record.
+
+Current backend baseline reference: 98 route handlers (93 historical campaign + 5 Assignment Groups routes).
 
 ### Quantified Deliverables
 

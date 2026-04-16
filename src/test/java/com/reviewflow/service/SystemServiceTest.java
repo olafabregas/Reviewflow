@@ -88,13 +88,14 @@ class SystemServiceTest {
         when(cacheManager.getCache("unreadCount")).thenReturn(mockSpringCache);
         when(cacheManager.getCache("userCourses")).thenReturn(mockSpringCache);
         when(cacheManager.getCache("assignmentDetail")).thenReturn(mockSpringCache);
+        when(cacheManager.getCache("courseGradeGroups")).thenReturn(mockSpringCache);
 
         // Act
         List<CacheStatsDto> stats = systemService.getCacheStats();
 
         // Assert
         assertNotNull(stats, "Stats should not be null");
-        assertEquals(4, stats.size(), "Should return 4 cache stats");
+        assertEquals(5, stats.size(), "Should return 5 cache stats");
         CacheStatsDto firstStat = stats.get(0);
         assertNotNull(firstStat.getName(), "Cache name should be set");
         assertEquals(50L, firstStat.getSize(), "Cache size should be 50");

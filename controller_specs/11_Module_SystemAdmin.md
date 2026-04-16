@@ -44,9 +44,9 @@ The System Admin module provides platform operators (`SYSTEM_ADMIN` role) with i
 ### Role Examples
 
 ```
-GET  /api/v1/system/cache-stats       → SYSTEM_ADMIN required (403 if ADMIN)
-POST /api/v1/system/cache/evict       → SYSTEM_ADMIN required (403 if INSTRUCTOR)
-GET  /api/v1/system/security-events   → SYSTEM_ADMIN required (403 if STUDENT)
+GET  /api/v1/system/cache/stats        → SYSTEM_ADMIN required (403 if ADMIN)
+POST /api/v1/system/cache/evict/{name} → SYSTEM_ADMIN required (403 if INSTRUCTOR)
+GET  /api/v1/system/security/events    → SYSTEM_ADMIN required (403 if STUDENT)
 ```
 
 ### Multi-Instance Considerations
@@ -59,21 +59,21 @@ GET  /api/v1/system/security-events   → SYSTEM_ADMIN required (403 if STUDENT)
 
 ## 11.3 API Endpoints Summary
 
-| Endpoint                             | Method | Purpose                                                       | Auth         | Rate Limit  |
-| ------------------------------------ | ------ | ------------------------------------------------------------- | ------------ | ----------- |
-| `/cache-stats`                       | GET    | Retrieve cache hit/miss/size stats for all caches             | SYSTEM_ADMIN | Standard    |
-| `/cache/{cacheName}/evict`           | POST   | Evict a single cache; throttled 60s per cache                 | SYSTEM_ADMIN | 429 if <60s |
-| `/config/safe`                       | GET    | List available caches and configuration metadata              | SYSTEM_ADMIN | Standard    |
-| `/security-events`                   | GET    | Last 100 security events (login failures, denials, overrides) | SYSTEM_ADMIN | Standard    |
-| `/users/{userId}/force-logout`       | POST   | Terminate all active sessions for a user                      | SYSTEM_ADMIN | Standard    |
-| `/teams/{teamId}/unlock`             | POST   | Unlock a locked team (manual bypass for deadlock scenarios)   | SYSTEM_ADMIN | Standard    |
-| `/evaluations/{evaluationId}/reopen` | POST   | Reopen a published evaluation to draft state                  | SYSTEM_ADMIN | Standard    |
+| Endpoint                                   | Method | Purpose                                                       | Auth         | Rate Limit  |
+| ------------------------------------------ | ------ | ------------------------------------------------------------- | ------------ | ----------- |
+| `/cache/stats`                             | GET    | Retrieve cache hit/miss/size stats for all caches             | SYSTEM_ADMIN | Standard    |
+| `/cache/evict/{cacheName}`                 | POST   | Evict a single cache; throttled 60s per cache                 | SYSTEM_ADMIN | 429 if <60s |
+| `/config`                                  | GET    | List available caches and configuration metadata              | SYSTEM_ADMIN | Standard    |
+| `/security/events`                         | GET    | Last 100 security events (login failures, denials, overrides) | SYSTEM_ADMIN | Standard    |
+| `/users/{targetUserId}/force-logout`       | POST   | Terminate all active sessions for a user                      | SYSTEM_ADMIN | Standard    |
+| `/teams/{teamId}/unlock`                   | POST   | Unlock a locked team (manual bypass for deadlock scenarios)   | SYSTEM_ADMIN | Standard    |
+| `/evaluations/{evaluationId}/reopen`       | POST   | Reopen a published evaluation to draft state                  | SYSTEM_ADMIN | Standard    |
 
 ---
 
 ## 11.4 Endpoint Specifications
 
-### 11.4.1 GET /api/v1/system/cache-stats
+### 11.4.1 GET /api/v1/system/cache/stats
 
 **Purpose:** Retrieve statistics for all registered caches (hits, misses, evictions, current size).
 
@@ -82,7 +82,7 @@ GET  /api/v1/system/security-events   → SYSTEM_ADMIN required (403 if STUDENT)
 **Request:**
 
 ```http
-GET /api/v1/system/cache-stats HTTP/1.1
+GET /api/v1/system/cache/stats HTTP/1.1
 Host: localhost:8081
 Cookie: access_token=<JWT>
 ```
@@ -129,6 +129,15 @@ Cookie: access_token=<JWT>
         "misses": 67,
         "hitRate": 0.9304,
         "lastEvictedAt": "2026-03-30T09:20:00Z"
+      },
+      {
+        "name": "courseGradeGroups",
+        "size": 19,
+        "estimatedMemoryBytes": 184320,
+        "hits": 410,
+        "misses": 33,
+        "hitRate": 0.9255,
+        "lastEvictedAt": "2026-03-30T12:44:00Z"
       }
     ],
     "timestamp": "2026-03-30T14:22:10Z",
@@ -153,7 +162,7 @@ Cookie: access_token=<JWT>
 
 ---
 
-### 11.4.2 POST /api/v1/system/cache/{cacheName}/evict
+### 11.4.2 POST /api/v1/system/cache/evict/{cacheName}
 
 **Purpose:** Evict a single named cache. Throttled to once per 60 seconds per cache.
 
@@ -225,7 +234,7 @@ Retry-After: 45
 
 ---
 
-### 11.4.3 GET /api/v1/system/config/safe
+### 11.4.3 GET /api/v1/system/config
 
 **Purpose:** List available caches, configuration metadata, and instance info. Used by operators to discover cache names for eviction.
 
@@ -234,7 +243,7 @@ Retry-After: 45
 **Request:**
 
 ```http
-GET /api/v1/system/config/safe HTTP/1.1
+GET /api/v1/system/config HTTP/1.1
 Host: localhost:8081
 Cookie: access_token=<JWT>
 ```
@@ -286,7 +295,7 @@ Cookie: access_token=<JWT>
 
 ---
 
-### 11.4.4 GET /api/v1/system/security-events
+### 11.4.4 GET /api/v1/system/security/events
 
 **Purpose:** Retrieve the last 100 security events: login failures, permission denials, admin overrides, and suspicious activities.
 
@@ -302,7 +311,7 @@ Cookie: access_token=<JWT>
 **Request:**
 
 ```http
-GET /api/v1/system/security-events?eventType=LOGIN_FAILURE&startDate=2026-03-30T00:00:00Z HTTP/1.1
+GET /api/v1/system/security/events?eventType=LOGIN_FAILURE&startDate=2026-03-30T00:00:00Z HTTP/1.1
 Host: localhost:8081
 Cookie: access_token=<JWT>
 ```
@@ -583,7 +592,7 @@ Content-Type: application/json
 
 ### Caches Managed by System Admin
 
-ReviewFlow maintains four Caffeine-based caches for performance optimization. All are eligible for manual eviction by `SYSTEM_ADMIN`.
+ReviewFlow maintains five Caffeine-based caches for performance optimization. All are eligible for manual eviction by `SYSTEM_ADMIN`.
 
 | Cache Name         | Max Entries | TTL    | Purpose                                    |
 | ------------------ | ----------- | ------ | ------------------------------------------ |
@@ -596,7 +605,7 @@ ReviewFlow maintains four Caffeine-based caches for performance optimization. Al
 
 **Per-Cache Eviction:**
 
-- POST `/api/v1/system/cache/{cacheName}/evict` removes all entries from that specific cache
+- POST `/api/v1/system/cache/evict/{cacheName}` removes all entries from that specific cache
 - Safer than bulk eviction — allows targeted fixes without affecting unrelated caches
 - Throttled individually: each cache tracks its own last-eviction timestamp
 
@@ -610,14 +619,14 @@ ReviewFlow maintains four Caffeine-based caches for performance optimization. Al
 **Example Throttle Flow:**
 
 ```
-T=14:22:15  → POST /cache/adminStats/evict → 200 OK (evicted)
-T=14:22:45  → POST /cache/adminStats/evict → 429 Too Many Requests (Retry-After: 30)
-T=14:23:16  → POST /cache/adminStats/evict → 200 OK (now eligible; 60s elapsed)
+T=14:22:15  → POST /cache/evict/adminStats → 200 OK (evicted)
+T=14:22:45  → POST /cache/evict/adminStats → 429 Too Many Requests (Retry-After: 30)
+T=14:23:16  → POST /cache/evict/adminStats → 200 OK (now eligible; 60s elapsed)
 ```
 
 ### Cache Hit Rate Monitoring
 
-Cache statistics returned by `GET /cache-stats` include:
+Cache statistics returned by `GET /cache/stats` include:
 
 - **Hits:** Successful lookups from cache
 - **Misses:** Lookups that fell through to database
@@ -704,6 +713,11 @@ destination:/queue/system-metrics
     "assignmentDetail": {
       "size": 73,
       "hitRate": 0.9304,
+      "missesLastSecond": 1
+    },
+    "courseGradeGroups": {
+      "size": 19,
+      "hitRate": 0.9255,
       "missesLastSecond": 1
     }
   },
@@ -796,7 +810,7 @@ All error codes listed below plus base codes from [GLOBAL_RULES](./00_Global_Rul
 
 | Code                               | HTTP                  | Trigger                                                                                                                                                | Recovery                                                                                                                  |
 | ---------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `UNKNOWN_CACHE`                    | 400 Bad Request       | POST /system/cache/evict with cache name not recognized by Spring Cache Manager (not in list: adminStats, unreadCount, userCourses, assignmentDetail). | Verify cache name. Call GET /system/config to list available caches.                                                      |
+| `UNKNOWN_CACHE`                    | 400 Bad Request       | POST /system/cache/evict with cache name not recognized by Spring Cache Manager (not in list: adminStats, unreadCount, userCourses, assignmentDetail, courseGradeGroups). | Verify cache name. Call GET /system/config to list available caches.                                                      |
 | `EVICTION_TOO_SOON`                | 429 Too Many Requests | Cache eviction attempted within 60 seconds of last eviction of the same cache. Anti-DDoS throttle per-cache. Response includes `Retry-After` header.   | Wait 60 seconds since last eviction. Throttle protects against abuse. Retry header indicates safe wait time.              |
 | `SYSTEM_ADMIN_LIMIT_EXCEEDED`      | 409 Conflict          | Flyway migration or hypothetical API attempt to create SYSTEM_ADMIN account when 5 accounts already exist. Hard ceiling enforced.                      | Remove/deactivate existing SYSTEM_ADMIN account first. Manage via direct DB migration rollback. Cannot exceed 5 accounts. |
 | `CANNOT_FORCE_LOGOUT_SYSTEM_ADMIN` | 403 Forbidden         | SYSTEM_ADMIN attempts POST /system/users/{id}/force-logout on another SYSTEM_ADMIN account (peer protection).                                          | Cannot force-logout peer admins. Only deactivation via manual DB/migration intervention.                                  |
@@ -869,13 +883,13 @@ All error codes listed below plus base codes from [GLOBAL_RULES](./00_Global_Rul
 
 ## 11.12 Testing Checklist
 
-- [ ] GET /cache-stats returns 200 with all four cache metrics
-- [ ] POST /cache/{cacheName}/evict evicts entries and returns 200
+- [ ] GET /cache/stats returns 200 with all five cache metrics
+- [ ] POST /cache/evict/{cacheName} evicts entries and returns 200
 - [ ] Eviction throttle blocks same cache within 60 seconds (429)
 - [ ] Eviction throttle allows different caches simultaneously
 - [ ] `Retry-After` header present in 429 response
-- [ ] GET /config/safe lists all caches and metadata
-- [ ] GET /security-events returns last 100 events with pagination
+- [ ] GET /config lists all caches and metadata
+- [ ] GET /security/events returns last 100 events with pagination
 - [ ] POST /users/{id}/force-logout terminates all sessions (verify token invalid)
 - [ ] POST /users/{id}/force-logout blocks when target is SYSTEM_ADMIN (403)
 - [ ] POST /teams/{id}/unlock unlocks locked team

@@ -5,6 +5,7 @@
 **Status**: ✅ COMPLETE  
 **Date**: 2024  
 **Coverage**: 12/12 Modules (100%)  
+**Current Backend Baseline**: 98 route handlers (93 historical campaign + 5 Assignment Groups routes)  
 **Total Test Cases**: 500+ comprehensive scenarios  
 **Architecture Fixes Applied**: 2 (RoleHierarchy + INSTRUCTOR course permissions)
 
@@ -34,6 +35,8 @@ An incremental expansion now adds Assignment Groups documentation artifacts:
 - `TEST_SPEC_13_AssignmentGroups.md`
 
 This adds coverage guidance for 5 implemented Assignment Groups routes while preserving historical campaign metrics.
+
+Current backend baseline reference: 98 route handlers (93 historical campaign + 5 Assignment Groups routes).
 
 ---
 

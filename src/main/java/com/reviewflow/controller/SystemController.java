@@ -1,8 +1,23 @@
 package com.reviewflow.controller;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.reviewflow.dto.CacheStatsDto;
-import com.reviewflow.dto.SystemMetricsDto;
 import com.reviewflow.service.SystemService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -10,15 +25,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/system")
@@ -34,22 +40,22 @@ public class SystemController {
      */
     @GetMapping("/cache/stats")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    @Operation(summary = "Get cache statistics", description = "Returns hit/miss stats for all 4 caches (adminStats, unreadCount, userCourses, assignmentDetail)")
+    @Operation(summary = "Get cache statistics", description = "Returns hit/miss stats for all 5 caches (adminStats, unreadCount, userCourses, assignmentDetail, courseGradeGroups)")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "200",
-            description = "Cache statistics retrieved successfully",
-            content = @Content(schema = @Schema(implementation = Map.class))
+                responseCode = "200",
+                description = "Cache statistics retrieved successfully",
+                content = @Content(schema = @Schema(implementation = Map.class))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "401",
-            description = "Unauthorized - authentication required",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "401",
+                description = "Unauthorized - authentication required",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "403",
-            description = "Forbidden - SYSTEM_ADMIN role required",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "403",
+                description = "Forbidden - SYSTEM_ADMIN role required",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
     public ResponseEntity<Map<String, Object>> getCacheStats() {
@@ -70,24 +76,24 @@ public class SystemController {
     @Operation(summary = "Evict cache by name", description = "Clears all entries from named cache. Throttled: max 1 eviction per 60 seconds per cache.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "200",
-            description = "Cache evicted successfully",
-            content = @Content(schema = @Schema(implementation = Map.class))
+                responseCode = "200",
+                description = "Cache evicted successfully",
+                content = @Content(schema = @Schema(implementation = Map.class))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "400",
-            description = "Bad Request - invalid cache name or throttle limit exceeded",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "400",
+                description = "Bad Request - invalid cache name or throttle limit exceeded",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "401",
-            description = "Unauthorized - authentication required",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "401",
+                description = "Unauthorized - authentication required",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "403",
-            description = "Forbidden - SYSTEM_ADMIN role required",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "403",
+                description = "Forbidden - SYSTEM_ADMIN role required",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
     public ResponseEntity<Map<String, Object>> evictCache(
@@ -108,19 +114,19 @@ public class SystemController {
     @Operation(summary = "Get safe configuration", description = "Returns whitelisted configuration properties only (no secrets)")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "200",
-            description = "Configuration retrieved successfully",
-            content = @Content(schema = @Schema(implementation = Map.class))
+                responseCode = "200",
+                description = "Configuration retrieved successfully",
+                content = @Content(schema = @Schema(implementation = Map.class))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "401",
-            description = "Unauthorized - authentication required",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "401",
+                description = "Unauthorized - authentication required",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "403",
-            description = "Forbidden - SYSTEM_ADMIN role required",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "403",
+                description = "Forbidden - SYSTEM_ADMIN role required",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
     public ResponseEntity<Map<String, Object>> getSafeConfig() {
@@ -141,19 +147,19 @@ public class SystemController {
     @Operation(summary = "Get security events", description = "Returns recent security events (failed logins, rate limits, blocked uploads)")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "200",
-            description = "Security events retrieved successfully",
-            content = @Content(schema = @Schema(implementation = Map.class))
+                responseCode = "200",
+                description = "Security events retrieved successfully",
+                content = @Content(schema = @Schema(implementation = Map.class))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "401",
-            description = "Unauthorized - authentication required",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "401",
+                description = "Unauthorized - authentication required",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "403",
-            description = "Forbidden - SYSTEM_ADMIN role required",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "403",
+                description = "Forbidden - SYSTEM_ADMIN role required",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
     public ResponseEntity<Map<String, Object>> getSecurityEvents(
@@ -178,29 +184,29 @@ public class SystemController {
     @Operation(summary = "Force logout a user", description = "Revoke all tokens for target user and close their sessions")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "200",
-            description = "User forced logout successfully",
-            content = @Content(schema = @Schema(implementation = Map.class))
+                responseCode = "200",
+                description = "User forced logout successfully",
+                content = @Content(schema = @Schema(implementation = Map.class))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "400",
-            description = "Bad Request - invalid user ID or reason",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "400",
+                description = "Bad Request - invalid user ID or reason",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "401",
-            description = "Unauthorized - authentication required",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "401",
+                description = "Unauthorized - authentication required",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "403",
-            description = "Forbidden - SYSTEM_ADMIN role required",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "403",
+                description = "Forbidden - SYSTEM_ADMIN role required",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "404",
-            description = "Not Found - user does not exist",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "404",
+                description = "Not Found - user does not exist",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
     public ResponseEntity<Map<String, Object>> forceLogout(
@@ -222,29 +228,29 @@ public class SystemController {
     @Operation(summary = "Unlock a team", description = "System override - unlocks a locked team")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "200",
-            description = "Team unlocked successfully",
-            content = @Content(schema = @Schema(implementation = Map.class))
+                responseCode = "200",
+                description = "Team unlocked successfully",
+                content = @Content(schema = @Schema(implementation = Map.class))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "400",
-            description = "Bad Request - invalid team ID or reason",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "400",
+                description = "Bad Request - invalid team ID or reason",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "401",
-            description = "Unauthorized - authentication required",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "401",
+                description = "Unauthorized - authentication required",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "403",
-            description = "Forbidden - SYSTEM_ADMIN role required",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "403",
+                description = "Forbidden - SYSTEM_ADMIN role required",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "404",
-            description = "Not Found - team does not exist",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "404",
+                description = "Not Found - team does not exist",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
     public ResponseEntity<Map<String, Object>> unlockTeam(
@@ -266,29 +272,29 @@ public class SystemController {
     @Operation(summary = "Reopen an evaluation", description = "System override - reopens a published evaluation for instructor edits")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "200",
-            description = "Evaluation reopened successfully",
-            content = @Content(schema = @Schema(implementation = Map.class))
+                responseCode = "200",
+                description = "Evaluation reopened successfully",
+                content = @Content(schema = @Schema(implementation = Map.class))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "400",
-            description = "Bad Request - invalid evaluation ID or reason",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "400",
+                description = "Bad Request - invalid evaluation ID or reason",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "401",
-            description = "Unauthorized - authentication required",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "401",
+                description = "Unauthorized - authentication required",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "403",
-            description = "Forbidden - SYSTEM_ADMIN role required",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "403",
+                description = "Forbidden - SYSTEM_ADMIN role required",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "404",
-            description = "Not Found - evaluation does not exist",
-            content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+                responseCode = "404",
+                description = "Not Found - evaluation does not exist",
+                content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
     public ResponseEntity<Map<String, Object>> reopenEvaluation(

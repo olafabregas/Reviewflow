@@ -18,6 +18,8 @@ A complete testing reference guide for the ReviewFlow learning management system
 - Performance and caching guidelines
 - Security best practices
 
+Current backend baseline reference: 98 route handlers (93 historical campaign + 5 Assignment Groups routes).
+
 ## Files in This Directory
 
 ### Test Specification Files (Core 12 + Incremental)

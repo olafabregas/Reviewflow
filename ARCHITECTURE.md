@@ -716,25 +716,15 @@ sequenceDiagram
 
 ## 13. Caching Strategy
 
-Four Caffeine caches with deliberately chosen TTLs. The abstraction is Spring Cache — replacing Caffeine with Redis requires changing only `CacheConfig`, no annotation changes across any service.
+Five Caffeine caches with deliberately chosen TTLs. The abstraction is Spring Cache — replacing Caffeine with Redis requires changing only `CacheConfig`, no annotation changes across any service.
 
-| Cache              | TTL    | Cache key      | Eviction triggers                      |
-| ------------------ | ------ | -------------- | -------------------------------------- |
-| `adminStats`       | 60 s   | `'global'`     | Any user, course, or submission change |
-| `unreadCount`      | 30 s   | `userId`       | Notification create, read, or delete   |
-| `userCourses`      | 5 min  | `userId`       | Enroll, unenroll, course archive       |
-| `assignmentDetail` | 10 min | `assignmentId` | Assignment update, rubric change       |
-
-Boundaries were chosen deliberately — only data that is read frequently, changes infrequently, and is safe to serve slightly stale qualifies. Write endpoints never cache; they only evict.
-
-Four Caffeine caches with deliberately chosen TTLs. The abstraction is Spring Cache — replacing Caffeine with Redis requires changing only `CacheConfig`, no annotation changes across any service.
-
-| Cache              | TTL    | Cache key      | Eviction triggers                      |
-| ------------------ | ------ | -------------- | -------------------------------------- |
-| `adminStats`       | 60 s   | `'global'`     | Any user, course, or submission change |
-| `unreadCount`      | 30 s   | `userId`       | Notification create, read, or delete   |
-| `userCourses`      | 5 min  | `userId`       | Enroll, unenroll, course archive       |
-| `assignmentDetail` | 10 min | `assignmentId` | Assignment update, rubric change       |
+| Cache               | TTL    | Cache key      | Eviction triggers                               |
+| ------------------- | ------ | -------------- | ----------------------------------------------- |
+| `adminStats`        | 60 s   | `'global'`     | Any user, course, or submission change          |
+| `unreadCount`       | 30 s   | `userId`       | Notification create, read, or delete            |
+| `userCourses`       | 5 min  | `userId`       | Enroll, unenroll, course archive                |
+| `assignmentDetail`  | 10 min | `assignmentId` | Assignment update, rubric change                |
+| `courseGradeGroups` | 5 min  | `courseId`     | Group create/update/delete and assignment moves |
 
 Boundaries were chosen deliberately — only data that is read frequently, changes infrequently, and is safe to serve slightly stale qualifies. Write endpoints never cache; they only evict.
 
