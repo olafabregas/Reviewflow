@@ -190,7 +190,7 @@ public class SubmissionService {
 
         if (submissionType == SubmissionType.INSTRUCTOR_GRADED) {
             throw new SubmissionNotRequiredException(
-                "This assessment is graded directly by your instructor. No file submission is required.");
+                    "This assessment is graded directly by your instructor. No file submission is required.");
         }
 
         // originalName already extracted above - use it for storage

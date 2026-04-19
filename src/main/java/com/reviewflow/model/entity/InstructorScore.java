@@ -22,12 +22,12 @@ import java.time.Instant;
 @Entity
 @Table(name = "instructor_scores",
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_is_assignment_student", columnNames = {"assignment_id", "student_id"}),
-                @UniqueConstraint(name = "uk_is_assignment_team", columnNames = {"assignment_id", "team_id"})
+            @UniqueConstraint(name = "uk_is_assignment_student", columnNames = {"assignment_id", "student_id"}),
+            @UniqueConstraint(name = "uk_is_assignment_team", columnNames = {"assignment_id", "team_id"})
         },
         indexes = {
-                @Index(name = "idx_is_assignment", columnList = "assignment_id,is_published"),
-                @Index(name = "idx_is_student", columnList = "student_id,is_published")
+            @Index(name = "idx_is_assignment", columnList = "assignment_id,is_published"),
+            @Index(name = "idx_is_student", columnList = "student_id,is_published")
         })
 @Data
 @Builder

@@ -20,6 +20,7 @@ public class InstructorScoreImportPreviewResponse {
     @Value
     @Builder
     public static class ValidRow {
+
         String studentEmail;
         String teamId;
         BigDecimal score;
@@ -29,6 +30,7 @@ public class InstructorScoreImportPreviewResponse {
     @Value
     @Builder
     public static class RowIssue {
+
         int row;
         String studentEmail;
         String teamId;

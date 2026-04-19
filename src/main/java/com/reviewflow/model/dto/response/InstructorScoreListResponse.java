@@ -15,6 +15,7 @@ public class InstructorScoreListResponse {
     @Value
     @Builder
     public static class InstructorScoreItem {
+
         String id;
         String studentId;
         String studentName;
@@ -28,6 +29,7 @@ public class InstructorScoreListResponse {
     @Value
     @Builder
     public static class Summary {
+
         long total;
         long published;
         long draft;

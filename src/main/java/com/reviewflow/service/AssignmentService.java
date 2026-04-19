@@ -78,7 +78,7 @@ public class AssignmentService {
             Integer maxTeamSize, SubmissionType submissionType,
             Instant teamLockAt, Boolean isPublished, Long creatorId, Long groupId) {
         return createAssignment(courseId, title, description, dueAt, maxTeamSize, submissionType,
-            teamLockAt, isPublished, creatorId, groupId, null, null);
+                teamLockAt, isPublished, creatorId, groupId, null, null);
     }
 
     @Transactional
@@ -86,11 +86,11 @@ public class AssignmentService {
             Integer maxTeamSize, SubmissionType submissionType,
             Instant teamLockAt, Boolean isPublished, Long creatorId, Long groupId, Long moduleId) {
         return createAssignment(courseId, title, description, dueAt, maxTeamSize, submissionType,
-            teamLockAt, isPublished, creatorId, groupId, moduleId, null);
-        }
+                teamLockAt, isPublished, creatorId, groupId, moduleId, null);
+    }
 
-        @Transactional
-        public Assignment createAssignment(Long courseId, String title, String description, Instant dueAt,
+    @Transactional
+    public Assignment createAssignment(Long courseId, String title, String description, Instant dueAt,
             Integer maxTeamSize, SubmissionType submissionType,
             Instant teamLockAt, Boolean isPublished, Long creatorId, Long groupId, Long moduleId, BigDecimal maxScore) {
         Course course = courseRepository.findById(courseId)
@@ -169,7 +169,7 @@ public class AssignmentService {
             Integer maxTeamSize, SubmissionType submissionType,
             Instant teamLockAt, Long updaterId, Long groupId) {
         return updateAssignment(assignmentId, title, description, dueAt, maxTeamSize, submissionType,
-            teamLockAt, updaterId, groupId, null, null);
+                teamLockAt, updaterId, groupId, null, null);
     }
 
     @CacheEvict(value = CacheConfig.CACHE_ASSIGNMENT, key = "#assignmentId")
@@ -178,12 +178,12 @@ public class AssignmentService {
             Integer maxTeamSize, SubmissionType submissionType,
             Instant teamLockAt, Long updaterId, Long groupId, Long moduleId) {
         return updateAssignment(assignmentId, title, description, dueAt, maxTeamSize, submissionType,
-            teamLockAt, updaterId, groupId, moduleId, null);
-        }
+                teamLockAt, updaterId, groupId, moduleId, null);
+    }
 
-        @CacheEvict(value = CacheConfig.CACHE_ASSIGNMENT, key = "#assignmentId")
-        @Transactional
-        public Assignment updateAssignment(Long assignmentId, String title, String description, Instant dueAt,
+    @CacheEvict(value = CacheConfig.CACHE_ASSIGNMENT, key = "#assignmentId")
+    @Transactional
+    public Assignment updateAssignment(Long assignmentId, String title, String description, Instant dueAt,
             Integer maxTeamSize, SubmissionType submissionType,
             Instant teamLockAt, Long updaterId, Long groupId, Long moduleId, BigDecimal maxScore) {
         Assignment a = getAssignmentById(assignmentId);
