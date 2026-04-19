@@ -32,7 +32,7 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
 
     List<Submission> findByAssignment_IdOrderByTeam_IdAscVersionNumberDesc(Long assignmentId);
 
-        @Query("""
+    @Query("""
                         SELECT s
                         FROM Submission s
                         JOIN FETCH s.team t
@@ -46,9 +46,9 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
                             )
                         ORDER BY t.name ASC
                         """)
-        List<Submission> findLatestTeamSubmissionsByAssignmentId(@Param("assignmentId") Long assignmentId);
+    List<Submission> findLatestTeamSubmissionsByAssignmentId(@Param("assignmentId") Long assignmentId);
 
-        @Query("""
+    @Query("""
                         SELECT s
                         FROM Submission s
                         JOIN FETCH s.student st
@@ -62,8 +62,42 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
                             )
                         ORDER BY st.lastName ASC, st.firstName ASC
                         """)
-        List<Submission> findLatestIndividualSubmissionsByAssignmentId(@Param("assignmentId") Long assignmentId);
+    List<Submission> findLatestIndividualSubmissionsByAssignmentId(@Param("assignmentId") Long assignmentId);
 
     @Query("SELECT s FROM Submission s WHERE s.team.id IN (SELECT tm.team.id FROM TeamMember tm WHERE tm.user.id = :userId) ORDER BY s.uploadedAt DESC")
     org.springframework.data.domain.Page<Submission> findByTeamMemberUserId(@Param("userId") Long userId, org.springframework.data.domain.Pageable pageable);
+
+    @Query("""
+            SELECT s
+            FROM Submission s
+            WHERE s.assignment.id IN :assignmentIds
+                AND s.student.id = :studentId
+                AND s.versionNumber = (
+                    SELECT MAX(s2.versionNumber)
+                    FROM Submission s2
+                    WHERE s2.assignment.id = s.assignment.id
+                        AND s2.student.id = :studentId
+                )
+            """)
+    List<Submission> findLatestByAssignmentIdsAndStudentId(
+            @Param("assignmentIds") List<Long> assignmentIds,
+            @Param("studentId") Long studentId
+    );
+
+    @Query("""
+            SELECT s
+            FROM Submission s
+            WHERE s.assignment.id IN :assignmentIds
+                AND s.team.id = :teamId
+                AND s.versionNumber = (
+                    SELECT MAX(s2.versionNumber)
+                    FROM Submission s2
+                    WHERE s2.assignment.id = s.assignment.id
+                        AND s2.team.id = :teamId
+                )
+            """)
+    List<Submission> findLatestByAssignmentIdsAndTeamId(
+            @Param("assignmentIds") List<Long> assignmentIds,
+            @Param("teamId") Long teamId
+    );
 }

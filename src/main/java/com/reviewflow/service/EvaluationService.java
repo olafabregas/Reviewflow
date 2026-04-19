@@ -56,6 +56,7 @@ public class EvaluationService {
     private final PdfGenerationService pdfGenerationService;
     private final HashidService hashidService;
     private final S3Service s3Service;
+    private final GradeCalculationService gradeCalculationService;
 
     @Transactional
     public Evaluation createEvaluation(Long submissionId, Long instructorId) {
@@ -285,6 +286,8 @@ public class EvaluationService {
                 submissionType
         ));
 
+        gradeCalculationService.evictCourseGradeCaches(assignment.getCourse().getId());
+
         return saved;
     }
 
@@ -300,7 +303,9 @@ public class EvaluationService {
 
         evaluation.setIsDraft(true);
         evaluation.setPublishedAt(null);
-        return evaluationRepository.save(evaluation);
+        Evaluation saved = evaluationRepository.save(evaluation);
+        gradeCalculationService.evictCourseGradeCaches(evaluation.getSubmission().getAssignment().getCourse().getId());
+        return saved;
     }
 
     @Transactional

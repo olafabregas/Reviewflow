@@ -38,4 +38,13 @@ public interface CourseEnrollmentRepository extends JpaRepository<CourseEnrollme
 
     @Query("SELECT e.user.id FROM CourseEnrollment e WHERE e.course.id = :courseId")
     List<Long> findUserIdsByCourse_ID(@Param("courseId") Long courseId);
+
+    @Query("""
+            SELECT e
+            FROM CourseEnrollment e
+            JOIN FETCH e.user u
+            WHERE e.course.id = :courseId
+            ORDER BY u.lastName ASC, u.firstName ASC
+            """)
+    List<CourseEnrollment> findWithUserByCourseId(@Param("courseId") Long courseId);
 }

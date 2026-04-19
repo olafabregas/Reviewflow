@@ -120,6 +120,24 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void notEnrolled_mapsTo403WithCode() {
+        ResponseEntity<ErrorResponse> response
+                = handler.handleNotEnrolled(new NotEnrolledException("not enrolled"));
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertEquals("NOT_ENROLLED", response.getBody().getError().getCode());
+    }
+
+    @Test
+    void gradeOverviewUnavailable_mapsTo503WithCode() {
+        ResponseEntity<ErrorResponse> response
+                = handler.handleGradeOverviewUnavailable(new GradeOverviewUnavailableException("unavailable"));
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
+        assertEquals("GRADE_OVERVIEW_UNAVAILABLE", response.getBody().getError().getCode());
+    }
+
+    @Test
     void avatarInvalidType_mapsTo400WithCode() {
         ResponseEntity<ErrorResponse> response
                 = handler.handleAvatarInvalidType(new AvatarInvalidTypeException("invalid avatar"));

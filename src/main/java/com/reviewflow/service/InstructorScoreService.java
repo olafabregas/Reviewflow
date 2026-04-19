@@ -1,6 +1,5 @@
 package com.reviewflow.service;
 
-import com.reviewflow.config.CacheConfig;
 import com.reviewflow.exception.AccessDeniedException;
 import com.reviewflow.exception.AlreadyPublishedException;
 import com.reviewflow.exception.ResourceNotFoundException;
@@ -21,8 +20,6 @@ import com.reviewflow.repository.InstructorScoreRepository;
 import com.reviewflow.repository.TeamRepository;
 import com.reviewflow.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -45,7 +42,7 @@ public class InstructorScoreService {
     private final CourseInstructorRepository courseInstructorRepository;
     private final AuditService auditService;
     private final HashidService hashidService;
-    private final CacheManager cacheManager;
+    private final GradeCalculationService gradeCalculationService;
 
     @Transactional
     public InstructorScoreResponse create(Long assignmentId, Long actorId, Long studentId, Long teamId, BigDecimal score, String comment) {
@@ -99,7 +96,7 @@ public class InstructorScoreService {
 
         InstructorScore saved = instructorScoreRepository.save(target);
         auditService.log(actorId, "INSTRUCTOR_SCORE_SAVED", "InstructorScore", saved.getId(), "Saved instructor score draft", null);
-        evictGradeOverviewCache();
+        gradeCalculationService.evictCourseGradeCaches(assignment.getCourse().getId());
         return toResponse(saved);
     }
 
@@ -117,7 +114,7 @@ public class InstructorScoreService {
         existing.setUpdatedAt(Instant.now());
         InstructorScore saved = instructorScoreRepository.save(existing);
         auditService.log(actorId, "INSTRUCTOR_SCORE_UPDATED", "InstructorScore", saved.getId(), "Updated instructor score draft", null);
-        evictGradeOverviewCache();
+        gradeCalculationService.evictCourseGradeCaches(existing.getAssignment().getCourse().getId());
         return toResponse(saved);
     }
 
@@ -172,7 +169,7 @@ public class InstructorScoreService {
         score.setUpdatedAt(Instant.now());
         InstructorScore saved = instructorScoreRepository.save(score);
         auditService.log(actorId, "INSTRUCTOR_SCORE_PUBLISHED", "InstructorScore", saved.getId(), "Published instructor score", null);
-        evictGradeOverviewCache();
+        gradeCalculationService.evictCourseGradeCaches(score.getAssignment().getCourse().getId());
         return toResponse(saved);
     }
 
@@ -188,7 +185,7 @@ public class InstructorScoreService {
         });
         instructorScoreRepository.saveAll(drafts);
         auditService.log(actorId, "INSTRUCTOR_SCORES_BULK_PUBLISHED", "Assignment", assignmentId, "Published count=" + drafts.size(), null);
-        evictGradeOverviewCache();
+        gradeCalculationService.evictCourseGradeCaches(assignment.getCourse().getId());
         return drafts.size();
     }
 
@@ -204,7 +201,7 @@ public class InstructorScoreService {
         score.setUpdatedAt(Instant.now());
         InstructorScore saved = instructorScoreRepository.save(score);
         auditService.log(actorId, "INSTRUCTOR_SCORE_REOPENED", "InstructorScore", saved.getId(), reason, null);
-        evictGradeOverviewCache();
+        gradeCalculationService.evictCourseGradeCaches(score.getAssignment().getCourse().getId());
         return toResponse(saved);
     }
 
@@ -288,10 +285,4 @@ public class InstructorScoreService {
         return value.isBlank() ? user.getEmail() : value;
     }
 
-    private void evictGradeOverviewCache() {
-        Cache cache = cacheManager.getCache(CacheConfig.CACHE_GRADE_OVERVIEW);
-        if (cache != null) {
-            cache.clear();
-        }
-    }
 }

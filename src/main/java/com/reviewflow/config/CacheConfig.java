@@ -23,7 +23,20 @@ public class CacheConfig {
     public static final String CACHE_ASSIGNMENT_GROUPS = "courseGradeGroups";
     public static final String CACHE_COURSE_MODULES = "courseModules";
     public static final String CACHE_GRADE_OVERVIEW = "gradeOverview";
+    public static final String CACHE_CLASS_STATISTICS = "classStatistics";
     public static final String CACHE_CSV_IMPORTS = "csvImports";
+
+    @Value("${cache.grade-overview.ttl-seconds:300}")
+    private int gradeOverviewTtlSeconds;
+
+    @Value("${cache.grade-overview.max-size:5000}")
+    private int gradeOverviewMaxSize;
+
+    @Value("${cache.class-statistics.ttl-seconds:180}")
+    private int classStatisticsTtlSeconds;
+
+    @Value("${cache.class-statistics.max-size:300}")
+    private int classStatisticsMaxSize;
 
     @Value("${cache.csv-imports.ttl-seconds:600}")
     private int csvImportsTtlSeconds;
@@ -41,6 +54,8 @@ public class CacheConfig {
                 buildCache(CACHE_ASSIGNMENT, 600, 200),
                 buildCache(CACHE_ASSIGNMENT_GROUPS, 300, 200),
                 buildCache(CACHE_COURSE_MODULES, 300, 200),
+                buildCache(CACHE_GRADE_OVERVIEW, gradeOverviewTtlSeconds, gradeOverviewMaxSize),
+                buildCache(CACHE_CLASS_STATISTICS, classStatisticsTtlSeconds, classStatisticsMaxSize),
                 buildCache(CACHE_CSV_IMPORTS, csvImportsTtlSeconds, csvImportsMaxSize)
         ));
         return cacheManager;

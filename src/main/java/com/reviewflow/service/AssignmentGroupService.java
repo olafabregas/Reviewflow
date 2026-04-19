@@ -47,6 +47,7 @@ public class AssignmentGroupService {
     private final AuditService auditService;
     private final HashidService hashidService;
     private final CacheManager cacheManager;
+    private final GradeCalculationService gradeCalculationService;
 
     @Transactional
     public AssignmentGroupResponse create(Long courseId, Long actorId, String name, BigDecimal weight, Integer dropLowestN, Integer displayOrder) {
@@ -72,6 +73,7 @@ public class AssignmentGroupService {
         auditService.log(actorId, "ASSIGNMENT_GROUP_CREATED", "AssignmentGroup", saved.getId(), "Created group: " + name, null);
 
         evictCourseCaches(courseId);
+        gradeCalculationService.evictCourseGradeCaches(courseId);
         return toResponse(saved, countAssignments(saved.getId()), calculateWeightWarning(courseId), false);
     }
 
@@ -95,6 +97,7 @@ public class AssignmentGroupService {
 
         Long courseId = saved.getCourse().getId();
         evictCourseCaches(courseId);
+        gradeCalculationService.evictCourseGradeCaches(courseId);
         if (nameChanged) {
             evictAssignmentCachesForCourse(courseId);
         }
@@ -119,6 +122,7 @@ public class AssignmentGroupService {
         assignmentGroupRepository.delete(group);
         auditService.log(actorId, "ASSIGNMENT_GROUP_DELETED", "AssignmentGroup", groupId, "Deleted group", null);
         evictCourseCaches(group.getCourse().getId());
+        gradeCalculationService.evictCourseGradeCaches(group.getCourse().getId());
     }
 
     @Transactional(readOnly = true)
@@ -157,7 +161,7 @@ public class AssignmentGroupService {
 
         evictAssignmentCache(assignmentId);
         evictCourseCaches(assignment.getCourse().getId());
-        evictGradeOverviewCache();
+        gradeCalculationService.evictCourseGradeCaches(assignment.getCourse().getId());
 
         return AssignmentGroupMoveResponse.builder()
                 .assignmentId(hashidService.encode(assignmentId))
@@ -280,10 +284,4 @@ public class AssignmentGroupService {
         assignmentRepository.findByCourse_Id(courseId).forEach(assignment -> evictAssignmentCache(assignment.getId()));
     }
 
-    private void evictGradeOverviewCache() {
-        Cache cache = cacheManager.getCache(CacheConfig.CACHE_GRADE_OVERVIEW);
-        if (cache != null) {
-            cache.clear();
-        }
-    }
 }

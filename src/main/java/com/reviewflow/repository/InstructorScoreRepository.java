@@ -16,6 +16,12 @@ public interface InstructorScoreRepository extends JpaRepository<InstructorScore
 
     Page<InstructorScore> findByAssignment_Id(Long assignmentId, Pageable pageable);
 
+    List<InstructorScore> findByAssignment_IdInAndStudent_IdAndIsPublishedTrue(List<Long> assignmentIds, Long studentId);
+
+    List<InstructorScore> findByAssignment_IdInAndTeam_IdAndIsPublishedTrue(List<Long> assignmentIds, Long teamId);
+
+    List<InstructorScore> findByAssignment_IdInAndIsPublishedTrue(List<Long> assignmentIds);
+
     List<InstructorScore> findByAssignment_IdAndIsPublishedFalse(Long assignmentId);
 
     boolean existsByAssignment_Id(Long assignmentId);
