@@ -3,6 +3,7 @@ package com.reviewflow.config;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.support.SimpleCacheManager;
@@ -22,6 +23,13 @@ public class CacheConfig {
     public static final String CACHE_ASSIGNMENT_GROUPS = "courseGradeGroups";
     public static final String CACHE_COURSE_MODULES = "courseModules";
     public static final String CACHE_GRADE_OVERVIEW = "gradeOverview";
+    public static final String CACHE_CSV_IMPORTS = "csvImports";
+
+    @Value("${cache.csv-imports.ttl-seconds:600}")
+    private int csvImportsTtlSeconds;
+
+    @Value("${cache.csv-imports.max-size:50}")
+    private int csvImportsMaxSize;
 
     @Bean
     public CacheManager cacheManager() {
@@ -32,7 +40,8 @@ public class CacheConfig {
                 buildCache(CACHE_USER_COURSES, 300, 500),
                 buildCache(CACHE_ASSIGNMENT, 600, 200),
                 buildCache(CACHE_ASSIGNMENT_GROUPS, 300, 200),
-                buildCache(CACHE_COURSE_MODULES, 300, 200)
+                buildCache(CACHE_COURSE_MODULES, 300, 200),
+                buildCache(CACHE_CSV_IMPORTS, csvImportsTtlSeconds, csvImportsMaxSize)
         ));
         return cacheManager;
     }

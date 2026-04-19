@@ -2,6 +2,7 @@ package com.reviewflow.repository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -12,7 +13,7 @@ import com.reviewflow.model.entity.Assignment;
 public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
 
     @Query("SELECT DISTINCT a FROM Assignment a JOIN FETCH a.course JOIN FETCH a.assignmentGroup LEFT JOIN FETCH a.assignmentModule LEFT JOIN FETCH a.rubricCriteria WHERE a.id = :id")
-    java.util.Optional<Assignment> findWithDetailsById(@Param("id") Long id);
+    Optional<Assignment> findWithDetailsById(@Param("id") Long id);
 
     @Query("SELECT a FROM Assignment a JOIN FETCH a.course JOIN FETCH a.assignmentGroup LEFT JOIN FETCH a.assignmentModule WHERE a.course.id = :courseId")
     List<Assignment> findByCourse_Id(@Param("courseId") Long courseId);

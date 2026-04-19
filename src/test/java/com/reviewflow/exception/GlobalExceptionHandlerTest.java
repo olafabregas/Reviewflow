@@ -48,6 +48,33 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void submissionNotRequired_mapsTo409WithCode() {
+        ResponseEntity<ErrorResponse> response
+                = handler.handleSubmissionNotRequired(new SubmissionNotRequiredException("not required"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("SUBMISSION_NOT_REQUIRED", response.getBody().getError().getCode());
+    }
+
+    @Test
+    void scoreNotPublished_mapsTo409WithCode() {
+        ResponseEntity<ErrorResponse> response
+                = handler.handleScoreNotPublished(new ScoreNotPublishedException("not published"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("SCORE_NOT_PUBLISHED", response.getBody().getError().getCode());
+    }
+
+    @Test
+    void scoresExist_mapsTo409WithCode() {
+        ResponseEntity<ErrorResponse> response
+                = handler.handleScoresExist(new ScoresExistException("scores exist"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("SCORES_EXIST", response.getBody().getError().getCode());
+    }
+
+    @Test
     void cannotDeleteUncategorized_mapsTo409WithCode() {
         ResponseEntity<ErrorResponse> response
                 = handler.handleCannotDeleteUncategorized(new CannotDeleteUncategorizedException("Cannot delete Uncategorized group"));
