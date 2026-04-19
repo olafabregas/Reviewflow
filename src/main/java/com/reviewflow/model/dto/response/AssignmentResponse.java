@@ -1,5 +1,6 @@
 package com.reviewflow.model.dto.response;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
@@ -21,8 +22,11 @@ public class AssignmentResponse {
     Instant dueAt;
     SubmissionType submissionType;
     Integer maxTeamSize;
+    BigDecimal maxScore;
     String groupId;
     String groupName;
+    String moduleId;
+    String moduleName;
     Boolean isPublished;
     Instant teamLockAt;
     List<RubricCriterionResponse> rubricCriteria;

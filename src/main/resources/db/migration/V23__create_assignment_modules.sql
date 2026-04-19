@@ -1,0 +1,6 @@
+-- V23__create_assignment_modules.sql
+-- PRD-11: Compatibility migration after restoring V22 alignment to DB-applied history.
+-- Author: Agent 1 (Database)
+-- Date: 2026-04-19
+-- Intentionally no-op.
+-- Module schema is sourced from V22 in databases where it has already been applied.

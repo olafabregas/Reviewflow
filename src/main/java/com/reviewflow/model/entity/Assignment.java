@@ -4,6 +4,7 @@ import com.reviewflow.model.enums.SubmissionType;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +31,12 @@ public class Assignment {
     @ToString.Exclude
     private AssignmentGroup assignmentGroup;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "module_id", nullable = true)
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    private AssignmentModule assignmentModule;
+
     @Column(nullable = false, length = 255)
     private String title;
 
@@ -41,6 +48,9 @@ public class Assignment {
 
     @Column(name = "max_team_size")
     private Integer maxTeamSize;
+
+    @Column(name = "max_score", precision = 6, scale = 2)
+    private BigDecimal maxScore;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "submission_type", nullable = false)

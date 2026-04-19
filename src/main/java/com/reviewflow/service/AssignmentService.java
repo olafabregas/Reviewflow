@@ -1,5 +1,6 @@
 package com.reviewflow.service;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -8,6 +9,8 @@ import java.util.stream.Collectors;
 
 import com.reviewflow.config.CacheConfig;
 import com.reviewflow.exception.GroupNotInCourseException;
+import com.reviewflow.exception.ModuleNotInCourseException;
+import com.reviewflow.exception.ScoresExistException;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -21,6 +24,7 @@ import com.reviewflow.model.dto.response.AssignmentResponse;
 import com.reviewflow.model.dto.response.GradebookEntryResponse;
 import com.reviewflow.model.entity.Assignment;
 import com.reviewflow.model.entity.AssignmentGroup;
+import com.reviewflow.model.entity.AssignmentModule;
 import com.reviewflow.model.entity.Course;
 import com.reviewflow.model.entity.Evaluation;
 import com.reviewflow.model.entity.RubricCriterion;
@@ -30,6 +34,8 @@ import com.reviewflow.model.entity.UserRole;
 import com.reviewflow.model.enums.SubmissionType;
 import com.reviewflow.repository.AssignmentRepository;
 import com.reviewflow.repository.AssignmentGroupRepository;
+import com.reviewflow.repository.AssignmentModuleRepository;
+import com.reviewflow.repository.InstructorScoreRepository;
 import com.reviewflow.repository.CourseEnrollmentRepository;
 import com.reviewflow.repository.CourseInstructorRepository;
 import com.reviewflow.repository.CourseRepository;
@@ -55,19 +61,38 @@ public class AssignmentService {
     private final RubricScoreRepository rubricScoreRepository;
     private final TeamRepository teamRepository;
     private final AssignmentGroupRepository assignmentGroupRepository;
+    private final AssignmentModuleRepository assignmentModuleRepository;
+    private final InstructorScoreRepository instructorScoreRepository;
     private final HashidService hashidService;
 
     @Transactional
     public Assignment createAssignment(Long courseId, String title, String description, Instant dueAt,
             Integer maxTeamSize, SubmissionType submissionType,
             Instant teamLockAt, Boolean isPublished, Long creatorId) {
-        return createAssignment(courseId, title, description, dueAt, maxTeamSize, submissionType, teamLockAt, isPublished, creatorId, null);
+        return createAssignment(courseId, title, description, dueAt, maxTeamSize, submissionType,
+                teamLockAt, isPublished, creatorId, null, null, null);
     }
 
     @Transactional
     public Assignment createAssignment(Long courseId, String title, String description, Instant dueAt,
             Integer maxTeamSize, SubmissionType submissionType,
             Instant teamLockAt, Boolean isPublished, Long creatorId, Long groupId) {
+        return createAssignment(courseId, title, description, dueAt, maxTeamSize, submissionType,
+            teamLockAt, isPublished, creatorId, groupId, null, null);
+    }
+
+    @Transactional
+    public Assignment createAssignment(Long courseId, String title, String description, Instant dueAt,
+            Integer maxTeamSize, SubmissionType submissionType,
+            Instant teamLockAt, Boolean isPublished, Long creatorId, Long groupId, Long moduleId) {
+        return createAssignment(courseId, title, description, dueAt, maxTeamSize, submissionType,
+            teamLockAt, isPublished, creatorId, groupId, moduleId, null);
+        }
+
+        @Transactional
+        public Assignment createAssignment(Long courseId, String title, String description, Instant dueAt,
+            Integer maxTeamSize, SubmissionType submissionType,
+            Instant teamLockAt, Boolean isPublished, Long creatorId, Long groupId, Long moduleId, BigDecimal maxScore) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", courseId));
         ensureInstructor(courseId, creatorId);
@@ -84,9 +109,17 @@ public class AssignmentService {
             if (maxTeamSize == null || maxTeamSize < 1 || maxTeamSize > 10) {
                 throw new ValidationException("Max team size must be between 1 and 10", "VALIDATION_ERROR");
             }
+            maxScore = null;
+        } else if (resolvedSubmissionType == SubmissionType.INSTRUCTOR_GRADED) {
+            if (maxScore == null || maxScore.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new ValidationException("Max score must be greater than 0 for instructor-graded assignments", "VALIDATION_ERROR");
+            }
+            maxTeamSize = null;
+            teamLockAt = null;
         } else {
             // Individual assignments do not use team size.
             maxTeamSize = null;
+            maxScore = null;
         }
 
         // Validate teamLockAt must be before dueAt
@@ -95,14 +128,17 @@ public class AssignmentService {
         }
 
         AssignmentGroup assignmentGroup = resolveAssignmentGroup(courseId, groupId, true);
+        AssignmentModule assignmentModule = resolveAssignmentModule(courseId, moduleId);
 
         Assignment a = Assignment.builder()
                 .course(course)
                 .assignmentGroup(assignmentGroup)
+                .assignmentModule(assignmentModule)
                 .title(title)
                 .description(description)
                 .dueAt(dueAt)
                 .maxTeamSize(maxTeamSize)
+                .maxScore(maxScore)
                 .submissionType(resolvedSubmissionType)
                 .teamLockAt(teamLockAt)
                 .isPublished(isPublished != null ? isPublished : false)
@@ -123,7 +159,8 @@ public class AssignmentService {
     public Assignment updateAssignment(Long assignmentId, String title, String description, Instant dueAt,
             Integer maxTeamSize, SubmissionType submissionType,
             Instant teamLockAt, Long updaterId) {
-        return updateAssignment(assignmentId, title, description, dueAt, maxTeamSize, submissionType, teamLockAt, updaterId, null);
+        return updateAssignment(assignmentId, title, description, dueAt, maxTeamSize, submissionType,
+                teamLockAt, updaterId, null, null, null);
     }
 
     @CacheEvict(value = CacheConfig.CACHE_ASSIGNMENT, key = "#assignmentId")
@@ -131,6 +168,24 @@ public class AssignmentService {
     public Assignment updateAssignment(Long assignmentId, String title, String description, Instant dueAt,
             Integer maxTeamSize, SubmissionType submissionType,
             Instant teamLockAt, Long updaterId, Long groupId) {
+        return updateAssignment(assignmentId, title, description, dueAt, maxTeamSize, submissionType,
+            teamLockAt, updaterId, groupId, null, null);
+    }
+
+    @CacheEvict(value = CacheConfig.CACHE_ASSIGNMENT, key = "#assignmentId")
+    @Transactional
+    public Assignment updateAssignment(Long assignmentId, String title, String description, Instant dueAt,
+            Integer maxTeamSize, SubmissionType submissionType,
+            Instant teamLockAt, Long updaterId, Long groupId, Long moduleId) {
+        return updateAssignment(assignmentId, title, description, dueAt, maxTeamSize, submissionType,
+            teamLockAt, updaterId, groupId, moduleId, null);
+        }
+
+        @CacheEvict(value = CacheConfig.CACHE_ASSIGNMENT, key = "#assignmentId")
+        @Transactional
+        public Assignment updateAssignment(Long assignmentId, String title, String description, Instant dueAt,
+            Integer maxTeamSize, SubmissionType submissionType,
+            Instant teamLockAt, Long updaterId, Long groupId, Long moduleId, BigDecimal maxScore) {
         Assignment a = getAssignmentById(assignmentId);
         ensureInstructor(a.getCourse().getId(), updaterId);
 
@@ -153,6 +208,9 @@ public class AssignmentService {
         if (groupId != null) {
             a.setAssignmentGroup(resolveAssignmentGroup(a.getCourse().getId(), groupId, false));
         }
+        if (moduleId != null) {
+            a.setAssignmentModule(resolveAssignmentModule(a.getCourse().getId(), moduleId));
+        }
 
         if (title != null) {
             a.setTitle(title);
@@ -174,13 +232,34 @@ public class AssignmentService {
             a.setSubmissionType(submissionType);
             if (submissionType == SubmissionType.INDIVIDUAL) {
                 a.setMaxTeamSize(null);
+                a.setMaxScore(null);
+            } else if (submissionType == SubmissionType.TEAM) {
+                a.setMaxScore(null);
             }
         }
 
-        if (a.getSubmissionType() == SubmissionType.INDIVIDUAL) {
+        SubmissionType effectiveSubmissionType = a.getSubmissionType();
+
+        if (effectiveSubmissionType == SubmissionType.INDIVIDUAL) {
             a.setMaxTeamSize(null);
+            a.setMaxScore(null);
+        } else if (effectiveSubmissionType == SubmissionType.INSTRUCTOR_GRADED) {
+            a.setMaxTeamSize(null);
+            if (maxScore != null) {
+                if (maxScore.compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new ValidationException("Max score must be greater than 0", "VALIDATION_ERROR");
+                }
+                if (instructorScoreRepository.existsByAssignment_IdAndIsPublishedTrue(assignmentId)
+                        && (a.getMaxScore() == null || a.getMaxScore().compareTo(maxScore) != 0)) {
+                    throw new ScoresExistException("Cannot modify max score after published instructor scores exist");
+                }
+                a.setMaxScore(maxScore);
+            } else if (a.getMaxScore() == null) {
+                throw new ValidationException("Max score is required for instructor-graded assignments", "VALIDATION_ERROR");
+            }
         } else if (maxTeamSize != null) {
             a.setMaxTeamSize(maxTeamSize);
+            a.setMaxScore(null);
         }
 
         if (teamLockAt != null) {
@@ -566,5 +645,18 @@ public class AssignmentService {
             throw new GroupNotInCourseException("Assignment group does not belong to this course");
         }
         return assignmentGroup;
+    }
+
+    private AssignmentModule resolveAssignmentModule(Long courseId, Long moduleId) {
+        if (moduleId == null) {
+            return null;
+        }
+
+        AssignmentModule assignmentModule = assignmentModuleRepository.findById(moduleId)
+                .orElseThrow(() -> new ResourceNotFoundException("AssignmentModule", moduleId));
+        if (!assignmentModule.getCourse().getId().equals(courseId)) {
+            throw new ModuleNotInCourseException("Assignment module does not belong to this course");
+        }
+        return assignmentModule;
     }
 }

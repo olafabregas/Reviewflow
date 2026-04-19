@@ -237,6 +237,42 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
+    @ExceptionHandler(ModuleNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleModuleNotFound(ModuleNotFoundException ex) {
+        ErrorResponse body = ErrorResponse.builder()
+                .error(ErrorResponse.ErrorDetail.builder()
+                        .code(ex.getCode())
+                        .message(ex.getMessage())
+                        .build())
+                .timestamp(Instant.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    @ExceptionHandler(ModuleNotInCourseException.class)
+    public ResponseEntity<ErrorResponse> handleModuleNotInCourse(ModuleNotInCourseException ex) {
+        ErrorResponse body = ErrorResponse.builder()
+                .error(ErrorResponse.ErrorDetail.builder()
+                        .code(ex.getCode())
+                        .message(ex.getMessage())
+                        .build())
+                .timestamp(Instant.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(CourseArchivedReadOnlyException.class)
+    public ResponseEntity<ErrorResponse> handleCourseArchivedReadOnly(CourseArchivedReadOnlyException ex) {
+        ErrorResponse body = ErrorResponse.builder()
+                .error(ErrorResponse.ErrorDetail.builder()
+                        .code(ex.getCode())
+                        .message(ex.getMessage())
+                        .build())
+                .timestamp(Instant.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
     @ExceptionHandler(BusinessRuleException.class)
     public ResponseEntity<ErrorResponse> handleBusinessRule(BusinessRuleException ex) {
         ErrorResponse body = ErrorResponse.builder()

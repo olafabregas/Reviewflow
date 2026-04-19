@@ -2,5 +2,6 @@ package com.reviewflow.model.enums;
 
 public enum SubmissionType {
     INDIVIDUAL,
-    TEAM
+    TEAM,
+    INSTRUCTOR_GRADED
 }

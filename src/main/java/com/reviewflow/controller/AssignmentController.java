@@ -125,10 +125,11 @@ public class AssignmentController {
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
         Long courseIdLong = hashidService.decodeOrThrow(courseId);
         Long groupId = request.getGroupId() != null ? hashidService.decodeOrThrow(request.getGroupId()) : null;
+        Long moduleId = request.getModuleId() != null ? hashidService.decodeOrThrow(request.getModuleId()) : null;
         Assignment a = assignmentService.createAssignment(
                 courseIdLong, request.getTitle(), request.getDescription(), request.getDueAt(),
                 request.getMaxTeamSize(), request.getSubmissionType(), request.getTeamLockAt(),
-                request.getIsPublished(), user.getUserId(), groupId);
+                request.getIsPublished(), user.getUserId(), groupId, moduleId, request.getMaxScore());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(toResponse(a)));
     }
 
@@ -207,9 +208,10 @@ public class AssignmentController {
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
         Long assignmentId = hashidService.decodeOrThrow(id);
         Long groupId = request.getGroupId() != null ? hashidService.decodeOrThrow(request.getGroupId()) : null;
+        Long moduleId = request.getModuleId() != null ? hashidService.decodeOrThrow(request.getModuleId()) : null;
         Assignment a = assignmentService.updateAssignment(
                 assignmentId, request.getTitle(), request.getDescription(), request.getDueAt(),
-                request.getMaxTeamSize(), request.getSubmissionType(), request.getTeamLockAt(), user.getUserId(), groupId);
+                request.getMaxTeamSize(), request.getSubmissionType(), request.getTeamLockAt(), user.getUserId(), groupId, moduleId, request.getMaxScore());
         return ResponseEntity.ok(ApiResponse.ok(toResponse(a)));
     }
 
@@ -583,8 +585,11 @@ public class AssignmentController {
                 .dueAt(a.getDueAt())
                 .submissionType(a.getSubmissionType())
                 .maxTeamSize(a.getMaxTeamSize())
+                .maxScore(a.getMaxScore())
                 .groupId(hashidService.encode(a.getAssignmentGroup() != null ? a.getAssignmentGroup().getId() : null))
                 .groupName(a.getAssignmentGroup() != null ? a.getAssignmentGroup().getName() : null)
+                .moduleId(hashidService.encode(a.getAssignmentModule() != null ? a.getAssignmentModule().getId() : null))
+                .moduleName(a.getAssignmentModule() != null ? a.getAssignmentModule().getName() : null)
                 .isPublished(a.getIsPublished())
                 .teamLockAt(a.getTeamLockAt())
                 .rubricCriteria(criteria)

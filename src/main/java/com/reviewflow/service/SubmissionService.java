@@ -26,6 +26,7 @@ import com.reviewflow.exception.PreviewNotSupportedException;
 import com.reviewflow.exception.RateLimitException;
 import com.reviewflow.exception.ResourceNotFoundException;
 import com.reviewflow.exception.TeamSubmissionRequiredException;
+import com.reviewflow.exception.SubmissionNotRequiredException;
 import com.reviewflow.exception.ValidationException;
 import com.reviewflow.model.dto.response.PreviewResponseDto;
 import com.reviewflow.model.entity.Assignment;
@@ -186,6 +187,11 @@ public class SubmissionService {
         SubmissionType submissionType = assignment.getSubmissionType() != null
                 ? assignment.getSubmissionType()
                 : SubmissionType.INDIVIDUAL;
+
+        if (submissionType == SubmissionType.INSTRUCTOR_GRADED) {
+            throw new SubmissionNotRequiredException(
+                "This assessment is graded directly by your instructor. No file submission is required.");
+        }
 
         // originalName already extracted above - use it for storage
         Team team = null;

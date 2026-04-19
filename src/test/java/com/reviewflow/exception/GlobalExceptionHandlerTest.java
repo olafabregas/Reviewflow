@@ -66,6 +66,33 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void moduleNotFound_mapsTo404WithCode() {
+        ResponseEntity<ErrorResponse> response
+                = handler.handleModuleNotFound(new ModuleNotFoundException("module missing"));
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals("MODULE_NOT_FOUND", response.getBody().getError().getCode());
+    }
+
+    @Test
+    void moduleNotInCourse_mapsTo400WithCode() {
+        ResponseEntity<ErrorResponse> response
+                = handler.handleModuleNotInCourse(new ModuleNotInCourseException("cross course"));
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("MODULE_NOT_IN_COURSE", response.getBody().getError().getCode());
+    }
+
+    @Test
+    void courseArchivedReadOnly_mapsTo409WithCode() {
+        ResponseEntity<ErrorResponse> response
+                = handler.handleCourseArchivedReadOnly(new CourseArchivedReadOnlyException("archived"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("COURSE_ARCHIVED_READ_ONLY", response.getBody().getError().getCode());
+    }
+
+    @Test
     void avatarInvalidType_mapsTo400WithCode() {
         ResponseEntity<ErrorResponse> response
                 = handler.handleAvatarInvalidType(new AvatarInvalidTypeException("invalid avatar"));

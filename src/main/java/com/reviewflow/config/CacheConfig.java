@@ -20,6 +20,7 @@ public class CacheConfig {
     public static final String CACHE_USER_COURSES = "userCourses";
     public static final String CACHE_ASSIGNMENT = "assignmentDetail";
     public static final String CACHE_ASSIGNMENT_GROUPS = "courseGradeGroups";
+    public static final String CACHE_COURSE_MODULES = "courseModules";
     public static final String CACHE_GRADE_OVERVIEW = "gradeOverview";
 
     @Bean
@@ -30,7 +31,8 @@ public class CacheConfig {
                 buildCache(CACHE_UNREAD_COUNT, 30, 500),
                 buildCache(CACHE_USER_COURSES, 300, 500),
                 buildCache(CACHE_ASSIGNMENT, 600, 200),
-                buildCache(CACHE_ASSIGNMENT_GROUPS, 300, 200)
+                buildCache(CACHE_ASSIGNMENT_GROUPS, 300, 200),
+                buildCache(CACHE_COURSE_MODULES, 300, 200)
         ));
         return cacheManager;
     }
