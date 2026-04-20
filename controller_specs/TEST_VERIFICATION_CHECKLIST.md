@@ -450,6 +450,7 @@ Notes: All Java files compile successfully after architecture fixes
 
 - [x] All 12 modules have test specifications
 - [x] All 93 historical campaign endpoints documented (current backend baseline: 98 routes)
+- [x] Current baseline artifacts referenced: `tasks/prd12_method_coverage.md`, `tasks/review_report.md`, `postman/POSTMAN_98_ROUTE_VERIFICATION_REPORT.md`
 - [x] All 500+ test cases specified
 - [x] All 4 roles (STUDENT, INSTRUCTOR, ADMIN, SYSTEM_ADMIN) covered
 - [x] All 75+ audit events defined

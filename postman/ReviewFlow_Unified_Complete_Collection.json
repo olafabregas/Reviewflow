@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "ReviewFlow — Unified Complete Collection + Security Hardening",
-    "description": "Self-contained unified collection: Complete test suite with multi-user testing + 524 comprehensive tests (all 93 endpoints) + 50+ security hardening tests. All variables embedded. No external environment needed.",
+    "description": "Self-contained unified collection: Complete test suite with multi-user testing + 524 comprehensive tests (93 historical campaign endpoints; current backend baseline 98 routes) + 50+ security hardening tests. All variables embedded. No external environment needed.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [

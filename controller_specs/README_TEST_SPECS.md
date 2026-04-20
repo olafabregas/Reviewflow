@@ -2,7 +2,7 @@
 
 ## Overview
 
-This directory contains comprehensive test specifications for the original 12-module ReviewFlow backend campaign (93 endpoints) plus incremental expansion artifacts for newly documented modules.
+This directory contains comprehensive test specifications for the original 12-module ReviewFlow backend campaign (93 endpoints) plus incremental expansion artifacts for newly documented modules. The historical campaign is preserved, while the current runtime baseline is 98 route handlers.
 
 ## What This Is
 
@@ -19,6 +19,7 @@ A complete testing reference guide for the ReviewFlow learning management system
 - Security best practices
 
 Current backend baseline reference: 98 route handlers (93 historical campaign + 5 Assignment Groups routes).
+Related verification artifacts: `tasks/prd12_method_coverage.md`, `tasks/review_report.md`, `postman/POSTMAN_98_ROUTE_VERIFICATION_REPORT.md`.
 
 ## Files in This Directory
 
@@ -65,6 +66,7 @@ Current backend baseline reference: 98 route handlers (93 historical campaign + 
 
 - The 93-endpoint totals in this file refer to the original Phase 2 documentation campaign.
 - Assignment Groups documentation was added as an incremental expansion in 2026 without rewriting historical campaign metrics.
+- The current runtime baseline remains 98 route handlers.
 
 ## Quick Start
 

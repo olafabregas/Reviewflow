@@ -25,7 +25,7 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
 | Auth             | JWT in HTTP-only cookies         | Refresh rotation, token fingerprinting      |
 | File storage     | AWS S3                           | Pre-signed URLs                             |
 | Real-time        | WebSocket — STOMP over SockJS    |                                             |
-| Caching          | Caffeine                         | 5 configured caches, Redis-ready by design  |
+| Caching          | Caffeine                         | 9 configured caches, Redis-ready by design  |
 | File security    | `FileSecurityValidator` + ClamAV | Multi-gate validation, profile-based policy |
 | ID obfuscation   | Hashids                          | 8-char opaque IDs on all external endpoints |
 | PDF generation   | OpenPDF                          | Evaluation report export                    |
@@ -84,7 +84,7 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
 [Infrastructure Layer]
         ├── MySQL 8 (Flyway migrations V1-V24)
         ├── AWS S3 (pre-signed URLs)
-        ├── Caffeine Cache (Redis-ready · 5 configured caches)
+        ├── Caffeine Cache (Redis-ready · 9 configured caches)
         └── WebSocket (STOMP over SockJS)
 ```
 
