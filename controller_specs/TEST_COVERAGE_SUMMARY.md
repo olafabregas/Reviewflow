@@ -4,8 +4,8 @@
 
 **Status**: ✅ COMPLETE  
 **Date**: 2024  
-**Coverage**: 12/12 Original Modules (100%) + Assignment Groups Expansion  
-**Current Backend Baseline**: 98 route handlers across 13 documented module specs (12 original + Assignment Groups)  
+**Coverage**: 12/12 Original Modules (historical 93-endpoint campaign) + Assignment Groups Expansion  
+**Current Backend Baseline**: 98 route handlers across 13 documented module specs (93 historical campaign + 5 Assignment Groups routes)  
 **Total Test Cases**: 500+ comprehensive scenarios  
 **Architecture Fixes Applied**: 2 (RoleHierarchy + INSTRUCTOR course permissions)
 
@@ -27,7 +27,7 @@ All 12 ReviewFlow backend modules now have comprehensive test specifications. Ea
 
 ### Baseline Update (2026-04-16)
 
-The 12-module/93-endpoint totals in this document represent the original documentation campaign.
+The 12-module/93-endpoint totals in this document represent the original documentation campaign and remain preserved as historical evidence.
 
 An incremental expansion now adds Assignment Groups documentation artifacts:
 
@@ -37,6 +37,7 @@ An incremental expansion now adds Assignment Groups documentation artifacts:
 This adds coverage guidance for 5 implemented Assignment Groups routes while preserving historical campaign metrics.
 
 Current backend baseline reference: 98 route handlers (93 historical campaign + 5 Assignment Groups routes).
+Related verification artifacts: `tasks/prd12_method_coverage.md`, `tasks/review_report.md`, `postman/POSTMAN_98_ROUTE_VERIFICATION_REPORT.md`.
 
 ---
 
@@ -63,6 +64,12 @@ Current backend baseline reference: 98 route handlers (93 historical campaign + 
 | #   | Module            | File                             | Endpoints | Test Cases | Coverage                |
 | --- | ----------------- | -------------------------------- | --------- | ---------- | ----------------------- |
 | 13  | Assignment Groups | TEST_SPEC_13_AssignmentGroups.md | 5         | 50+        | Documentation expansion |
+
+### Current Runtime Baseline
+
+- Historical campaign coverage: 93 endpoints
+- Current runtime baseline: 98 route handlers
+- Incremental expansion: 5 Assignment Groups routes
 
 ---
 

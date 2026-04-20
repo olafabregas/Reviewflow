@@ -10,7 +10,7 @@
 
 ## EXECUTIVE COMPLETION SUMMARY
 
-Successfully delivered comprehensive test specification suite for ReviewFlow backend learning management system. Complete test coverage across all 12 modules in the original campaign (93 API endpoints), plus Assignment Groups expansion artifacts (13 documented module specs total), with 500+ detailed test cases suitable for QA automation, manual testing, and acceptance validation.
+Successfully delivered comprehensive test specification suite for ReviewFlow backend learning management system. Complete test coverage across all 12 modules in the original campaign (93 API endpoints), plus Assignment Groups expansion artifacts (13 documented module specs total), with 500+ detailed test cases suitable for QA automation, manual testing, and acceptance validation. The historical 93-endpoint campaign is preserved as delivery evidence; the current backend runtime baseline is 98 route handlers.
 
 ### Baseline Update (2026-04-16)
 
@@ -172,9 +172,9 @@ Current backend baseline reference: 98 route handlers (93 historical campaign + 
 
 ---
 
-## CONTENT BREAKDOWN
+### CONTENT BREAKDOWN
 
-### Endpoint Coverage (93 Total - 100%)
+### Historical Campaign Endpoint Coverage (93 Total - 100%)
 
 | Module           | Endpoints | Test Cases | Status |
 | ---------------- | --------- | ---------- | ------ |
@@ -191,6 +191,12 @@ Current backend baseline reference: 98 route handlers (93 historical campaign + 
 | Grade Export     | 1         | 30+        | ✅     |
 | System Admin     | 7         | 45+        | ✅     |
 | **TOTAL**        | **93**    | **500+**   | **✅** |
+
+### Current Backend Baseline
+
+- Current runtime baseline: 98 route handlers
+- Historical coverage baseline: 93 endpoints
+- Incremental routes beyond the historical campaign: 5 Assignment Groups routes
 
 ### Role Coverage (4 Total - 100%)
 
@@ -273,6 +279,12 @@ Command: mvn clean compile -q -DskipTests
 Result: Exit code 0 (SUCCESS)
 Issues: NONE
 ```
+
+### Verification Artifacts
+
+- PRD-12 strict method-level coverage evidence: `tasks/prd12_method_coverage.md`
+- PRD-12 DB-level invalid insert proof: `src/test/java/com/reviewflow/integration/InstructorScoreDatabaseConstraintIntegrationTest.java`
+- Postman baseline publication: `postman/POSTMAN_98_ROUTE_VERIFICATION_REPORT.md`
 
 ---
 
