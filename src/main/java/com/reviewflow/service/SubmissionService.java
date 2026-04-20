@@ -146,6 +146,8 @@ public class SubmissionService {
             rateLimiterService.recordBlockedUpload(uploadKey);
             try {
                 java.nio.file.Files.deleteIfExists(tempFile);
+            // TODO [DEAD-CODE-AGENT]: Possible dead code — verify before removing.
+            // Empty catch block may be intentional for cleanup failures. Confidence: MEDIUM.
             } catch (IOException ex) {
             }
             throw new ValidationException("Failed to validate file: " + e.getMessage(), "FILE_VALIDATION_ERROR");
@@ -154,6 +156,8 @@ public class SubmissionService {
             rateLimiterService.recordBlockedUpload(uploadKey);
             try {
                 java.nio.file.Files.deleteIfExists(tempFile);
+            // TODO [DEAD-CODE-AGENT]: Possible dead code — verify before removing.
+            // Empty catch block may be intentional for cleanup failures. Confidence: MEDIUM.
             } catch (IOException ex) {
             }
             throw new ValidationException("File failed security validation: " + e.getMessage(), "MALWARE_DETECTED");
@@ -163,6 +167,8 @@ public class SubmissionService {
             rateLimiterService.recordBlockedUpload(uploadKey);
             try {
                 java.nio.file.Files.deleteIfExists(tempFile);
+            // TODO [DEAD-CODE-AGENT]: Possible dead code — verify before removing.
+            // Empty catch block may be intentional for cleanup failures. Confidence: MEDIUM.
             } catch (IOException ex) {
             }
             throw e; // Re-throw as-is (these are already user-friendly)
