@@ -35,9 +35,6 @@ class SystemServiceTest {
     private CacheManager cacheManager;
 
     @Mock
-    private AuditRepository auditRepository;
-
-    @Mock
     private SimpMessagingTemplate messagingTemplate;
 
     @Mock

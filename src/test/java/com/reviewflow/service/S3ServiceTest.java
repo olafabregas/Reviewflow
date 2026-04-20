@@ -54,7 +54,6 @@ class S3ServiceTest {
         ReflectionTestUtils.setField(s3Service, "bucket", "test-bucket");
         ReflectionTestUtils.setField(s3Service, "region", "ca-central-1");
         ReflectionTestUtils.setField(s3Service, "presignedUrlExpiryMinutes", 15);
-        ReflectionTestUtils.setField(s3Service, "avatarUrlExpiryMinutes", 60);
     }
 
     @Test
@@ -160,42 +159,6 @@ class S3ServiceTest {
 
             String url = s3Service.generatePresignedDownloadUrl("pdfs/H1/report.pdf");
             assertEquals("https://example.com/signed", url);
-        }
-    }
-
-    @Test
-    void generatePresignedAvatarUrl_s3Failure_throwsStorageException() {
-        try (MockedStatic<S3Presigner> presignerStatic = mockStatic(S3Presigner.class)) {
-            S3Presigner.Builder builder = mock(S3Presigner.Builder.class);
-            S3Presigner presigner = mock(S3Presigner.class);
-
-            presignerStatic.when(S3Presigner::builder).thenReturn(builder);
-            when(builder.region(any())).thenReturn(builder);
-            when(builder.credentialsProvider(any(AwsCredentialsProvider.class))).thenReturn(builder);
-            when(builder.build()).thenReturn(presigner);
-            when(presigner.presignGetObject(any(GetObjectPresignRequest.class)))
-                    .thenThrow(S3Exception.builder().message("sign-fail").build());
-
-            assertThrows(StorageException.class, () -> s3Service.generatePresignedAvatarUrl("avatars/U1/avatar.jpg"));
-        }
-    }
-
-    @Test
-    void generatePresignedAvatarUrl_success_returnsUrl() throws Exception {
-        try (MockedStatic<S3Presigner> presignerStatic = mockStatic(S3Presigner.class)) {
-            S3Presigner.Builder builder = mock(S3Presigner.Builder.class);
-            S3Presigner presigner = mock(S3Presigner.class);
-            PresignedGetObjectRequest presigned = mock(PresignedGetObjectRequest.class);
-
-            presignerStatic.when(S3Presigner::builder).thenReturn(builder);
-            when(builder.region(any())).thenReturn(builder);
-            when(builder.credentialsProvider(any(AwsCredentialsProvider.class))).thenReturn(builder);
-            when(builder.build()).thenReturn(presigner);
-            when(presigner.presignGetObject(any(GetObjectPresignRequest.class))).thenReturn(presigned);
-            when(presigned.url()).thenReturn(new URL("https://example.com/avatar-signed"));
-
-            String url = s3Service.generatePresignedAvatarUrl("avatars/U1/avatar.jpg");
-            assertEquals("https://example.com/avatar-signed", url);
         }
     }
 }
