@@ -142,18 +142,18 @@ SYSTEM_ADMIN > ADMIN > INSTRUCTOR > STUDENT
 
 **Verification**: Maven compile successful (exit code 0)
 
-### Fix 2: INSTRUCTOR Course Creation
+### Fix 2: ADMIN/System Admin Course Creation
 
 **File**: `src/main/java/com/reviewflow/controller/CourseController.java`
 
-Changed permission from ADMIN-only to INSTRUCTOR:
+Confirmed permission remains ADMIN/System Admin:
 
 ```java
-@PreAuthorize("hasRole('INSTRUCTOR')")  // was: "hasRole('ADMIN')"
+@PreAuthorize("hasAnyRole('ADMIN', 'SYSTEM_ADMIN')")
 public ResponseEntity<ApiResponse<CourseResponse>> createCourse(...)
 ```
 
-**Impact**: INSTRUCTOR role can now create courses. ADMIN and SYSTEM_ADMIN auto-included via hierarchy.
+**Impact**: Course lifecycle ownership remains administrative; instructors are scoped to course teaching operations.
 
 **Verification**: Maven compile successful (exit code 0), documented in Javadoc
 
@@ -406,7 +406,7 @@ Every TEST_SPEC_XX_ModuleName.md follows this structure:
 ## Verification Status
 
 ✅ All 12 modules have comprehensive test specifications  
-✅ All 93 endpoints documented and tested  
+✅ All 93 historical campaign endpoints documented and tested (current backend baseline: 98 routes)  
 ✅ All 500+ test cases specified  
 ✅ All 4 roles (STUDENT, INSTRUCTOR, ADMIN, SYSTEM_ADMIN) covered  
 ✅ All 75+ audit events defined  

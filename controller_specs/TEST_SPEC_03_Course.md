@@ -44,7 +44,7 @@
 
 **Key Authorization Rules:**
 
-- **INSTRUCTOR can create courses (Fix 2)**: @PreAuthorize("hasRole('INSTRUCTOR')") on POST /courses
+- **Course creation is ADMIN/SYSTEM_ADMIN only (Fix 2)**: @PreAuthorize("hasAnyRole('ADMIN','SYSTEM_ADMIN')") on POST /courses
 - **INSTRUCTOR can only manage own courses**: Service-layer enforcement prevents cross-course edits
 - **INSTRUCTOR cannot archive**: Only ADMIN and SYSTEM_ADMIN can toggle archive status
 - **All ADMIN+ actions on enrollment**: Students cannot self-enroll or bulk-enroll
@@ -2100,7 +2100,7 @@ Use this as a verification matrix for manual testing or automation:
 
 ## Notes & Decisions
 
-1. **Fix 2 Implementation:** INSTRUCTOR role now has @PreAuthorize("hasRole('INSTRUCTOR')") on POST /courses. Service layer validates INSTRUCTOR can only manage own courses (no cross-course edits).
+1. **Fix 2 Implementation:** Course creation remains restricted to ADMIN/SYSTEM_ADMIN via @PreAuthorize("hasAnyRole('ADMIN','SYSTEM_ADMIN')") on POST /courses. Instructor operations remain course-scoped in teaching flows.
 
 2. **Caching Strategy:** Per-user, per-role cache with 1-hour TTL. Key format: `CACHE_USER_COURSES:userId:role`. Invalidated on any course data change.
 

@@ -1,10 +1,12 @@
 package com.reviewflow.controller;
 
 import com.reviewflow.model.dto.request.CreateAssignmentGroupRequest;
+import com.reviewflow.model.dto.request.MoveAssignmentGroupRequest;
 import com.reviewflow.model.dto.response.ApiResponse;
 import com.reviewflow.model.dto.response.AssignmentGroupListResponse;
 import com.reviewflow.model.dto.response.AssignmentGroupMoveResponse;
 import com.reviewflow.model.dto.response.AssignmentGroupResponse;
+import com.reviewflow.exception.ValidationException;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.AssignmentGroupService;
 import com.reviewflow.service.HashidService;
@@ -27,7 +29,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
 import java.util.Map;
 
 @RestController
@@ -68,7 +69,9 @@ public class AssignmentGroupController {
     public ResponseEntity<ApiResponse<AssignmentGroupListResponse>> list(
             @PathVariable String courseId,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        AssignmentGroupListResponse response = assignmentGroupService.listByCourse(hashidService.decodeOrThrow(courseId));
+        Long decodedCourseId = hashidService.decodeOrThrow(courseId);
+        assignmentGroupService.verifyCanView(decodedCourseId, user.getUserId());
+        AssignmentGroupListResponse response = assignmentGroupService.listByCourse(decodedCourseId);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
@@ -110,11 +113,15 @@ public class AssignmentGroupController {
     @PatchMapping("/assignments/{id}/group")
     public ResponseEntity<ApiResponse<AssignmentGroupMoveResponse>> moveAssignment(
             @PathVariable String id,
-            @RequestBody Map<String, String> body,
+            @RequestBody MoveAssignmentGroupRequest request,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
+        if (request == null || request.getGroupId() == null || request.getGroupId().isBlank()) {
+            throw new ValidationException("groupId is required", "INVALID_REQUEST");
+        }
+
         AssignmentGroupMoveResponse response = assignmentGroupService.moveAssignment(
                 hashidService.decodeOrThrow(id),
-                hashidService.decodeOrThrow(body.get("groupId")),
+                hashidService.decodeOrThrow(request.getGroupId()),
                 user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(response));
     }

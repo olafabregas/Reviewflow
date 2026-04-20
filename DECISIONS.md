@@ -415,6 +415,8 @@ See [ARCHITECTURE.md — Role Hierarchy Diagram](./ARCHITECTURE.md#role-hierarch
 - Runbook: documents exact steps to add a SYSTEM_ADMIN via migration
 - Count enforcement: application rejects creation via API if limit is exceeded (fail-closed)
 
+**Verification references:** enforcement and role boundaries are reflected in [REVIEWFLOW_MASTER_SUMMARY (1).md](<./Features/REVIEWFLOW_MASTER_SUMMARY%20(1).md#6-roles--permissions>) and the active test-spec baseline notes in [TEST_COVERAGE_SUMMARY.md](./controller_specs/TEST_COVERAGE_SUMMARY.md).
+
 ---
 
 ## 18. Cache eviction throttle with 60-second window

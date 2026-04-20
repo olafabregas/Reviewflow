@@ -22,18 +22,19 @@
 
 ## 2. Role Permission Matrix
 
-| Endpoint                                   | STUDENT           | INSTRUCTOR      | ADMIN | SYSTEM_ADMIN |
-| ------------------------------------------ | ----------------- | --------------- | ----- | ------------ |
-| POST /courses/{courseId}/assignment-groups | ❌                | ✅ (own course) | ✅    | ✅           |
-| GET /courses/{courseId}/assignment-groups  | ✅ (course scope) | ✅              | ✅    | ✅           |
-| PUT /assignment-groups/{id}                | ❌                | ✅ (own course) | ✅    | ✅           |
-| DELETE /assignment-groups/{id}             | ❌                | ✅ (own course) | ✅    | ✅           |
-| PATCH /assignments/{id}/group              | ❌                | ✅ (own course) | ✅    | ✅           |
+| Endpoint                                          | STUDENT                 | INSTRUCTOR      | ADMIN | SYSTEM_ADMIN |
+| ------------------------------------------------- | ----------------------- | --------------- | ----- | ------------ |
+| POST /api/v1/courses/{courseId}/assignment-groups | ❌                      | ✅ (own course) | ✅    | ✅           |
+| GET /api/v1/courses/{courseId}/assignment-groups  | ✅ (enrolled in course) | ✅              | ✅    | ✅           |
+| PUT /api/v1/assignment-groups/{id}                | ❌                      | ✅ (own course) | ✅    | ✅           |
+| DELETE /api/v1/assignment-groups/{id}             | ❌                      | ✅ (own course) | ✅    | ✅           |
+| PATCH /api/v1/assignments/{id}/group              | ❌                      | ✅ (own course) | ✅    | ✅           |
 
 Notes:
 
 - SERVICE layer enforces ownership for instructor paths.
 - ADMIN and SYSTEM_ADMIN bypass instructor-course ownership check by role.
+- GET contract requires course enrollment for non-elevated users.
 
 ---
 
@@ -163,7 +164,7 @@ Notes:
 
 ## 4. Endpoint Test Cases
 
-### 4.1 POST /courses/{courseId}/assignment-groups
+### 4.1 POST /api/v1/courses/{courseId}/assignment-groups
 
 1. ✅ Valid instructor payload returns 201.
 2. ✅ ADMIN can create group for target course.
@@ -180,22 +181,24 @@ Notes:
 13. ✅ Audit log record exists after success.
 14. ✅ Group cache is evicted after success.
 
-### 4.2 GET /courses/{courseId}/assignment-groups
+### 4.2 GET /api/v1/courses/{courseId}/assignment-groups
 
 1. ✅ Instructor receives 200 with group list.
-2. ✅ Admin receives 200 with group list.
-3. ✅ System admin receives 200 with group list.
-4. ✅ Invalid course hash returns 400 `INVALID_ID`.
-5. ✅ Nonexistent course returns 404 `NOT_FOUND`.
-6. ✅ Empty custom groups still return `Uncategorized`.
-7. ✅ Group order follows `displayOrder`.
-8. ✅ Assignment summaries are present when assignments exist.
-9. ✅ `totalConfiguredWeight` field present.
-10. ✅ `weightWarning` null when total exactly 100.
-11. ✅ `weightWarning` populated when total != 100.
-12. ✅ Repeated request benefits from cache path behavior.
+2. ✅ Enrolled student receives 200 with group list.
+3. ✅ Admin receives 200 with group list.
+4. ✅ System admin receives 200 with group list.
+5. ✅ Non-enrolled student returns 403 `FORBIDDEN`.
+6. ✅ Invalid course hash returns 400 `INVALID_ID`.
+7. ✅ Nonexistent course returns 404 `NOT_FOUND`.
+8. ✅ Empty custom groups still return `Uncategorized`.
+9. ✅ Group order follows `displayOrder`.
+10. ✅ Assignment summaries are present when assignments exist.
+11. ✅ `totalConfiguredWeight` field present.
+12. ✅ `weightWarning` null when total exactly 100.
+13. ✅ `weightWarning` populated when total != 100.
+14. ✅ Repeated request benefits from cache path behavior.
 
-### 4.3 PUT /assignment-groups/{id}
+### 4.3 PUT /api/v1/assignment-groups/{id}
 
 1. ✅ Valid update returns 200.
 2. ✅ ADMIN update returns 200.
@@ -210,7 +213,7 @@ Notes:
 11. ✅ Name change triggers assignment-detail cache eviction path.
 12. ✅ Audit event `ASSIGNMENT_GROUP_UPDATED` captured.
 
-### 4.4 DELETE /assignment-groups/{id}
+### 4.4 DELETE /api/v1/assignment-groups/{id}
 
 1. ✅ Delete empty custom group returns 200.
 2. ✅ Delete uncategorized group returns 409 `CANNOT_DELETE_UNCATEGORIZED`.
@@ -221,7 +224,7 @@ Notes:
 7. ✅ Audit event logged only on successful delete.
 8. ✅ Cache eviction occurs on successful delete.
 
-### 4.5 PATCH /assignments/{id}/group
+### 4.5 PATCH /api/v1/assignments/{id}/group
 
 1. ✅ Valid move returns 200.
 2. ✅ ADMIN valid move returns 200.
@@ -229,7 +232,7 @@ Notes:
 4. ✅ STUDENT move returns 403.
 5. ✅ Invalid assignment hash returns 400 `INVALID_ID`.
 6. ✅ Invalid group hash returns 400 `INVALID_ID`.
-7. ✅ Missing `groupId` body key returns 400 `INVALID_REQUEST` or decode failure path.
+7. ✅ Missing `groupId` body key returns 400 `INVALID_REQUEST`.
 8. ✅ Assignment not found returns 404 `NOT_FOUND`.
 9. ✅ Group not found returns 404 `NOT_FOUND`.
 10. ✅ Cross-course target group returns 400 `GROUP_NOT_IN_COURSE`.
@@ -316,3 +319,8 @@ Notes:
 - `src/main/java/com/reviewflow/exception/GlobalExceptionHandler.java`
 - `src/main/resources/db/migration/V21__create_assignment_groups.sql`
 - `src/main/java/com/reviewflow/config/CacheConfig.java`
+
+## 11. Runtime Alignment Follow-up
+
+Current docs reflect the intended stable contract.
+Runtime alignment for GET enrollment enforcement and typed move DTO validation is tracked in `PRD_16_assignment_groups_runtime_contract_alignment.md`.

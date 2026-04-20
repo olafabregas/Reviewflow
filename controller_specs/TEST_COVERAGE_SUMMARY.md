@@ -4,8 +4,8 @@
 
 **Status**: ✅ COMPLETE  
 **Date**: 2024  
-**Coverage**: 12/12 Modules (100%)  
-**Current Backend Baseline**: 98 route handlers (93 historical campaign + 5 Assignment Groups routes)  
+**Coverage**: 12/12 Original Modules (100%) + Assignment Groups Expansion  
+**Current Backend Baseline**: 98 route handlers across 13 documented module specs (12 original + Assignment Groups)  
 **Total Test Cases**: 500+ comprehensive scenarios  
 **Architecture Fixes Applied**: 2 (RoleHierarchy + INSTRUCTOR course permissions)
 
@@ -119,12 +119,12 @@ SYSTEM_ADMIN > ADMIN > INSTRUCTOR > STUDENT
 **Impact**: All @PreAuthorize annotations now inherit roles automatically  
 **Status**: Compiled successfully ✅
 
-### Fix 2: INSTRUCTOR Course Creation Permission ✅
+### Fix 2: ADMIN/System Admin Course Creation Permission ✅
 
 **File**: CourseController.java  
-**Issue**: INSTRUCTORs blocked from creating courses (ADMIN only)  
-**Solution**: Changed @PreAuthorize to "hasRole('INSTRUCTOR')"  
-**Impact**: INSTRUCTORs can now create courses; ADMIN/SYSTEM_ADMIN auto-included via hierarchy  
+**Issue**: Role boundary drift in docs versus controller authorization  
+**Solution**: Confirmed `CourseController#create` is restricted to `hasAnyRole('ADMIN','SYSTEM_ADMIN')`  
+**Impact**: Course lifecycle ownership remains administrative; instructor scope remains teaching operations  
 **Status**: Compiled successfully, documented in CourseController ✅
 
 ---
@@ -335,7 +335,8 @@ SELECT * FROM audit_log ORDER BY created_at DESC LIMIT 10;
 ## Success Metrics
 
 ✅ All 12 modules documented  
-✅ 93/93 endpoints covered (100%)  
+✅ 93/93 historical campaign endpoints covered (100%)  
+✅ Current baseline acknowledged: 98 implemented routes (includes 5 Assignment Groups routes)  
 ✅ 500+ test cases specified  
 ✅ All real test users identified  
 ✅ Architecture fixes compiled successfully  

@@ -1,8 +1,16 @@
 # DocsController & OpenAPI Endpoints Verification Report
 
-**Date:** 2026-04-04  
-**Status:** ✅ VERIFIED - All endpoints and configurations are correct  
-**Tested By:** Automated verification
+**Date:** 2026-04-19  
+**Status:** ✅ VERIFIED - Documentation endpoints and OpenAPI grouping are correct  
+**Tested By:** Automated verification + regression-aligned documentation sync
+
+---
+
+## 2026-04-19 Update Notes
+
+- Re-validated docs endpoint inventory and OpenAPI grouping assumptions during backend verification cycle.
+- Aligned cross-document baseline references with current backend state (98 routes, migrations through V24).
+- Recorded that historical 93-endpoint campaign metrics remain preserved as historical evidence only.
 
 ---
 

@@ -11,6 +11,7 @@ import com.reviewflow.model.entity.User;
 import com.reviewflow.model.entity.UserRole;
 import com.reviewflow.repository.AssignmentGroupRepository;
 import com.reviewflow.repository.AssignmentRepository;
+import com.reviewflow.repository.CourseEnrollmentRepository;
 import com.reviewflow.repository.CourseInstructorRepository;
 import com.reviewflow.repository.CourseRepository;
 import com.reviewflow.repository.UserRepository;
@@ -21,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -45,6 +47,8 @@ class AssignmentGroupServiceTest {
     @Mock
     private CourseRepository courseRepository;
     @Mock
+    private CourseEnrollmentRepository courseEnrollmentRepository;
+    @Mock
     private CourseInstructorRepository courseInstructorRepository;
     @Mock
     private UserRepository userRepository;
@@ -60,6 +64,8 @@ class AssignmentGroupServiceTest {
     private Cache assignmentCache;
     @Mock
     private Cache gradeOverviewCache;
+    @Mock
+    private GradeCalculationService gradeCalculationService;
 
     @InjectMocks
     private AssignmentGroupService assignmentGroupService;
@@ -192,5 +198,39 @@ class AssignmentGroupServiceTest {
 
         assertEquals(new BigDecimal("100.00"), response.getTotalConfiguredWeight());
         assertNull(response.getWeightWarning());
+    }
+
+    @Test
+    void verifyCanView_enrolledStudent_allowsAccess() {
+        Long courseId = 10L;
+        Long actorId = 88L;
+
+        Course course = Course.builder().id(courseId).build();
+        User actor = User.builder().id(actorId).role(UserRole.STUDENT).build();
+
+        when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
+        when(userRepository.findById(actorId)).thenReturn(Optional.of(actor));
+        when(courseInstructorRepository.existsByCourse_IdAndUser_Id(courseId, actorId)).thenReturn(false);
+        when(courseEnrollmentRepository.existsByCourse_IdAndUser_Id(courseId, actorId)).thenReturn(true);
+
+        assignmentGroupService.verifyCanView(courseId, actorId);
+    }
+
+    @Test
+    void verifyCanView_nonEnrolledStudent_throwsForbidden() {
+        Long courseId = 10L;
+        Long actorId = 99L;
+
+        Course course = Course.builder().id(courseId).build();
+        User actor = User.builder().id(actorId).role(UserRole.STUDENT).build();
+
+        when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
+        when(userRepository.findById(actorId)).thenReturn(Optional.of(actor));
+        when(courseInstructorRepository.existsByCourse_IdAndUser_Id(courseId, actorId)).thenReturn(false);
+        when(courseEnrollmentRepository.existsByCourse_IdAndUser_Id(courseId, actorId)).thenReturn(false);
+
+        AccessDeniedException thrown = assertThrows(AccessDeniedException.class,
+                () -> assignmentGroupService.verifyCanView(courseId, actorId));
+        assertEquals("Not authorized to view assignment groups for this course", thrown.getMessage());
     }
 }

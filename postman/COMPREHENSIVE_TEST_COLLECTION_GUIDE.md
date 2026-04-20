@@ -489,17 +489,17 @@ newman run ReviewFlow_Comprehensive_v2.json \
 
 ## Summary
 
-| Aspect          | Details                                                      |
-| --------------- | ------------------------------------------------------------ |
-| **Tests**       | 524 comprehensive (Happy + Error + Edge + Security)          |
-| **Coverage**    | All 93 endpoints across 15 modules                           |
-| **Execution**   | Sequential DAG, 15-item strict dependencies                  |
-| **Data Scale**  | 41 users, 12 courses, 50 teams (seeded) + 1000+ dynamic      |
-| **Performance** | SLA baselines tracked (auth <300ms, bulk <3-10sec)           |
-| **Atomicity**   | Item 15 CRITICAL - runs always, fails if seed data corrupted |
-| **Modes**       | Postman UI (manual) + Newman CLI (automated)                 |
-| **Time**        | ~19 hours sequential (staggered across session)              |
-| **Status**      | ✅ Production-ready, fully documented                        |
+| Aspect          | Details                                                                 |
+| --------------- | ----------------------------------------------------------------------- |
+| **Tests**       | 524 comprehensive (Happy + Error + Edge + Security)                     |
+| **Coverage**    | 93 historical campaign endpoints; current backend baseline is 98 routes |
+| **Execution**   | Sequential DAG, 15-item strict dependencies                             |
+| **Data Scale**  | 41 users, 12 courses, 50 teams (seeded) + 1000+ dynamic                 |
+| **Performance** | SLA baselines tracked (auth <300ms, bulk <3-10sec)                      |
+| **Atomicity**   | Item 15 CRITICAL - runs always, fails if seed data corrupted            |
+| **Modes**       | Postman UI (manual) + Newman CLI (automated)                            |
+| **Time**        | ~19 hours sequential (staggered across session)                         |
+| **Status**      | ✅ Production-ready, fully documented                                   |
 
 ---
 

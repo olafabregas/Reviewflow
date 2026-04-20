@@ -2,7 +2,7 @@
 
 > A university project submission and evaluation platform built for real academic workflows.
 
-**Status:** Backend core complete (including PRD-10) · Frontend not started · Deployment pending
+**Status:** Backend core complete through PRD-13 (PRD-14 planned) · Frontend not started · Deployment pending
 
 **Live demo:** Coming soon
 
@@ -21,7 +21,7 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
 | Layer            | Technology                       | Notes                                       |
 | ---------------- | -------------------------------- | ------------------------------------------- |
 | Backend          | Spring Boot 4, Java 21           |                                             |
-| Database         | MySQL 8                          | 14+ tables, Flyway migrations V1-V21        |
+| Database         | MySQL 8                          | Flyway migrations V1-V24                    |
 | Auth             | JWT in HTTP-only cookies         | Refresh rotation, token fingerprinting      |
 | File storage     | AWS S3                           | Pre-signed URLs                             |
 | Real-time        | WebSocket — STOMP over SockJS    |                                             |
@@ -73,7 +73,7 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
         ↓
 [Security Layer — JWT Filter · Rate Limiter · Token Fingerprinting]
         ↓
-[REST API Layer (Spring Boot · 98 route handlers · 15+ modules)]
+[REST API Layer (Spring Boot · 98 route handlers · 16 controller modules)]
         ↓
 [Service Layer]
   ├── CourseService          ├── SubmissionService
@@ -82,7 +82,7 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
   ├── AdminStatsService      └── AuthService
         ↓
 [Infrastructure Layer]
-        ├── MySQL 8 (14+ tables · Flyway migrations V1-V21)
+        ├── MySQL 8 (Flyway migrations V1-V24)
         ├── AWS S3 (pre-signed URLs)
         ├── Caffeine Cache (Redis-ready · 5 configured caches)
         └── WebSocket (STOMP over SockJS)
@@ -90,6 +90,7 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
 
 > System Flows with diagrams and summaries: [ARCHITECTURE.md](./ARCHITECTURE.md)
 > Design decisions and tradeoff reasoning: [DECISIONS.md](./DECISIONS.md)
+> Documentation verification evidence: [DOCS_VERIFICATION_REPORT.md](./DOCS_VERIFICATION_REPORT.md)
 
 ---
 
@@ -103,11 +104,16 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
 | Courses           | CRUD, enrollment, student roster                  |
 | Assignments       | CRUD, rubric management, global feed              |
 | Assignment Groups | Create/list/update/delete groups, move assignment |
+| Modules           | Create/list/update/delete/reorder, assign module  |
 | Teams             | Create, invite, respond, lock, update             |
 | Submissions       | Upload, version history, download, student view   |
 | Evaluations       | Create, score, publish, draft management          |
+| Instructor Scores | Draft/publish/reopen, CSV dry-run + commit        |
+| Grade Overview    | Student overview and roster analytics             |
 | PDF               | Generate and download evaluation reports          |
 | Notifications     | List, mark read, unread count, delete             |
+| Announcements     | Course and platform announcements                 |
+| Extensions        | Request, approve/deny assignment extensions       |
 | Admin             | User management, stats, audit log                 |
 
 ---

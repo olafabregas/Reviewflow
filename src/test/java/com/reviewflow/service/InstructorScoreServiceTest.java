@@ -20,8 +20,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -53,9 +51,7 @@ class InstructorScoreServiceTest {
     @Mock
     private HashidService hashidService;
     @Mock
-    private CacheManager cacheManager;
-    @Mock
-    private Cache gradeOverviewCache;
+    private GradeCalculationService gradeCalculationService;
 
     @InjectMocks
     private InstructorScoreService service;
@@ -136,13 +132,12 @@ class InstructorScoreServiceTest {
         when(instructorScoreRepository.findById(30L)).thenReturn(Optional.of(draft));
         when(userRepository.findById(77L)).thenReturn(Optional.of(User.builder().id(77L).role(UserRole.SYSTEM_ADMIN).build()));
         when(instructorScoreRepository.save(any(InstructorScore.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(cacheManager.getCache("gradeOverview")).thenReturn(gradeOverviewCache);
         when(hashidService.encode(30L)).thenReturn("iscHash");
         when(hashidService.encode(20L)).thenReturn("asgHash");
 
         InstructorScoreResponse response = service.publish(30L, 77L);
 
         assertEquals(true, response.getIsPublished());
-        verify(gradeOverviewCache).clear();
+        verify(gradeCalculationService).evictCourseGradeCaches(10L);
     }
 }

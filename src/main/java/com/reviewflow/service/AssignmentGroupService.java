@@ -17,6 +17,7 @@ import com.reviewflow.model.entity.User;
 import com.reviewflow.model.entity.UserRole;
 import com.reviewflow.repository.AssignmentGroupRepository;
 import com.reviewflow.repository.AssignmentRepository;
+import com.reviewflow.repository.CourseEnrollmentRepository;
 import com.reviewflow.repository.CourseInstructorRepository;
 import com.reviewflow.repository.CourseRepository;
 import com.reviewflow.repository.UserRepository;
@@ -42,6 +43,7 @@ public class AssignmentGroupService {
     private final AssignmentGroupRepository assignmentGroupRepository;
     private final AssignmentRepository assignmentRepository;
     private final CourseRepository courseRepository;
+    private final CourseEnrollmentRepository courseEnrollmentRepository;
     private final CourseInstructorRepository courseInstructorRepository;
     private final UserRepository userRepository;
     private final AuditService auditService;
@@ -140,6 +142,24 @@ public class AssignmentGroupService {
                 .totalConfiguredWeight(totalConfiguredWeight)
                 .weightWarning(weightWarning)
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public void verifyCanView(Long courseId, Long actorId) {
+        getCourse(courseId);
+        User actor = getActor(actorId);
+
+        if (actor.getRole() == UserRole.ADMIN || actor.getRole() == UserRole.SYSTEM_ADMIN) {
+            return;
+        }
+        if (courseInstructorRepository.existsByCourse_IdAndUser_Id(courseId, actorId)) {
+            return;
+        }
+        if (courseEnrollmentRepository.existsByCourse_IdAndUser_Id(courseId, actorId)) {
+            return;
+        }
+
+        throw new AccessDeniedException("Not authorized to view assignment groups for this course");
     }
 
     @Transactional

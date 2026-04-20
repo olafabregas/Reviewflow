@@ -358,7 +358,7 @@ See `QUICK_START.md` for:
 
 🎉 **ReviewFlow Comprehensive Test Suite is COMPLETE and PRODUCTION-READY**
 
-- ✅ 524 comprehensive tests covering all 93 endpoints
+- ✅ 524 comprehensive tests covering the 93-endpoint historical campaign (current backend baseline: 98 routes)
 - ✅ Seeded data (41 users, 12 courses) + dynamic creation + bulk operations
 - ✅ Sequential execution with cleanup atomicity guarantee
 - ✅ Performance baseline tracking

@@ -970,28 +970,7 @@ References: [PRD-09 System Admin Real-Time Metrics](../Features/PRD9-SystemAdmin
 
 ## 18. Data Model
 
-14 tables, fully normalized. All schema changes managed through Flyway versioned migrations — `ddl-auto` is never used.
-
-**Core entities:**
-
-| Entity               | Notes                                                                  |
-| -------------------- | ---------------------------------------------------------------------- |
-| `users`              | Roles: STUDENT, INSTRUCTOR, ADMIN. Soft delete via `is_active`         |
-| `courses`            | Created by instructors, archived not deleted                           |
-| `course_enrollments` | Many-to-many: students ↔ courses                                       |
-| `course_instructors` | Many-to-many: instructors ↔ courses                                    |
-| `assignments`        | Belongs to a course, has publish flag and lock deadline                |
-| `rubric_criteria`    | Per-assignment scoring criteria with `max_score` and `display_order`   |
-| `teams`              | Per-assignment, `is_locked` flag prevents membership changes           |
-| `team_members`       | Status lifecycle: `PENDING → ACCEPTED \| DECLINED`                     |
-| `submissions`        | Versioned per team + assignment — no overwrites                        |
-| `evaluations`        | Per submission, `is_draft` gate controls student visibility            |
-| `rubric_scores`      | Line-item scores per criterion per evaluation                          |
-| `notifications`      | Per user, `related_entity_type` + `related_entity_id` for deep-linking |
-| `refresh_tokens`     | Hashed, single-use, with `is_revoked` flag                             |
-| `audit_log`          | Append-only, actor email + IP + action + metadata                      |
-
-14 tables, fully normalized. All schema changes managed through Flyway versioned migrations — `ddl-auto` is never used.
+Current migrations are V1-V24. All schema changes are managed through Flyway versioned migrations and `ddl-auto` is never used.
 
 **Core entities:**
 
@@ -1001,7 +980,7 @@ References: [PRD-09 System Admin Real-Time Metrics](../Features/PRD9-SystemAdmin
 | `courses`                      | —                                                                                                                | Created by instructors, archived not deleted                                      |
 | `course_enrollments`           | —                                                                                                                | Many-to-many: students ↔ courses                                                  |
 | `course_instructors`           | —                                                                                                                | Many-to-many: instructors ↔ courses                                               |
-| `assignments`                  | `submission_type` (ENUM: INDIVIDUAL\|TEAM)                                                                       | Belongs to course, has publish flag, lock deadline, and immutable submission_type |
+| `assignments`                  | `submission_type` (ENUM: INDIVIDUAL\|TEAM\|INSTRUCTOR_GRADED), `max_score` (nullable)                            | Belongs to course, has publish flag, lock deadline, and immutable submission_type |
 | `rubric_criteria`              | —                                                                                                                | Per-assignment scoring criteria with `max_score` and `display_order`              |
 | `teams`                        | `is_locked` (BOOLEAN)                                                                                            | Per-assignment, locked prevents membership changes                                |
 | `team_members`                 | —                                                                                                                | Status lifecycle: `PENDING → ACCEPTED \| DECLINED`                                |

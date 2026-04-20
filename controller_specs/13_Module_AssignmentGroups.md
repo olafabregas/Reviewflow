@@ -16,32 +16,33 @@ Assignment Groups provide grade-category organization per course and power weigh
 
 Implemented endpoints:
 
-1. `POST /courses/{courseId}/assignment-groups`
-2. `GET /courses/{courseId}/assignment-groups`
-3. `PUT /assignment-groups/{id}`
-4. `DELETE /assignment-groups/{id}`
-5. `PATCH /assignments/{id}/group`
+1. `POST /api/v1/courses/{courseId}/assignment-groups`
+2. `GET /api/v1/courses/{courseId}/assignment-groups`
+3. `PUT /api/v1/assignment-groups/{id}`
+4. `DELETE /api/v1/assignment-groups/{id}`
+5. `PATCH /api/v1/assignments/{id}/group`
 
 ---
 
 ## Role Permission Matrix
 
-| Endpoint                                   | STUDENT                | INSTRUCTOR     | ADMIN | SYSTEM_ADMIN |
-| ------------------------------------------ | ---------------------- | -------------- | ----- | ------------ |
-| POST /courses/{courseId}/assignment-groups | ✗                      | ✓ (own course) | ✓     | ✓            |
-| GET /courses/{courseId}/assignment-groups  | ✓ (course access path) | ✓              | ✓     | ✓            |
-| PUT /assignment-groups/{id}                | ✗                      | ✓ (own course) | ✓     | ✓            |
-| DELETE /assignment-groups/{id}             | ✗                      | ✓ (own course) | ✓     | ✓            |
-| PATCH /assignments/{id}/group              | ✗                      | ✓ (own course) | ✓     | ✓            |
+| Endpoint                                          | STUDENT                | INSTRUCTOR     | ADMIN | SYSTEM_ADMIN |
+| ------------------------------------------------- | ---------------------- | -------------- | ----- | ------------ |
+| POST /api/v1/courses/{courseId}/assignment-groups | ✗                      | ✓ (own course) | ✓     | ✓            |
+| GET /api/v1/courses/{courseId}/assignment-groups  | ✓ (enrolled in course) | ✓              | ✓     | ✓            |
+| PUT /api/v1/assignment-groups/{id}                | ✗                      | ✓ (own course) | ✓     | ✓            |
+| DELETE /api/v1/assignment-groups/{id}             | ✗                      | ✓ (own course) | ✓     | ✓            |
+| PATCH /api/v1/assignments/{id}/group              | ✗                      | ✓ (own course) | ✓     | ✓            |
 
 Notes:
 
 - Instructor authorization is verified by course-instructor membership.
 - ADMIN and SYSTEM_ADMIN are allowed by role check in service layer.
+- Course member visibility for GET is the documented contract and is enforced in follow-up runtime alignment work.
 
 ---
 
-## 13.1 POST /courses/{courseId}/assignment-groups
+## 13.1 POST /api/v1/courses/{courseId}/assignment-groups
 
 ### Must Have
 
@@ -76,12 +77,13 @@ Notes:
 
 ---
 
-## 13.2 GET /courses/{courseId}/assignment-groups
+## 13.2 GET /api/v1/courses/{courseId}/assignment-groups
 
 ### Must Have
 
 - [ ] Endpoint exists and accepts `GET`.
 - [ ] Course id is decoded via hashid decoder.
+- [ ] Access is limited to enrolled course users, ADMIN, and SYSTEM_ADMIN.
 - [ ] Returns groups ordered by `displayOrder` ascending.
 - [ ] Returns group list with:
   - id, name, weight, dropLowestN, displayOrder
@@ -94,6 +96,7 @@ Notes:
 
 - [ ] `200 OK` success envelope with list payload.
 - [ ] `400 Bad Request` on invalid hashid.
+- [ ] `403 Forbidden` for authenticated users without course enrollment and without elevated role.
 - [ ] `404 Not Found` when course does not exist.
 
 ### Edge Cases
@@ -104,7 +107,7 @@ Notes:
 
 ---
 
-## 13.3 PUT /assignment-groups/{id}
+## 13.3 PUT /api/v1/assignment-groups/{id}
 
 ### Must Have
 
@@ -133,7 +136,7 @@ Notes:
 
 ---
 
-## 13.4 DELETE /assignment-groups/{id}
+## 13.4 DELETE /api/v1/assignment-groups/{id}
 
 ### Must Have
 
@@ -161,13 +164,13 @@ Notes:
 
 ---
 
-## 13.5 PATCH /assignments/{id}/group
+## 13.5 PATCH /api/v1/assignments/{id}/group
 
 ### Must Have
 
 - [ ] Endpoint exists and accepts `PATCH`.
 - [ ] Assignment path id and body `groupId` are hashids and decoded.
-- [ ] Request body includes `groupId` key.
+- [ ] Request body uses typed DTO with validated required field `groupId`.
 - [ ] Actor authorization validated against assignment course.
 - [ ] Target group must belong to same course as assignment.
 - [ ] Assignment group relation updated.
@@ -180,7 +183,7 @@ Notes:
 ### Responses
 
 - [ ] `200 OK` with assignment id/new group id/new group name.
-- [ ] `400 Bad Request` for `GROUP_NOT_IN_COURSE`, invalid ids, or invalid request body.
+- [ ] `400 Bad Request` for `GROUP_NOT_IN_COURSE`, invalid ids, and `INVALID_REQUEST` on missing `groupId`.
 - [ ] `403 Forbidden` for unauthorized actor.
 - [ ] `404 Not Found` for missing assignment/group/user.
 
@@ -198,6 +201,7 @@ Notes:
 | `weight` < 0 or > 100                              | `400 INVALID_GROUP_WEIGHT`           |
 | `dropLowestN` < 0                                  | `400 DROP_LOWEST_EXCEEDS_GROUP_SIZE` |
 | `dropLowestN` >= assignment count (when count > 0) | `400 DROP_LOWEST_EXCEEDS_GROUP_SIZE` |
+| Missing `groupId` in move request body             | `400 INVALID_REQUEST`                |
 | Cross-course move target                           | `400 GROUP_NOT_IN_COURSE`            |
 | Delete uncategorized group                         | `409 CANNOT_DELETE_UNCATEGORIZED`    |
 | Delete non-empty group                             | `409 GROUP_NOT_EMPTY`                |
@@ -250,3 +254,8 @@ Additional affected caches:
 - `src/main/java/com/reviewflow/config/CacheConfig.java`
 - `src/main/java/com/reviewflow/exception/GlobalExceptionHandler.java`
 - `src/main/resources/db/migration/V21__create_assignment_groups.sql`
+
+## Runtime Alignment Note
+
+The documented API contract in this file is authoritative for QA and onboarding.
+Any runtime mismatch is handled in follow-up implementation work tracked by `PRD_16_assignment_groups_runtime_contract_alignment.md`.
