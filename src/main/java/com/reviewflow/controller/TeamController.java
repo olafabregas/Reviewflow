@@ -27,7 +27,6 @@ import com.reviewflow.model.dto.request.TeamInviteRequest;
 import com.reviewflow.model.dto.request.TeamRespondRequest;
 import com.reviewflow.model.dto.response.ApiResponse;
 import com.reviewflow.model.dto.response.SubmissionResponse;
-import com.reviewflow.model.dto.response.TeamInviteResponse;
 import com.reviewflow.model.dto.response.TeamResponse;
 import com.reviewflow.model.entity.Assignment;
 import com.reviewflow.model.entity.Submission;
@@ -37,7 +36,7 @@ import com.reviewflow.model.entity.User;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.SubmissionService;
 import com.reviewflow.service.TeamService;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -466,43 +465,7 @@ public class TeamController {
                 .build();
     }
     
-    private TeamInviteResponse toInviteResponse(TeamMember tm) {
-        Team team = tm.getTeam();
-        Assignment assignment = team != null ? team.getAssignment() : null;
-        User invitedBy = tm.getInvitedBy();
-        
-        return TeamInviteResponse.builder()
-                .teamMemberId(hashidService.encode(tm.getId()))
-                .teamId(hashidService.encode(team != null ? team.getId() : null))
-                .teamName(team != null ? team.getName() : null)
-                .assignmentId(hashidService.encode(assignment != null ? assignment.getId() : null))
-                .assignmentTitle(assignment != null ? assignment.getTitle() : null)
-                .courseCode(assignment != null && assignment.getCourse() != null ? assignment.getCourse().getCode() : null)
-                .invitedByName(invitedBy != null ? invitedBy.getFirstName() + " " + invitedBy.getLastName() : null)
-                .createdAt(tm.getJoinedAt())
-                .build();
-    }
-    
     private SubmissionResponse toSubmissionResponse(Submission s) {
-        return SubmissionResponse.builder()
-                .id(hashidService.encode(s.getId()))
-                .submissionType(s.getAssignment() != null ? s.getAssignment().getSubmissionType() : null)
-                .studentId(hashidService.encode(s.getStudent() != null ? s.getStudent().getId() : null))
-                .teamId(hashidService.encode(s.getTeam() != null ? s.getTeam().getId() : null))
-                .teamName(s.getTeam() != null ? s.getTeam().getName() : null)
-                .assignmentId(hashidService.encode(s.getAssignment() != null ? s.getAssignment().getId() : null))
-                .assignmentTitle(s.getAssignment() != null ? s.getAssignment().getTitle() : null)
-                .courseCode(s.getAssignment() != null && s.getAssignment().getCourse() != null
-                        ? s.getAssignment().getCourse().getCode() : null)
-                .versionNumber(s.getVersionNumber())
-                .fileName(s.getFileName())
-                .fileSizeBytes(s.getFileSizeBytes())
-                .isLate(s.getIsLate())
-                .uploadedAt(s.getUploadedAt())
-                .changeNote(s.getChangeNote())
-                .uploadedById(hashidService.encode(s.getUploadedBy() != null ? s.getUploadedBy().getId() : null))
-                .uploadedByName(s.getUploadedBy() != null
-                        ? s.getUploadedBy().getFirstName() + " " + s.getUploadedBy().getLastName() : null)
-                .build();
+        return SubmissionResponse.from(s, hashidService);
     }
 }

@@ -30,8 +30,6 @@ public class MdcFilter extends OncePerRequestFilter {
     private static final String REQUEST_ID = "requestId";
     private static final String ENDPOINT = "endpoint";
     private static final String IP_ADDRESS = "ipAddress";
-    private static final String USER_ID = "userId";
-    private static final String ROLE = "role";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)

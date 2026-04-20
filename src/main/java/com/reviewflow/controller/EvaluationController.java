@@ -37,7 +37,7 @@ import com.reviewflow.model.entity.RubricScore;
 import com.reviewflow.repository.RubricScoreRepository;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.EvaluationService;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

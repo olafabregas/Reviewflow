@@ -1,4 +1,5 @@
 package com.reviewflow.service;
+import com.reviewflow.util.HashidService;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

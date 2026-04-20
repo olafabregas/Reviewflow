@@ -2,10 +2,9 @@ package com.reviewflow.controller;
 
 import com.reviewflow.model.dto.response.ApiResponse;
 import com.reviewflow.model.dto.response.NotificationDto;
-import com.reviewflow.model.dto.response.NotificationResponse;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.NotificationService;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -48,13 +47,12 @@ public class NotificationController {
         )
     })
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<NotificationResponse>>> list(
+    public ResponseEntity<ApiResponse<Page<NotificationDto>>> list(
             @AuthenticationPrincipal ReviewFlowUserDetails user,
             @RequestParam(required = false) Boolean unreadOnly,
             @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
-        Page<NotificationResponse> page = notificationService
-                .getNotifications(user.getUserId(), unreadOnly, pageable)
-                .map(this::toResponse);
+        Page<NotificationDto> page = notificationService
+                .getNotifications(user.getUserId(), unreadOnly, pageable);
         return ResponseEntity.ok(ApiResponse.ok(page));
     }
 
@@ -167,15 +165,4 @@ public class NotificationController {
         return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Notification deleted")));
     }
 
-    private NotificationResponse toResponse(NotificationDto n) {
-        return NotificationResponse.builder()
-                .id(n.getId())
-                .type(n.getType())
-                .title(n.getTitle())
-                .message(n.getMessage())
-                .isRead(n.getIsRead())
-                .actionUrl(n.getActionUrl())
-                .createdAt(n.getCreatedAt())
-                .build();
-    }
 }

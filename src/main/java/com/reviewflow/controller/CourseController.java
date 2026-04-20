@@ -32,7 +32,7 @@ import com.reviewflow.model.dto.response.StudentResponse;
 import com.reviewflow.model.entity.Course;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.CourseService;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;

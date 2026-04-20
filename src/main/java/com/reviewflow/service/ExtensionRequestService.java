@@ -1,4 +1,5 @@
 package com.reviewflow.service;
+import com.reviewflow.util.HashidService;
 
 import com.reviewflow.event.ExtensionDecidedEvent;
 import com.reviewflow.event.ExtensionRequestedEvent;
@@ -132,7 +133,7 @@ public class ExtensionRequestService {
                 saved.getId(),
                 assignmentId,
                 assignment.getTitle(),
-                fullNameOrEmail(actor),
+                actor.getFullNameOrEmail(),
                 requestedDueAt,
                 reason,
                 instructorUserIds
@@ -292,12 +293,5 @@ public class ExtensionRequestService {
                 .filter(Objects::nonNull)
                 .map(User::getId)
                 .toList();
-    }
-
-    private String fullNameOrEmail(User user) {
-        String firstName = user.getFirstName() == null ? "" : user.getFirstName().trim();
-        String lastName = user.getLastName() == null ? "" : user.getLastName().trim();
-        String fullName = (firstName + " " + lastName).trim();
-        return fullName.isBlank() ? user.getEmail() : fullName;
     }
 }

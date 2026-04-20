@@ -9,7 +9,7 @@ import com.reviewflow.exception.TeamNotAllowedException;
 import com.reviewflow.model.entity.User;
 import com.reviewflow.model.entity.UserRole;
 import com.reviewflow.security.ReviewFlowUserDetails;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import com.reviewflow.service.SubmissionService;
 import com.reviewflow.service.TeamService;
 import org.springframework.http.HttpStatus;

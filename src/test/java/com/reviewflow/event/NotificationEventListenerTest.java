@@ -38,7 +38,7 @@ import com.reviewflow.model.enums.NotificationType;
 import com.reviewflow.model.enums.SubmissionType;
 import com.reviewflow.repository.NotificationRepository;
 import com.reviewflow.repository.UserRepository;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 
 @ExtendWith(MockitoExtension.class)
 class NotificationEventListenerTest {

@@ -8,7 +8,7 @@ import com.reviewflow.model.entity.UserRole;
 import com.reviewflow.model.enums.SubmissionType;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.AssignmentService;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

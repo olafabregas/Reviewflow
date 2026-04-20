@@ -1,6 +1,7 @@
 package com.reviewflow.service;
+import com.reviewflow.util.HashidService;
 
-import com.reviewflow.config.CacheConfig;
+import com.reviewflow.util.CacheNames;
 import com.reviewflow.exception.AccessDeniedException;
 import com.reviewflow.exception.NotEnrolledException;
 import com.reviewflow.model.dto.response.ClassRosterDto;
@@ -227,7 +228,7 @@ class GradeCalculationServiceTest {
         Cache gradeOverviewCache = mock(Cache.class);
         Cache classStatisticsCache = mock(Cache.class);
 
-        when(cacheManager.getCache(CacheConfig.CACHE_GRADE_OVERVIEW)).thenReturn(gradeOverviewCache);
+        when(cacheManager.getCache(CacheNames.CACHE_GRADE_OVERVIEW)).thenReturn(gradeOverviewCache);
         when(cacheManager.getCache("classStatistics")).thenReturn(classStatisticsCache);
 
         gradeCalculationService.evictCourseGradeCaches(55L);
