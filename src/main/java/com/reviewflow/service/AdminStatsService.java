@@ -1,6 +1,6 @@
 package com.reviewflow.service;
 
-import com.reviewflow.config.CacheConfig;
+import com.reviewflow.util.CacheNames;
 import com.reviewflow.model.dto.response.AdminStatsDto;
 import com.reviewflow.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +19,7 @@ public class AdminStatsService {
     private final TeamRepository       teamRepository;
     private final SubmissionRepository submissionRepository;
 
-    @Cacheable(value = CacheConfig.CACHE_ADMIN_STATS, key = "'global'")
+    @Cacheable(value = CacheNames.CACHE_ADMIN_STATS, key = "'global'")
     @Transactional(readOnly = true)
     public AdminStatsDto getSystemStats() {
         long totalUsers           = userRepository.count();
@@ -56,7 +56,7 @@ public class AdminStatsService {
 
     // Called by other services after data-changing operations
     // Method body is intentionally empty — @CacheEvict does the work
-    @CacheEvict(value = CacheConfig.CACHE_ADMIN_STATS, key = "'global'")
+    @CacheEvict(value = CacheNames.CACHE_ADMIN_STATS, key = "'global'")
     public void evictStats() {}
 
     private String formatBytes(long bytes) {

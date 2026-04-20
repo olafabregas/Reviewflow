@@ -1,6 +1,7 @@
 package com.reviewflow.service;
+import com.reviewflow.util.HashidService;
 
-import com.reviewflow.config.CacheConfig;
+import com.reviewflow.util.CacheNames;
 import com.reviewflow.exception.AccessDeniedException;
 import com.reviewflow.exception.ResourceNotFoundException;
 import com.reviewflow.model.dto.response.NotificationDto;
@@ -37,7 +38,7 @@ public class NotificationService {
         return notificationRepository.save(n);
     }
 
-    @CacheEvict(value = CacheConfig.CACHE_UNREAD_COUNT, key = "#userId")
+    @CacheEvict(value = CacheNames.CACHE_UNREAD_COUNT, key = "#userId")
     @Transactional
     public void markAsRead(Long id, Long userId) {
         Notification notification = notificationRepository.findById(id)
@@ -52,7 +53,7 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
-    @CacheEvict(value = CacheConfig.CACHE_UNREAD_COUNT, key = "#userId")
+    @CacheEvict(value = CacheNames.CACHE_UNREAD_COUNT, key = "#userId")
     @Transactional
     public int markAllAsRead(Long userId) {
         return notificationRepository.markAllReadByUserId(userId);
@@ -71,7 +72,7 @@ public class NotificationService {
         notificationRepository.deleteById(id);
     }
 
-    @Cacheable(value = CacheConfig.CACHE_UNREAD_COUNT, key = "#userId")
+    @Cacheable(value = CacheNames.CACHE_UNREAD_COUNT, key = "#userId")
     @Transactional(readOnly = true)
     public long getUnreadCount(Long userId) {
         return notificationRepository.countByUserIdAndIsReadFalse(userId);

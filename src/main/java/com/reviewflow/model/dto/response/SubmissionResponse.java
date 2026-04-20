@@ -4,7 +4,7 @@ import java.time.Instant;
 
 import com.reviewflow.model.entity.Submission;
 import com.reviewflow.model.enums.SubmissionType;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 
 import lombok.Builder;
 import lombok.Value;

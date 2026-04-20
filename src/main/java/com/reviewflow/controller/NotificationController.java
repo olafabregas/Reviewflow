@@ -4,7 +4,7 @@ import com.reviewflow.model.dto.response.ApiResponse;
 import com.reviewflow.model.dto.response.NotificationDto;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.NotificationService;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

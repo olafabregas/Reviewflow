@@ -18,7 +18,7 @@ import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.AuthService;
 import com.reviewflow.service.AuthService.LoginResult;
 import com.reviewflow.service.AuthService.RefreshResult;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import com.reviewflow.service.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;

@@ -1,6 +1,6 @@
 package com.reviewflow.event;
 
-import com.reviewflow.config.CacheConfig;
+import com.reviewflow.util.CacheNames;
 import com.reviewflow.event.email.AnnouncementPostedEmailEvent;
 import com.reviewflow.event.email.AssignmentDueSoonEmailEvent;
 import com.reviewflow.event.email.EvaluationPublishedEmailEvent;
@@ -21,7 +21,7 @@ import com.reviewflow.model.enums.SubmissionType;
 import com.reviewflow.repository.CourseEnrollmentRepository;
 import com.reviewflow.repository.NotificationRepository;
 import com.reviewflow.repository.UserRepository;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.CacheManager;
@@ -304,7 +304,7 @@ public class NotificationEventListener {
         notificationRepository.save(notification);
 
         // Evict stale unread count for this user - it just increased by 1
-        var cache = cacheManager.getCache(CacheConfig.CACHE_UNREAD_COUNT);
+        var cache = cacheManager.getCache(CacheNames.CACHE_UNREAD_COUNT);
         if (cache != null) {
             cache.evict(userId);
         }

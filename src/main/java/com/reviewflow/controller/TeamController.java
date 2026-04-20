@@ -36,7 +36,7 @@ import com.reviewflow.model.entity.User;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.SubmissionService;
 import com.reviewflow.service.TeamService;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
