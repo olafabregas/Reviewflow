@@ -132,7 +132,7 @@ public class InstructorScoreService {
                 .map(score -> InstructorScoreListResponse.InstructorScoreItem.builder()
                 .id(hashidService.encode(score.getId()))
                 .studentId(hashidService.encode(score.getStudent() != null ? score.getStudent().getId() : null))
-                .studentName(score.getStudent() != null ? fullName(score.getStudent()) : null)
+                .studentName(score.getStudent() != null ? score.getStudent().getFullNameOrEmail() : null)
                 .teamId(hashidService.encode(score.getTeam() != null ? score.getTeam().getId() : null))
                 .teamName(score.getTeam() != null ? score.getTeam().getName() : null)
                 .score(score.getScore())
@@ -276,13 +276,6 @@ public class InstructorScoreService {
                 .enteredAt(score.getEnteredAt())
                 .publishedAt(score.getPublishedAt())
                 .build();
-    }
-
-    private String fullName(User user) {
-        String first = user.getFirstName() == null ? "" : user.getFirstName();
-        String last = user.getLastName() == null ? "" : user.getLastName();
-        String value = (first + " " + last).trim();
-        return value.isBlank() ? user.getEmail() : value;
     }
 
 }

@@ -6,7 +6,6 @@ import com.reviewflow.model.dto.response.ApiResponse;
 import com.reviewflow.model.dto.response.ExtensionRequestListItemResponse;
 import com.reviewflow.model.dto.response.ExtensionRequestResponse;
 import com.reviewflow.model.entity.ExtensionRequest;
-import com.reviewflow.model.entity.User;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.ExtensionRequestService;
 import com.reviewflow.service.HashidService;
@@ -235,7 +234,7 @@ public class ExtensionRequestController {
     private ExtensionRequestListItemResponse toListItemResponse(ExtensionRequest request) {
         return ExtensionRequestListItemResponse.builder()
                 .id(hashidService.encode(request.getId()))
-                .studentName(request.getStudent() != null ? fullNameOrEmail(request.getStudent()) : null)
+                .studentName(request.getStudent() != null ? request.getStudent().getFullNameOrEmail() : null)
                 .teamName(request.getTeam() != null ? request.getTeam().getName() : null)
                 .reason(request.getReason())
                 .requestedDueAt(request.getRequestedDueAt())
@@ -244,12 +243,5 @@ public class ExtensionRequestController {
                 .respondedAt(request.getRespondedAt())
                 .createdAt(request.getCreatedAt())
                 .build();
-    }
-
-    private String fullNameOrEmail(User user) {
-        String firstName = user.getFirstName() == null ? "" : user.getFirstName().trim();
-        String lastName = user.getLastName() == null ? "" : user.getLastName().trim();
-        String fullName = (firstName + " " + lastName).trim();
-        return fullName.isBlank() ? user.getEmail() : fullName;
     }
 }

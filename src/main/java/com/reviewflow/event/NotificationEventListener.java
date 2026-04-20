@@ -82,7 +82,7 @@ public class NotificationEventListener {
             userRepository.findById(recipientUserId).ifPresent(user
                     -> eventPublisher.publishEvent(new AnnouncementPostedEmailEvent(
                             user.getEmail(),
-                            fullNameOrEmail(user),
+                            user.getFullNameOrEmail(),
                             event.getTitle(),
                             event.getBody(),
                             event.getCreatedByName(),
@@ -108,7 +108,7 @@ public class NotificationEventListener {
         userRepository.findById(event.inviteeUserId()).ifPresent(user
                 -> eventPublisher.publishEvent(new TeamInviteReceivedEmailEvent(
                         user.getEmail(),
-                        fullNameOrEmail(user),
+                        user.getFullNameOrEmail(),
                         event.invitedByFirstName(),
                         event.assignmentTitle(),
                         event.teamName(),
@@ -133,7 +133,7 @@ public class NotificationEventListener {
             userRepository.findById(recipientUserId).ifPresent(user
                     -> eventPublisher.publishEvent(new SubmissionReceivedEmailEvent(
                             user.getEmail(),
-                            fullNameOrEmail(user),
+                            user.getFullNameOrEmail(),
                             event.uploaderName(),
                             event.assignmentTitle(),
                             hashidService.encode(event.submissionId()),
@@ -159,7 +159,7 @@ public class NotificationEventListener {
             userRepository.findById(event.studentId()).ifPresent(user
                     -> eventPublisher.publishEvent(new EvaluationPublishedEmailEvent(
                             user.getEmail(),
-                            fullNameOrEmail(user),
+                            user.getFullNameOrEmail(),
                             event.assignmentTitle(),
                             "N/A",
                             event.totalScore(),
@@ -179,7 +179,7 @@ public class NotificationEventListener {
             userRepository.findById(recipientUserId).ifPresent(user
                     -> eventPublisher.publishEvent(new EvaluationPublishedEmailEvent(
                             user.getEmail(),
-                            fullNameOrEmail(user),
+                            user.getFullNameOrEmail(),
                             event.assignmentTitle(),
                             "N/A",
                             event.totalScore(),
@@ -221,7 +221,7 @@ public class NotificationEventListener {
             userRepository.findById(recipientUserId).ifPresent(user
                     -> eventPublisher.publishEvent(new AssignmentDueSoonEmailEvent(
                             user.getEmail(),
-                            fullNameOrEmail(user),
+                            user.getFullNameOrEmail(),
                             event.assignmentTitle(),
                             event.dueAt(),
                             event.courseCode(),
@@ -246,7 +246,7 @@ public class NotificationEventListener {
             userRepository.findById(instructorUserId).ifPresent(user
                     -> eventPublisher.publishEvent(new ExtensionRequestReceivedEmailEvent(
                             user.getEmail(),
-                            fullNameOrEmail(user),
+                            user.getFullNameOrEmail(),
                             event.studentName(),
                             event.assignmentTitle(),
                             event.requestedDueAt(),
@@ -276,7 +276,7 @@ public class NotificationEventListener {
             userRepository.findById(recipientUserId).ifPresent(user
                     -> eventPublisher.publishEvent(new ExtensionDecisionEmailEvent(
                             user.getEmail(),
-                            fullNameOrEmail(user),
+                            user.getFullNameOrEmail(),
                             event.assignmentTitle(),
                             event.approved(),
                             event.instructorNote(),
@@ -331,13 +331,6 @@ public class NotificationEventListener {
         }
     }
 
-    private String fullNameOrEmail(User user) {
-        String firstName = user.getFirstName() == null ? "" : user.getFirstName().trim();
-        String lastName = user.getLastName() == null ? "" : user.getLastName().trim();
-        String fullName = (firstName + " " + lastName).trim();
-        return fullName.isBlank() ? user.getEmail() : fullName;
-    }
-
     // -- PRD-09: SYSTEM ADMIN EVENTS --------------------------------
     /**
      * PRD-09: Force logout event - notify target user their session was
@@ -390,7 +383,7 @@ public class NotificationEventListener {
                     -> eventPublisher.publishEvent(new TeamUnlockedEmailEvent(
                             this,
                             user.getEmail(),
-                            fullNameOrEmail(user),
+                            user.getFullNameOrEmail(),
                             event.getTeamName(),
                             event.getReason()
                     ))
