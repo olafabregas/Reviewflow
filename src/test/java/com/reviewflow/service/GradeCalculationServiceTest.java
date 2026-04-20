@@ -1,7 +1,10 @@
 package com.reviewflow.service;
 
 import com.reviewflow.config.CacheConfig;
+import com.reviewflow.exception.AccessDeniedException;
+import com.reviewflow.exception.NotEnrolledException;
 import com.reviewflow.model.dto.response.ClassRosterDto;
+import com.reviewflow.model.dto.response.ClassStatsDto;
 import com.reviewflow.model.dto.response.GradeOverviewDto;
 import com.reviewflow.model.entity.Assignment;
 import com.reviewflow.model.entity.AssignmentGroup;
@@ -38,6 +41,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
@@ -45,6 +49,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -229,6 +234,172 @@ class GradeCalculationServiceTest {
 
         verify(gradeOverviewCache).clear();
         verify(classStatisticsCache).evict(55L);
+    }
+
+    @Test
+    void calculateMyOverview_notEnrolled_throwsNotEnrolled() {
+        Long courseId = 33L;
+        Long actorId = 501L;
+
+        when(courseRepository.existsById(courseId)).thenReturn(true);
+        when(courseEnrollmentRepository.existsByCourse_IdAndUser_Id(courseId, actorId)).thenReturn(false);
+
+        assertThrows(NotEnrolledException.class,
+                () -> gradeCalculationService.calculateMyOverview(courseId, actorId, UserRole.STUDENT));
+    }
+
+    @Test
+    void calculateRoster_unauthorizedRole_throwsAccessDenied() {
+        Long courseId = 44L;
+        Long actorId = 601L;
+
+        when(courseRepository.existsById(courseId)).thenReturn(true);
+
+        assertThrows(AccessDeniedException.class,
+                () -> gradeCalculationService.calculateRoster(courseId, actorId, UserRole.STUDENT, "standing", "asc", false));
+    }
+
+    @Test
+    void calculateRoster_usesCachedRoster_andSortsByName() {
+        Long courseId = 55L;
+        Long actorId = 777L;
+
+        when(courseRepository.existsById(courseId)).thenReturn(true);
+
+        Cache classStatisticsCache = mock(Cache.class);
+        when(cacheManager.getCache("classStatistics")).thenReturn(classStatisticsCache);
+
+        ClassRosterDto.StudentStandingDto zeta = ClassRosterDto.StudentStandingDto.builder()
+                .studentId("h2")
+                .name("Zeta Student")
+                .email("zeta@test.local")
+                .currentStanding(BigDecimal.valueOf(78))
+                .atRisk(false)
+                .build();
+        ClassRosterDto.StudentStandingDto alpha = ClassRosterDto.StudentStandingDto.builder()
+                .studentId("h1")
+                .name("Alpha Student")
+                .email("alpha@test.local")
+                .currentStanding(BigDecimal.valueOf(88))
+                .atRisk(false)
+                .build();
+
+        ClassRosterDto cached = ClassRosterDto.builder()
+                .courseCode("CS600")
+                .classStats(ClassStatsDto.builder().enrolledCount(2).withGrades(2).atRiskCount(0).build())
+                .students(List.of(zeta, alpha))
+                .build();
+
+        when(classStatisticsCache.get(courseId, ClassRosterDto.class)).thenReturn(cached);
+
+        ClassRosterDto roster = gradeCalculationService.calculateRoster(courseId, actorId, UserRole.SYSTEM_ADMIN, "name", "asc", false);
+
+        assertEquals("Alpha Student", roster.getStudents().get(0).getName());
+        assertEquals("Zeta Student", roster.getStudents().get(1).getName());
+        verify(courseEnrollmentRepository, never()).findWithUserByCourseId(courseId);
+    }
+
+    @Test
+    void calculateRoster_filtersAtRisk_andSortsByEmail() {
+        Long courseId = 56L;
+        Long actorId = 778L;
+
+        when(courseRepository.existsById(courseId)).thenReturn(true);
+
+        Cache classStatisticsCache = mock(Cache.class);
+        when(cacheManager.getCache("classStatistics")).thenReturn(classStatisticsCache);
+
+        ClassRosterDto.StudentStandingDto riskA = ClassRosterDto.StudentStandingDto.builder()
+                .studentId("h3")
+                .name("Risk C")
+                .email("c@test.local")
+                .currentStanding(BigDecimal.valueOf(62))
+                .atRisk(true)
+                .build();
+        ClassRosterDto.StudentStandingDto riskB = ClassRosterDto.StudentStandingDto.builder()
+                .studentId("h4")
+                .name("Risk A")
+                .email("a@test.local")
+                .currentStanding(BigDecimal.valueOf(66))
+                .atRisk(true)
+                .build();
+        ClassRosterDto.StudentStandingDto safe = ClassRosterDto.StudentStandingDto.builder()
+                .studentId("h5")
+                .name("Safe")
+                .email("b@test.local")
+                .currentStanding(BigDecimal.valueOf(90))
+                .atRisk(false)
+                .build();
+
+        ClassRosterDto cached = ClassRosterDto.builder()
+                .courseCode("CS601")
+                .classStats(ClassStatsDto.builder().enrolledCount(3).withGrades(3).atRiskCount(2).build())
+                .students(List.of(riskA, safe, riskB))
+                .build();
+
+        when(classStatisticsCache.get(courseId, ClassRosterDto.class)).thenReturn(cached);
+
+        ClassRosterDto roster = gradeCalculationService.calculateRoster(courseId, actorId, UserRole.SYSTEM_ADMIN, "email", "asc", true);
+
+        assertEquals(2, roster.getStudents().size());
+        assertEquals("a@test.local", roster.getStudents().get(0).getEmail());
+        assertEquals("c@test.local", roster.getStudents().get(1).getEmail());
+    }
+
+    @Test
+    void privateHelpers_toLetter_and_median_cover_all_branches() {
+        assertNull(ReflectionTestUtils.invokeMethod(gradeCalculationService, "toLetter", (BigDecimal) null));
+        assertEquals("A+", ReflectionTestUtils.invokeMethod(gradeCalculationService, "toLetter", BigDecimal.valueOf(97)));
+        assertEquals("A", ReflectionTestUtils.invokeMethod(gradeCalculationService, "toLetter", BigDecimal.valueOf(93)));
+        assertEquals("A-", ReflectionTestUtils.invokeMethod(gradeCalculationService, "toLetter", BigDecimal.valueOf(90)));
+        assertEquals("B+", ReflectionTestUtils.invokeMethod(gradeCalculationService, "toLetter", BigDecimal.valueOf(87)));
+        assertEquals("B", ReflectionTestUtils.invokeMethod(gradeCalculationService, "toLetter", BigDecimal.valueOf(83)));
+        assertEquals("B-", ReflectionTestUtils.invokeMethod(gradeCalculationService, "toLetter", BigDecimal.valueOf(80)));
+        assertEquals("C+", ReflectionTestUtils.invokeMethod(gradeCalculationService, "toLetter", BigDecimal.valueOf(77)));
+        assertEquals("C", ReflectionTestUtils.invokeMethod(gradeCalculationService, "toLetter", BigDecimal.valueOf(73)));
+        assertEquals("C-", ReflectionTestUtils.invokeMethod(gradeCalculationService, "toLetter", BigDecimal.valueOf(70)));
+        assertEquals("D+", ReflectionTestUtils.invokeMethod(gradeCalculationService, "toLetter", BigDecimal.valueOf(67)));
+        assertEquals("D", ReflectionTestUtils.invokeMethod(gradeCalculationService, "toLetter", BigDecimal.valueOf(60)));
+        assertEquals("F", ReflectionTestUtils.invokeMethod(gradeCalculationService, "toLetter", BigDecimal.valueOf(59.99)));
+
+        List<BigDecimal> odd = List.of(BigDecimal.valueOf(10), BigDecimal.valueOf(20), BigDecimal.valueOf(30));
+        List<BigDecimal> even = List.of(BigDecimal.valueOf(10), BigDecimal.valueOf(20), BigDecimal.valueOf(30), BigDecimal.valueOf(40));
+
+        assertEquals(BigDecimal.valueOf(20), ReflectionTestUtils.invokeMethod(gradeCalculationService, "median", odd));
+        assertEquals(BigDecimal.valueOf(25).setScale(2), ReflectionTestUtils.invokeMethod(gradeCalculationService, "median", even));
+    }
+
+    @Test
+    void calculateStudentOverview_studentCanViewOwnOverview() {
+        Long courseId = 70L;
+        Long studentId = 900L;
+
+        Course course = Course.builder().id(courseId).code("CS700").name("Systems").build();
+
+        when(courseRepository.existsById(courseId)).thenReturn(true);
+        when(courseEnrollmentRepository.existsByCourse_IdAndUser_Id(courseId, studentId)).thenReturn(true);
+        when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
+        when(assignmentGroupRepository.findDetailedByCourseId(courseId)).thenReturn(List.of());
+        when(teamRepository.findByAssignmentIdsAndMemberUserId(anyList(), eq(studentId))).thenReturn(List.of());
+        when(submissionRepository.findLatestByAssignmentIdsAndStudentId(anyList(), eq(studentId))).thenReturn(List.of());
+        when(instructorScoreRepository.findByAssignment_IdInAndStudent_IdAndIsPublishedTrue(anyList(), eq(studentId))).thenReturn(List.of());
+
+        GradeOverviewDto actual = gradeCalculationService.calculateStudentOverview(courseId, studentId, studentId, UserRole.STUDENT);
+
+        assertEquals("CS700", actual.getCourseCode());
+    }
+
+    @Test
+    void calculateStudentOverview_instructorNotAssigned_throwsAccessDenied() {
+        Long courseId = 71L;
+        Long studentId = 901L;
+        Long instructorId = 902L;
+
+        when(courseRepository.existsById(courseId)).thenReturn(true);
+        when(courseInstructorRepository.existsByCourse_IdAndUser_Id(courseId, instructorId)).thenReturn(false);
+
+        assertThrows(AccessDeniedException.class,
+                () -> gradeCalculationService.calculateStudentOverview(courseId, studentId, instructorId, UserRole.INSTRUCTOR));
     }
 
     private Assignment assignment(Long id, String title, SubmissionType type, int maxScore) {
