@@ -46,7 +46,6 @@ import com.reviewflow.model.entity.Evaluation;
 import com.reviewflow.model.entity.Team;
 import com.reviewflow.model.entity.User;
 import com.reviewflow.model.entity.UserRole;
-import com.reviewflow.repository.AuditRepository;
 import com.reviewflow.repository.EvaluationRepository;
 import com.reviewflow.repository.RefreshTokenRepository;
 import com.reviewflow.repository.TeamRepository;
@@ -60,9 +59,6 @@ public class SystemService {
 
     @Autowired
     private CacheManager cacheManager;
-
-    @Autowired
-    private AuditRepository auditRepository;
 
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
