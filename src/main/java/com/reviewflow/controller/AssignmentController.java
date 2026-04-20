@@ -27,11 +27,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.reviewflow.model.dto.request.CreateAssignmentRequest;
 import com.reviewflow.model.dto.response.ApiResponse;
 import com.reviewflow.model.dto.response.AssignmentResponse;
-import com.reviewflow.model.dto.response.EvaluationResponse;
 import com.reviewflow.model.dto.response.GradebookEntryResponse;
 import com.reviewflow.model.dto.response.SubmissionResponse;
 import com.reviewflow.model.entity.Assignment;
-import com.reviewflow.model.entity.Evaluation;
 import com.reviewflow.model.entity.RubricCriterion;
 import com.reviewflow.model.entity.Submission;
 import com.reviewflow.security.ReviewFlowUserDetails;
@@ -541,33 +539,6 @@ public class AssignmentController {
                 .changeNote(s.getChangeNote())
                 .uploadedById(hashidService.encode(s.getUploadedBy() != null ? s.getUploadedBy().getId() : null))
                 .uploadedByName(s.getUploadedBy() != null ? s.getUploadedBy().getFirstName() + " " + s.getUploadedBy().getLastName() : null)
-                .build();
-    }
-
-    @SuppressWarnings("unused")
-    private EvaluationResponse toEvalResponse(Evaluation e) {
-        List<EvaluationResponse.RubricScoreResponse> scores = e.getRubricScores() != null
-                ? e.getRubricScores().stream().map(rs -> EvaluationResponse.RubricScoreResponse.builder()
-                .id(hashidService.encode(rs.getId()))
-                .criterionId(hashidService.encode(rs.getCriterion() != null ? rs.getCriterion().getId() : null))
-                .criterionName(rs.getCriterion() != null ? rs.getCriterion().getName() : null)
-                .maxScore(rs.getCriterion() != null ? java.math.BigDecimal.valueOf(rs.getCriterion().getMaxScore()) : null)
-                .score(rs.getScore())
-                .comment(rs.getComment())
-                .build()).collect(Collectors.toList())
-                : List.of();
-        return EvaluationResponse.builder()
-                .id(hashidService.encode(e.getId()))
-                .submissionId(hashidService.encode(e.getSubmission() != null ? e.getSubmission().getId() : null))
-                .instructorId(hashidService.encode(e.getInstructor() != null ? e.getInstructor().getId() : null))
-                .instructorName(e.getInstructor() != null ? e.getInstructor().getFirstName() + " " + e.getInstructor().getLastName() : null)
-                .overallComment(e.getOverallComment())
-                .totalScore(e.getTotalScore())
-                .isDraft(e.getIsDraft())
-                .publishedAt(e.getPublishedAt())
-                .createdAt(e.getCreatedAt())
-                .hasPdf(e.getPdfPath() != null && !e.getPdfPath().isBlank())
-                .rubricScores(scores)
                 .build();
     }
 
