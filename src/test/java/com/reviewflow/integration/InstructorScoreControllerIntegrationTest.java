@@ -9,7 +9,7 @@ import com.reviewflow.model.entity.User;
 import com.reviewflow.model.entity.UserRole;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.CsvImportService;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import com.reviewflow.service.InstructorScoreService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

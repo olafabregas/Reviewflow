@@ -1,6 +1,7 @@
 package com.reviewflow.service;
+import com.reviewflow.util.HashidService;
 
-import com.reviewflow.config.CacheConfig;
+import com.reviewflow.util.CacheNames;
 import com.reviewflow.exception.CourseArchivedReadOnlyException;
 import com.reviewflow.exception.ModuleNotFoundException;
 import com.reviewflow.exception.ModuleNotInCourseException;
@@ -72,7 +73,7 @@ public class ModuleService {
     }
 
     @Transactional(readOnly = true)
-    @Cacheable(value = CacheConfig.CACHE_COURSE_MODULES, key = "#courseId")
+    @Cacheable(value = CacheNames.CACHE_COURSE_MODULES, key = "#courseId")
     public CourseModulesResponse listByCourse(Long courseId) {
         getCourse(courseId);
         List<AssignmentModule> modules = assignmentModuleRepository.findByCourse_IdOrderByDisplayOrderAsc(courseId);
@@ -276,14 +277,14 @@ public class ModuleService {
     }
 
     private void evictCourseModulesCache(Long courseId) {
-        Cache cache = cacheManager.getCache(CacheConfig.CACHE_COURSE_MODULES);
+        Cache cache = cacheManager.getCache(CacheNames.CACHE_COURSE_MODULES);
         if (cache != null) {
             cache.evict(courseId);
         }
     }
 
     private void evictAssignmentCache(Long assignmentId) {
-        Cache cache = cacheManager.getCache(CacheConfig.CACHE_ASSIGNMENT);
+        Cache cache = cacheManager.getCache(CacheNames.CACHE_ASSIGNMENT);
         if (cache != null) {
             cache.evict(assignmentId);
         }

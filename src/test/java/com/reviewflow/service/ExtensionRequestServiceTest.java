@@ -1,4 +1,5 @@
 package com.reviewflow.service;
+import com.reviewflow.util.HashidService;
 
 import com.reviewflow.event.ExtensionDecidedEvent;
 import com.reviewflow.event.ExtensionRequestedEvent;

@@ -11,20 +11,22 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.reviewflow.util.CacheNames;
 
 @Configuration
 public class CacheConfig {
 
-    // Use these constants everywhere — never raw strings
-    public static final String CACHE_ADMIN_STATS = "adminStats";
-    public static final String CACHE_UNREAD_COUNT = "unreadCount";
-    public static final String CACHE_USER_COURSES = "userCourses";
-    public static final String CACHE_ASSIGNMENT = "assignmentDetail";
-    public static final String CACHE_ASSIGNMENT_GROUPS = "courseGradeGroups";
-    public static final String CACHE_COURSE_MODULES = "courseModules";
-    public static final String CACHE_GRADE_OVERVIEW = "gradeOverview";
-    public static final String CACHE_CLASS_STATISTICS = "classStatistics";
-    public static final String CACHE_CSV_IMPORTS = "csvImports";
+    // Delegate to CacheNames so service/event code can import CacheNames
+    // without pulling in this @Configuration class and its transitive deps.
+    public static final String CACHE_ADMIN_STATS       = CacheNames.CACHE_ADMIN_STATS;
+    public static final String CACHE_UNREAD_COUNT      = CacheNames.CACHE_UNREAD_COUNT;
+    public static final String CACHE_USER_COURSES      = CacheNames.CACHE_USER_COURSES;
+    public static final String CACHE_ASSIGNMENT        = CacheNames.CACHE_ASSIGNMENT;
+    public static final String CACHE_ASSIGNMENT_GROUPS = CacheNames.CACHE_ASSIGNMENT_GROUPS;
+    public static final String CACHE_COURSE_MODULES    = CacheNames.CACHE_COURSE_MODULES;
+    public static final String CACHE_GRADE_OVERVIEW    = CacheNames.CACHE_GRADE_OVERVIEW;
+    public static final String CACHE_CLASS_STATISTICS  = CacheNames.CACHE_CLASS_STATISTICS;
+    public static final String CACHE_CSV_IMPORTS       = CacheNames.CACHE_CSV_IMPORTS;
 
     @Value("${cache.grade-overview.ttl-seconds:300}")
     private int gradeOverviewTtlSeconds;

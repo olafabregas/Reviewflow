@@ -1,7 +1,7 @@
 package com.reviewflow.model.dto.response;
 
 import com.reviewflow.model.entity.Notification;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import lombok.Builder;
 import lombok.Value;
 import io.swagger.v3.oas.annotations.media.Schema;

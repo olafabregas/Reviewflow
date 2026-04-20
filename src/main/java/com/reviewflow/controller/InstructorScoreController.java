@@ -11,7 +11,7 @@ import com.reviewflow.model.dto.response.InstructorScoreListResponse;
 import com.reviewflow.model.dto.response.InstructorScoreResponse;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.CsvImportService;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import com.reviewflow.service.InstructorScoreService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;

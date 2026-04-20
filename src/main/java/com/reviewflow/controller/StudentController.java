@@ -11,7 +11,7 @@ import com.reviewflow.repository.TeamMemberRepository;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.EvaluationService;
 import com.reviewflow.service.SubmissionService;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

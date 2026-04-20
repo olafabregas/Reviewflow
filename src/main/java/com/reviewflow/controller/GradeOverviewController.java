@@ -5,7 +5,7 @@ import com.reviewflow.model.dto.response.ClassRosterDto;
 import com.reviewflow.model.dto.response.GradeOverviewDto;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.GradeCalculationService;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

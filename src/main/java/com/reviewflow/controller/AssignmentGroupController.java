@@ -9,7 +9,7 @@ import com.reviewflow.model.dto.response.AssignmentGroupResponse;
 import com.reviewflow.exception.ValidationException;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.AssignmentGroupService;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

@@ -7,7 +7,7 @@ import com.reviewflow.model.dto.response.AuthUserResponse;
 import com.reviewflow.model.entity.User;
 import com.reviewflow.model.entity.UserRole;
 import com.reviewflow.security.ReviewFlowUserDetails;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import com.reviewflow.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;

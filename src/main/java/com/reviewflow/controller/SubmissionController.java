@@ -26,7 +26,7 @@ import com.reviewflow.model.dto.response.PreviewResponseDto;
 import com.reviewflow.model.dto.response.SubmissionResponse;
 import com.reviewflow.model.entity.Submission;
 import com.reviewflow.security.ReviewFlowUserDetails;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import com.reviewflow.service.SubmissionService;
 
 import lombok.RequiredArgsConstructor;

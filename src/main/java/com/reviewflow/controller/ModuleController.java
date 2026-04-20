@@ -8,7 +8,7 @@ import com.reviewflow.model.dto.response.AssignmentModuleMoveResponse;
 import com.reviewflow.model.dto.response.AssignmentModuleResponse;
 import com.reviewflow.model.dto.response.CourseModulesResponse;
 import com.reviewflow.security.ReviewFlowUserDetails;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import com.reviewflow.service.ModuleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;

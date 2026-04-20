@@ -1,6 +1,6 @@
 package com.reviewflow.service;
 
-import com.reviewflow.config.CacheConfig;
+import com.reviewflow.util.CacheNames;
 import com.reviewflow.exception.DuplicateResourceException;
 import com.reviewflow.exception.InvalidRoleException;
 import com.reviewflow.exception.ResourceNotFoundException;
@@ -88,7 +88,7 @@ public class CourseService {
                 .orElseThrow(() -> new ResourceNotFoundException("Course", id));
     }
 
-    @Cacheable(value = CacheConfig.CACHE_USER_COURSES, key = "#userId")
+    @Cacheable(value = CacheNames.CACHE_USER_COURSES, key = "#userId")
     @Transactional(readOnly = true)
     public List<Course> listCoursesForUser(Long userId, UserRole role) {
         if (role == UserRole.ADMIN) {
@@ -110,7 +110,7 @@ public class CourseService {
         return courseRepository.findByEnrolledUserIdPaged(userId, archived, pageable);
     }
 
-    @CacheEvict(value = CacheConfig.CACHE_USER_COURSES, allEntries = true)
+    @CacheEvict(value = CacheNames.CACHE_USER_COURSES, allEntries = true)
     @Transactional
     public Course archiveCourse(Long courseId) {
         Course course = getCourseById(courseId);
@@ -121,7 +121,7 @@ public class CourseService {
         return course;
     }
 
-    @CacheEvict(value = CacheConfig.CACHE_USER_COURSES, allEntries = true)
+    @CacheEvict(value = CacheNames.CACHE_USER_COURSES, allEntries = true)
     @Transactional
     public void assignInstructor(Long courseId, Long userId) {
         Course course = getCourseById(courseId);
@@ -146,7 +146,7 @@ public class CourseService {
         courseInstructorRepository.save(ci);
     }
 
-    @CacheEvict(value = CacheConfig.CACHE_USER_COURSES, key = "#userId")
+    @CacheEvict(value = CacheNames.CACHE_USER_COURSES, key = "#userId")
     @Transactional
     public void enrollStudent(Long courseId, Long userId) {
         Course course = getCourseById(courseId);
@@ -234,14 +234,14 @@ public class CourseService {
         return courseRepository.save(course);
     }
 
-    @CacheEvict(value = CacheConfig.CACHE_USER_COURSES, allEntries = true)
+    @CacheEvict(value = CacheNames.CACHE_USER_COURSES, allEntries = true)
     @Transactional
     public void removeInstructor(Long courseId, Long userId) {
         getCourseById(courseId);
         courseInstructorRepository.deleteByCourse_IdAndUser_Id(courseId, userId);
     }
 
-    @CacheEvict(value = CacheConfig.CACHE_USER_COURSES, key = "#userId")
+    @CacheEvict(value = CacheNames.CACHE_USER_COURSES, key = "#userId")
     @Transactional
     public void unenrollStudent(Long courseId, Long userId) {
         getCourseById(courseId);

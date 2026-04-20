@@ -1,6 +1,7 @@
 package com.reviewflow.service;
+import com.reviewflow.util.HashidService;
 
-import com.reviewflow.config.CacheConfig;
+import com.reviewflow.util.CacheNames;
 import com.reviewflow.exception.CannotDeleteUncategorizedException;
 import com.reviewflow.exception.GroupNotEmptyException;
 import com.reviewflow.exception.GroupNotInCourseException;
@@ -128,7 +129,7 @@ public class AssignmentGroupService {
     }
 
     @Transactional(readOnly = true)
-    @Cacheable(value = CacheConfig.CACHE_ASSIGNMENT_GROUPS, key = "#courseId")
+    @Cacheable(value = CacheNames.CACHE_ASSIGNMENT_GROUPS, key = "#courseId")
     public AssignmentGroupListResponse listByCourse(Long courseId) {
         getCourse(courseId);
         List<AssignmentGroup> groups = assignmentGroupRepository.findByCourse_IdOrderByDisplayOrderAsc(courseId);
@@ -287,14 +288,14 @@ public class AssignmentGroupService {
     }
 
     private void evictCourseCaches(Long courseId) {
-        Cache cache = cacheManager.getCache(CacheConfig.CACHE_ASSIGNMENT_GROUPS);
+        Cache cache = cacheManager.getCache(CacheNames.CACHE_ASSIGNMENT_GROUPS);
         if (cache != null) {
             cache.evict(courseId);
         }
     }
 
     private void evictAssignmentCache(Long assignmentId) {
-        Cache cache = cacheManager.getCache(CacheConfig.CACHE_ASSIGNMENT);
+        Cache cache = cacheManager.getCache(CacheNames.CACHE_ASSIGNMENT);
         if (cache != null) {
             cache.evict(assignmentId);
         }
