@@ -1,6 +1,5 @@
 package com.reviewflow.controller;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,13 +24,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Hidden  // Exclude from OpenAPI documentation
 @Tag(name = "Documentation", description = "API documentation endpoints (Redoc)")
 public class DocsController {
-
-    @Value("${server.port:8081}")
-    private int serverPort;
-
-    @Value("${swagger.prod-url:https://api.reviewflow.example.com}")
-    private String prodApiUrl;
-
     /**
      * GET /docs — Serves Redoc documentation for public API
      * Displays only endpoints matching the "public" group (excludes /admin/**, /system/**)

@@ -52,8 +52,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GradeCalculationService {
 
-    private static final String CACHE_CLASS_STATISTICS = "classStatistics";
-
     private final AssignmentGroupRepository assignmentGroupRepository;
     private final CourseRepository courseRepository;
     private final CourseEnrollmentRepository courseEnrollmentRepository;
@@ -431,7 +429,7 @@ public class GradeCalculationService {
     }
 
     private ClassRosterDto getCachedOrBuildRoster(Long courseId) {
-        Cache cache = cacheManager.getCache(CACHE_CLASS_STATISTICS);
+        Cache cache = cacheManager.getCache(CacheConfig.CACHE_CLASS_STATISTICS);
         if (cache == null) {
             return buildRoster(courseId);
         }
@@ -587,7 +585,7 @@ public class GradeCalculationService {
             gradeOverviewCache.clear();
         }
 
-        Cache classStatsCache = cacheManager.getCache(CACHE_CLASS_STATISTICS);
+        Cache classStatsCache = cacheManager.getCache(CacheConfig.CACHE_CLASS_STATISTICS);
         if (classStatsCache != null) {
             classStatsCache.evict(courseId);
         }

@@ -27,7 +27,6 @@ import com.reviewflow.model.dto.request.TeamInviteRequest;
 import com.reviewflow.model.dto.request.TeamRespondRequest;
 import com.reviewflow.model.dto.response.ApiResponse;
 import com.reviewflow.model.dto.response.SubmissionResponse;
-import com.reviewflow.model.dto.response.TeamInviteResponse;
 import com.reviewflow.model.dto.response.TeamResponse;
 import com.reviewflow.model.entity.Assignment;
 import com.reviewflow.model.entity.Submission;
@@ -463,23 +462,6 @@ public class TeamController {
                 .createdById(hashidService.encode(t.getCreatedBy() != null ? t.getCreatedBy().getId() : null))
                 .memberCount(members != null ? members.size() : 0)
                 .members(members)
-                .build();
-    }
-    
-    private TeamInviteResponse toInviteResponse(TeamMember tm) {
-        Team team = tm.getTeam();
-        Assignment assignment = team != null ? team.getAssignment() : null;
-        User invitedBy = tm.getInvitedBy();
-        
-        return TeamInviteResponse.builder()
-                .teamMemberId(hashidService.encode(tm.getId()))
-                .teamId(hashidService.encode(team != null ? team.getId() : null))
-                .teamName(team != null ? team.getName() : null)
-                .assignmentId(hashidService.encode(assignment != null ? assignment.getId() : null))
-                .assignmentTitle(assignment != null ? assignment.getTitle() : null)
-                .courseCode(assignment != null && assignment.getCourse() != null ? assignment.getCourse().getCode() : null)
-                .invitedByName(invitedBy != null ? invitedBy.getFirstName() + " " + invitedBy.getLastName() : null)
-                .createdAt(tm.getJoinedAt())
                 .build();
     }
     
