@@ -6,6 +6,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -232,7 +233,7 @@ public class SystemService {
      * Get whitelisted configuration properties only (no secrets)
      */
     public Map<String, String> getSafeConfig() {
-        Map<String, String> safeConfig = new LinkedHashMap<>();
+        Map<String, String> safeConfig = new HashMap<>();
 
         for (String key : SAFE_CONFIG_KEYS) {
             String value = environment.getProperty(key);
