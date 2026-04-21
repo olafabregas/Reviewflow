@@ -31,8 +31,13 @@ import static com.reviewflow.util.CacheNames.CACHE_ASSIGNMENT_GROUPS;
 import static com.reviewflow.util.CacheNames.CACHE_UNREAD_COUNT;
 import static com.reviewflow.util.CacheNames.CACHE_USER_COURSES;
 import com.reviewflow.dto.AuditLogDto;
+import com.reviewflow.dto.CacheEvictResponse;
 import com.reviewflow.dto.CacheStatsDto;
+import com.reviewflow.dto.ForceLogoutResponse;
+import com.reviewflow.dto.ReopenEvaluationResponse;
+import com.reviewflow.dto.SecurityEventDto;
 import com.reviewflow.dto.SystemMetricsDto;
+import com.reviewflow.dto.UnlockTeamResponse;
 import com.reviewflow.dto.UserDto;
 import com.reviewflow.event.CacheEvictedEvent;
 import com.reviewflow.event.EvaluationReopenedEvent;
@@ -182,7 +187,7 @@ public class SystemService {
      * Evict all entries from a named cache with throttle protection
      */
     @Transactional
-    public Map<String, Object> evictCache(String cacheName, Long actorId) {
+    public CacheEvictResponse evictCache(String cacheName, Long actorId) {
         // Validate cache name
         if (!KNOWN_CACHES.contains(cacheName)) {
             throw new UnknownCacheException(cacheName);
@@ -218,10 +223,10 @@ public class SystemService {
 
         log.info("Cache evicted: {} by system admin ({})", cacheName, actorId);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("cacheName", cacheName);
-        response.put("evictedAt", evictedAt);
-        return response;
+        return CacheEvictResponse.builder()
+                .cacheName(cacheName)
+                .evictedAt(evictedAt)
+                .build();
     }
 
     /**
@@ -243,21 +248,19 @@ public class SystemService {
     /**
      * Get security events from audit log
      */
-    public List<Map<String, Object>> getSecurityEvents(int limit) {
+    public List<SecurityEventDto> getSecurityEvents(int limit) {
         List<AuditLogDto> auditLogs = auditService.getSecurityEvents(limit);
         if (auditLogs == null) {
             return Collections.emptyList();
         }
 
         return auditLogs.stream()
-                .map(auditDto -> {
-                    Map<String, Object> event = new HashMap<>();
-                    event.put("action", auditDto.getAction());
-                    event.put("targetType", auditDto.getEntityType());
-                    event.put("targetId", auditDto.getEntityId());
-                    event.put("createdAt", auditDto.getCreatedAt());
-                    return event;
-                })
+                .map(auditDto -> SecurityEventDto.builder()
+                        .action(auditDto.getAction())
+                        .targetType(auditDto.getEntityType())
+                        .targetId(auditDto.getEntityId())
+                        .createdAt(auditDto.getCreatedAt())
+                        .build())
                 .collect(Collectors.toList());
     }
 
@@ -265,7 +268,7 @@ public class SystemService {
      * Force logout a user by revoking all their tokens
      */
     @Transactional
-    public Map<String, Object> forceLogout(String targetHashId, Long actorId, String reason) {
+    public ForceLogoutResponse forceLogout(String targetHashId, Long actorId, String reason) {
         // Decode target user
         Long targetUserId = hashidService.decode(targetHashId);
 
@@ -302,17 +305,17 @@ public class SystemService {
 
         log.info("User force logged out: {} (tokens revoked: {})", targetUser.getEmail(), revokedTokenCount);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("userId", hashidService.encode(targetUserId));
-        response.put("revokedTokenCount", revokedTokenCount);
-        return response;
+        return ForceLogoutResponse.builder()
+                .userId(hashidService.encode(targetUserId))
+                .revokedTokenCount(revokedTokenCount)
+                .build();
     }
 
     /**
      * Unlock a team (system override)
      */
     @Transactional
-    public Map<String, Object> unlockTeam(String teamHashId, Long actorId, String reason) {
+    public UnlockTeamResponse unlockTeam(String teamHashId, Long actorId, String reason) {
         // Decode team ID
         Long teamId = hashidService.decode(teamHashId);
 
@@ -354,17 +357,17 @@ public class SystemService {
 
         log.info("Team unlocked by system admin: {} (reason: {})", team.getName(), reason);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("teamId", hashidService.encode(teamId));
-        response.put("isLocked", false);
-        return response;
+        return UnlockTeamResponse.builder()
+                .teamId(hashidService.encode(teamId))
+                .isLocked(false)
+                .build();
     }
 
     /**
      * Reopen a published evaluation (system override)
      */
     @Transactional
-    public Map<String, Object> reopenEvaluation(String evaluationHashId, Long actorId, String reason) {
+    public ReopenEvaluationResponse reopenEvaluation(String evaluationHashId, Long actorId, String reason) {
         // Decode evaluation ID
         Long evaluationId = hashidService.decode(evaluationHashId);
 
@@ -408,10 +411,10 @@ public class SystemService {
 
         log.info("Evaluation reopened by system admin: (reason: {})", reason);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("evaluationId", hashidService.encode(evaluationId));
-        response.put("isDraft", true);
-        return response;
+        return ReopenEvaluationResponse.builder()
+                .evaluationId(hashidService.encode(evaluationId))
+                .isDraft(true)
+                .build();
     }
 
     /**

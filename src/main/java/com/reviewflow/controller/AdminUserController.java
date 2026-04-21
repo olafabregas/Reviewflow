@@ -1,7 +1,5 @@
 package com.reviewflow.controller;
 
-import java.util.Map;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -19,8 +17,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.reviewflow.model.dto.request.CreateUserRequest;
+import com.reviewflow.model.dto.request.UpdateUserRequest;
 import com.reviewflow.model.dto.response.ApiResponse;
 import com.reviewflow.model.dto.response.AuthUserResponse;
+import com.reviewflow.model.dto.response.UserActivationResponse;
 import com.reviewflow.model.dto.response.UserDetailResponse;
 import com.reviewflow.model.entity.User;
 import com.reviewflow.model.entity.UserRole;
@@ -184,12 +184,9 @@ public class AdminUserController {
     @PatchMapping("/{id}")
     public ResponseEntity<ApiResponse<AuthUserResponse>> update(
             @PathVariable String id,
-            @RequestBody Map<String, Object> body) {
+            @RequestBody UpdateUserRequest body) {
         Long userId = hashidService.decodeOrThrow(id);
-        String firstName = (String) body.get("firstName");
-        String lastName = (String) body.get("lastName");
-        UserRole role = body.get("role") != null ? UserRole.valueOf(body.get("role").toString()) : null;
-        User user = userService.updateUser(userId, firstName, lastName, role);
+        User user = userService.updateUser(userId, body.getFirstName(), body.getLastName(), body.getRole());
         return ResponseEntity.ok(ApiResponse.ok(toResponse(user)));
     }
 
@@ -202,7 +199,7 @@ public class AdminUserController {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "200",
                 description = "User deactivated successfully",
-                content = @Content(schema = @Schema(implementation = Map.class))
+                content = @Content(schema = @Schema(implementation = UserActivationResponse.class))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "401",
@@ -221,15 +218,14 @@ public class AdminUserController {
         )
     })
     @PatchMapping("/{id}/deactivate")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> deactivate(
+    public ResponseEntity<ApiResponse<UserActivationResponse>> deactivate(
             @PathVariable String id,
             @AuthenticationPrincipal ReviewFlowUserDetails principal) {
         Long userId = hashidService.decodeOrThrow(id);
         userService.deactivateUser(userId, principal.getUserId());
-        return ResponseEntity.ok(ApiResponse.ok(Map.of(
-                "message", "User deactivated",
-                "isActive", false
-        )));
+        return ResponseEntity.ok(ApiResponse.ok(
+                UserActivationResponse.builder().message("User deactivated").isActive(false).build()
+        ));
     }
 
     @Operation(
@@ -241,7 +237,7 @@ public class AdminUserController {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "200",
                 description = "User reactivated successfully",
-                content = @Content(schema = @Schema(implementation = Map.class))
+                content = @Content(schema = @Schema(implementation = UserActivationResponse.class))
         ),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "401",
@@ -260,13 +256,12 @@ public class AdminUserController {
         )
     })
     @PatchMapping("/{id}/reactivate")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> reactivate(@PathVariable String id) {
+    public ResponseEntity<ApiResponse<UserActivationResponse>> reactivate(@PathVariable String id) {
         Long userId = hashidService.decodeOrThrow(id);
         userService.reactivateUser(userId);
-        return ResponseEntity.ok(ApiResponse.ok(Map.of(
-                "message", "User reactivated",
-                "isActive", true
-        )));
+        return ResponseEntity.ok(ApiResponse.ok(
+                UserActivationResponse.builder().message("User reactivated").isActive(true).build()
+        ));
     }
 
     private AuthUserResponse toResponse(User u) {

@@ -21,7 +21,11 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -111,11 +115,11 @@ class SystemServiceTest {
         when(cacheManager.getCache("adminStats")).thenReturn(mockSpringCache);
 
         // Act
-        Map<String, Object> result = systemService.evictCache("adminStats", 1L);
+        CacheEvictResponse result = systemService.evictCache("adminStats", 1L);
 
         // Assert
         assertNotNull(result, "Result should not be null");
-        assertEquals("adminStats", result.get("cacheName"), "Cache name should match");
+        assertEquals("adminStats", result.getCacheName(), "Cache name should match");
         verify(mockSpringCache, times(1)).clear();
         verify(auditService, times(1)).log(eq("CACHE_EVICTED"), eq("CACHE"), isNull(), any(Map.class), isNull());
         verify(eventPublisher, times(1)).publishEvent(any());
@@ -139,14 +143,12 @@ class SystemServiceTest {
         when(cacheManager.getCache("unreadCount")).thenReturn(mockSpringCache);
 
         // Act
-        Map<String, Object> result = systemService.evictCache("unreadCount", 1L);
+        CacheEvictResponse result = systemService.evictCache("unreadCount", 1L);
 
         // Assert - Verify response structure
         assertNotNull(result, "Result should not be null");
-        assertTrue(result.containsKey("cacheName"), "Should have cacheName");
-        assertTrue(result.containsKey("evictedAt"), "Should have evictedAt");
-        assertEquals("unreadCount", result.get("cacheName"));
-        assertNotNull(result.get("evictedAt"));
+        assertEquals("unreadCount", result.getCacheName());
+        assertNotNull(result.getEvictedAt());
     }
 
     // ────────────────────────────────────────────────────────────
@@ -203,13 +205,13 @@ class SystemServiceTest {
         when(auditService.getSecurityEvents(10)).thenReturn(Arrays.asList(auditDto));
 
         // Act
-        List<Map<String, Object>> events = systemService.getSecurityEvents(10);
+        List<SecurityEventDto> events = systemService.getSecurityEvents(10);
 
         // Assert
         assertNotNull(events, "Events should not be null");
         assertEquals(1, events.size(), "Should return 1 event");
-        assertEquals("USER_LOGIN_FAILED", events.get(0).get("action"));
-        assertEquals("USER", events.get(0).get("targetType"));
+        assertEquals("USER_LOGIN_FAILED", events.get(0).getAction());
+        assertEquals("USER", events.get(0).getTargetType());
     }
 
     // ────────────────────────────────────────────────────────────
@@ -235,12 +237,12 @@ class SystemServiceTest {
         when(hashidService.encode(targetUserId)).thenReturn(targetHashId);
 
         // Act
-        Map<String, Object> result = systemService.forceLogout(targetHashId, actorId, "Security risk");
+        ForceLogoutResponse result = systemService.forceLogout(targetHashId, actorId, "Security risk");
 
         // Assert
         assertNotNull(result, "Result should not be null");
-        assertEquals(targetHashId, result.get("userId"));
-        assertEquals(2, result.get("revokedTokenCount"), "Should revoke all tokens");
+        assertEquals(targetHashId, result.getUserId());
+        assertEquals(2, result.getRevokedTokenCount(), "Should revoke all tokens");
         verify(refreshTokenRepository, times(1)).revokeAllForUser(targetUserId);
         verify(auditService, times(1)).log(eq("FORCE_LOGOUT"), eq("USER"), eq(targetUserId), any(Map.class), isNull());
         verify(eventPublisher, times(1)).publishEvent(any());
@@ -291,12 +293,12 @@ class SystemServiceTest {
         when(hashidService.encode(teamId)).thenReturn(teamHashId);
 
         // Act
-        Map<String, Object> result = systemService.unlockTeam(teamHashId, actorId, "Instructor on leave");
+        UnlockTeamResponse result = systemService.unlockTeam(teamHashId, actorId, "Instructor on leave");
 
         // Assert
         assertNotNull(result, "Result should not be null");
-        assertEquals(teamHashId, result.get("teamId"));
-        assertFalse((Boolean) result.get("isLocked"), "Team should be unlocked");
+        assertEquals(teamHashId, result.getTeamId());
+        assertFalse(result.isLocked(), "Team should be unlocked");
         assertFalse(team.getIsLocked(), "Team object should be unlocked");
         verify(teamRepository, times(1)).save(team);
         verify(auditService, times(1)).log(eq("SYSTEM_TEAM_UNLOCKED"), eq("TEAM"), eq(teamId), any(Map.class), isNull());
@@ -345,12 +347,12 @@ class SystemServiceTest {
         when(hashidService.encode(evalId)).thenReturn(evalHashId);
 
         // Act
-        Map<String, Object> result = systemService.reopenEvaluation(evalHashId, actorId, "Scoring correction");
+        ReopenEvaluationResponse result = systemService.reopenEvaluation(evalHashId, actorId, "Scoring correction");
 
         // Assert
         assertNotNull(result, "Result should not be null");
-        assertEquals(evalHashId, result.get("evaluationId"));
-        assertTrue((Boolean) result.get("isDraft"), "Evaluation should be draft");
+        assertEquals(evalHashId, result.getEvaluationId());
+        assertTrue(result.isDraft(), "Evaluation should be draft");
         assertTrue(evaluation.getIsDraft(), "Evaluation object should be draft");
         verify(evaluationRepository, times(1)).save(evaluation);
         verify(auditService, atLeastOnce()).log(anyString(), anyString(), anyLong(), any(Map.class), isNull());
