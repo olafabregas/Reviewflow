@@ -22,7 +22,7 @@ import com.reviewflow.model.dto.response.PaginatedAnnouncementResponse;
 import com.reviewflow.model.entity.Announcement;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.AnnouncementService;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;

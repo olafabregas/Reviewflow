@@ -1,4 +1,5 @@
 package com.reviewflow.service;
+import com.reviewflow.util.HashidService;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.reviewflow.model.entity.*;
@@ -32,9 +33,6 @@ class SystemServiceTest {
 
     @Mock
     private CacheManager cacheManager;
-
-    @Mock
-    private AuditRepository auditRepository;
 
     @Mock
     private SimpMessagingTemplate messagingTemplate;

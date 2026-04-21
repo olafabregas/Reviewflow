@@ -1,4 +1,4 @@
-package com.reviewflow.service;
+package com.reviewflow.util;
 
 import jakarta.annotation.PostConstruct;
 import org.hashids.Hashids;

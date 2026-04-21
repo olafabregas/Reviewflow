@@ -2,7 +2,7 @@ package com.reviewflow.security;
 
 import com.reviewflow.monitoring.SecurityMetrics;
 import com.reviewflow.service.RateLimiterService;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import com.reviewflow.util.IpAddressExtractor;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

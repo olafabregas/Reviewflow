@@ -1,4 +1,5 @@
 package com.reviewflow.service;
+import com.reviewflow.util.HashidService;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -24,11 +25,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.github.benmanes.caffeine.cache.Cache;
-import static com.reviewflow.config.CacheConfig.CACHE_ADMIN_STATS;
-import static com.reviewflow.config.CacheConfig.CACHE_ASSIGNMENT;
-import static com.reviewflow.config.CacheConfig.CACHE_ASSIGNMENT_GROUPS;
-import static com.reviewflow.config.CacheConfig.CACHE_UNREAD_COUNT;
-import static com.reviewflow.config.CacheConfig.CACHE_USER_COURSES;
+import static com.reviewflow.util.CacheNames.CACHE_ADMIN_STATS;
+import static com.reviewflow.util.CacheNames.CACHE_ASSIGNMENT;
+import static com.reviewflow.util.CacheNames.CACHE_ASSIGNMENT_GROUPS;
+import static com.reviewflow.util.CacheNames.CACHE_UNREAD_COUNT;
+import static com.reviewflow.util.CacheNames.CACHE_USER_COURSES;
 import com.reviewflow.dto.AuditLogDto;
 import com.reviewflow.dto.CacheStatsDto;
 import com.reviewflow.dto.SystemMetricsDto;
@@ -46,7 +47,6 @@ import com.reviewflow.model.entity.Evaluation;
 import com.reviewflow.model.entity.Team;
 import com.reviewflow.model.entity.User;
 import com.reviewflow.model.entity.UserRole;
-import com.reviewflow.repository.AuditRepository;
 import com.reviewflow.repository.EvaluationRepository;
 import com.reviewflow.repository.RefreshTokenRepository;
 import com.reviewflow.repository.TeamRepository;
@@ -60,9 +60,6 @@ public class SystemService {
 
     @Autowired
     private CacheManager cacheManager;
-
-    @Autowired
-    private AuditRepository auditRepository;
 
     @Autowired
     private SimpMessagingTemplate messagingTemplate;

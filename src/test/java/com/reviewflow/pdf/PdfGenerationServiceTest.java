@@ -23,7 +23,7 @@ import com.reviewflow.model.entity.RubricScore;
 import com.reviewflow.model.entity.Submission;
 import com.reviewflow.model.entity.Team;
 import com.reviewflow.model.entity.User;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import com.reviewflow.storage.StorageService;
 
 @ExtendWith(MockitoExtension.class)

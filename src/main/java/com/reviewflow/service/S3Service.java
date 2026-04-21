@@ -42,9 +42,6 @@ public class S3Service {
     @Value("${aws.s3.presigned-url-expiry-minutes:15}")
     private int presignedUrlExpiryMinutes;
 
-    @Value("${aws.s3.avatar-url-expiry-minutes:60}")
-    private int avatarUrlExpiryMinutes;
-
     public String putObject(String key, byte[] data, String contentType) {
         try {
             s3Client.putObject(
@@ -98,10 +95,6 @@ public class S3Service {
 
     public String generatePresignedDownloadUrl(String key) {
         return generatePresignedDownloadUrl(key, Duration.ofMinutes(presignedUrlExpiryMinutes));
-    }
-
-    public String generatePresignedAvatarUrl(String key) {
-        return generatePresignedDownloadUrl(key, Duration.ofMinutes(avatarUrlExpiryMinutes));
     }
 
     public String generatePresignedPreviewUrl(String key, String contentType) {

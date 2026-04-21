@@ -1,6 +1,6 @@
 package com.reviewflow.service;
 
-import com.reviewflow.config.CacheConfig;
+import com.reviewflow.util.CacheNames;
 import com.reviewflow.exception.CannotCommitWithErrorsException;
 import com.reviewflow.exception.ImportSessionExpiredException;
 import com.reviewflow.exception.ResourceNotFoundException;
@@ -145,7 +145,7 @@ public class CsvImportService {
         String importId = null;
         if (!validRows.isEmpty()) {
             importId = UUID.randomUUID().toString();
-            Cache cache = cacheManager.getCache(CacheConfig.CACHE_CSV_IMPORTS);
+            Cache cache = cacheManager.getCache(CacheNames.CACHE_CSV_IMPORTS);
             if (cache != null) {
                 cache.put(importId, new CachedImportSession(assignmentId, actorId, teamMode, validRows, errors, warnings, Instant.now()));
             }
@@ -163,7 +163,7 @@ public class CsvImportService {
 
     @Transactional
     public InstructorScoreImportCommitResponse commit(Long assignmentId, Long actorId, String importId) {
-        Cache cache = cacheManager.getCache(CacheConfig.CACHE_CSV_IMPORTS);
+        Cache cache = cacheManager.getCache(CacheNames.CACHE_CSV_IMPORTS);
         if (cache == null) {
             throw new ImportSessionExpiredException("Import session store is unavailable");
         }

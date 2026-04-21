@@ -10,7 +10,7 @@ import com.reviewflow.model.entity.Evaluation;
 import com.reviewflow.model.entity.RubricScore;
 import com.reviewflow.storage.StorageService;
 import com.reviewflow.util.S3KeyBuilder;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;

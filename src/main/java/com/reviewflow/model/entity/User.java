@@ -59,4 +59,15 @@ public class User {
 
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    /**
+     * Returns the user's full name (trimmed), falling back to email when both
+     * firstName and lastName are blank or null.
+     */
+    public String getFullNameOrEmail() {
+        String first = firstName == null ? "" : firstName.trim();
+        String last = lastName == null ? "" : lastName.trim();
+        String full = (first + " " + last).trim();
+        return full.isBlank() ? email : full;
+    }
 }

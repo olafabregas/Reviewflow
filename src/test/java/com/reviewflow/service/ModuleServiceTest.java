@@ -1,4 +1,5 @@
 package com.reviewflow.service;
+import com.reviewflow.util.HashidService;
 
 import com.reviewflow.exception.CourseArchivedReadOnlyException;
 import com.reviewflow.exception.ModuleNotInCourseException;

@@ -25,7 +25,7 @@ import com.reviewflow.model.dto.response.UserDetailResponse;
 import com.reviewflow.model.entity.User;
 import com.reviewflow.model.entity.UserRole;
 import com.reviewflow.security.ReviewFlowUserDetails;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import com.reviewflow.service.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;

@@ -11,7 +11,7 @@ import com.reviewflow.repository.TeamMemberRepository;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.EvaluationService;
 import com.reviewflow.service.SubmissionService;
-import com.reviewflow.service.HashidService;
+import com.reviewflow.util.HashidService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -141,66 +141,16 @@ public class StudentController {
     }
 
     private SubmissionResponse toSubmissionResponse(Submission s) {
-        return SubmissionResponse.builder()
-                .id(hashidService.encode(s.getId()))
-                                .submissionType(s.getAssignment() != null ? s.getAssignment().getSubmissionType() : null)
-                                .studentId(s.getStudent() != null ? hashidService.encode(s.getStudent().getId()) : null)
-                .teamId(s.getTeam() != null ? hashidService.encode(s.getTeam().getId()) : null)
-                .teamName(s.getTeam() != null ? s.getTeam().getName() : null)
-                .assignmentId(s.getAssignment() != null ? hashidService.encode(s.getAssignment().getId()) : null)
-                .assignmentTitle(s.getAssignment() != null ? s.getAssignment().getTitle() : null)
-                .courseCode(s.getAssignment() != null && s.getAssignment().getCourse() != null
-                        ? s.getAssignment().getCourse().getCode() : null)
-                .versionNumber(s.getVersionNumber())
-                .fileName(s.getFileName())
-                .fileSizeBytes(s.getFileSizeBytes())
-                .isLate(s.getIsLate())
-                .uploadedAt(s.getUploadedAt())
-                .changeNote(s.getChangeNote())
-                .uploadedById(s.getUploadedBy() != null ? hashidService.encode(s.getUploadedBy().getId()) : null)
-                .uploadedByName(s.getUploadedBy() != null
-                        ? s.getUploadedBy().getFirstName() + " " + s.getUploadedBy().getLastName() : null)
-                .build();
+        return SubmissionResponse.from(s, hashidService);
     }
 
     private EvaluationResponse toEvalResponse(Evaluation ev) {
         List<RubricScore> scores = rubricScoreRepository.findByEvaluation_Id(ev.getId());
-        BigDecimal maxPossible = BigDecimal.valueOf(scores.stream()
-                .mapToInt(s -> s.getCriterion() != null && s.getCriterion().getMaxScore() != null
-                        ? s.getCriterion().getMaxScore()
-                        : 0)
-                .sum());
-        
-        List<EvaluationResponse.RubricScoreResponse> scoreResponses = scores.stream()
-                .map(s -> {
-                    BigDecimal maxScore = s.getCriterion() != null && s.getCriterion().getMaxScore() != null
-                            ? BigDecimal.valueOf(s.getCriterion().getMaxScore())
-                            : BigDecimal.ZERO;
-                    return EvaluationResponse.RubricScoreResponse.builder()
-                            .id(hashidService.encode(s.getId()))
-                            .criterionId(s.getCriterion() != null ? hashidService.encode(s.getCriterion().getId()) : null)
-                            .criterionName(s.getCriterion() != null ? s.getCriterion().getName() : null)
-                            .maxScore(maxScore)
-                            .score(s.getScore())
-                            .comment(s.getComment())
-                            .build();
-                })
-                .collect(Collectors.toList());
-        
-        return EvaluationResponse.builder()
-                .id(hashidService.encode(ev.getId()))
-                .submissionId(ev.getSubmission() != null ? hashidService.encode(ev.getSubmission().getId()) : null)
-                .instructorId(ev.getInstructor() != null ? hashidService.encode(ev.getInstructor().getId()) : null)
-                .instructorName(ev.getInstructor() != null
-                        ? ev.getInstructor().getFirstName() + " " + ev.getInstructor().getLastName() : null)
-                .overallComment(ev.getOverallComment())
-                .totalScore(ev.getTotalScore())
-                .maxPossibleScore(maxPossible)
-                .isDraft(ev.getIsDraft())
-                .publishedAt(ev.getPublishedAt())
-                .createdAt(ev.getCreatedAt())
-                .hasPdf(ev.getPdfPath() != null)
-                .rubricScores(scoreResponses)
-                .build();
+        BigDecimal maxPossible = scores.stream()
+                .map(s -> s.getCriterion() != null && s.getCriterion().getMaxScore() != null
+                        ? BigDecimal.valueOf(s.getCriterion().getMaxScore())
+                        : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return getEvaluationResponse(ev, scores, maxPossible, hashidService);
     }
 }

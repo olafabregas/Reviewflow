@@ -1,6 +1,7 @@
 package com.reviewflow.service;
+import com.reviewflow.util.HashidService;
 
-import com.reviewflow.config.CacheConfig;
+import com.reviewflow.util.CacheNames;
 import com.reviewflow.exception.AccessDeniedException;
 import com.reviewflow.exception.GradeOverviewUnavailableException;
 import com.reviewflow.exception.NotEnrolledException;
@@ -158,7 +159,7 @@ public class GradeCalculationService {
                 .build();
     }
 
-    @Cacheable(value = CacheConfig.CACHE_GRADE_OVERVIEW, key = "#courseId + ':' + #studentId")
+    @Cacheable(value = CacheNames.CACHE_GRADE_OVERVIEW, key = "#courseId + ':' + #studentId")
     @Transactional(readOnly = true)
     public GradeOverviewDto calculateOverviewCached(Long courseId, Long studentId) {
         try {
@@ -429,7 +430,7 @@ public class GradeCalculationService {
     }
 
     private ClassRosterDto getCachedOrBuildRoster(Long courseId) {
-        Cache cache = cacheManager.getCache(CacheConfig.CACHE_CLASS_STATISTICS);
+        Cache cache = cacheManager.getCache(CacheNames.CACHE_CLASS_STATISTICS);
         if (cache == null) {
             return buildRoster(courseId);
         }
@@ -580,12 +581,12 @@ public class GradeCalculationService {
     }
 
     public void evictCourseGradeCaches(Long courseId) {
-        Cache gradeOverviewCache = cacheManager.getCache(CacheConfig.CACHE_GRADE_OVERVIEW);
+        Cache gradeOverviewCache = cacheManager.getCache(CacheNames.CACHE_GRADE_OVERVIEW);
         if (gradeOverviewCache != null) {
             gradeOverviewCache.clear();
         }
 
-        Cache classStatsCache = cacheManager.getCache(CacheConfig.CACHE_CLASS_STATISTICS);
+        Cache classStatsCache = cacheManager.getCache(CacheNames.CACHE_CLASS_STATISTICS);
         if (classStatsCache != null) {
             classStatsCache.evict(courseId);
         }
