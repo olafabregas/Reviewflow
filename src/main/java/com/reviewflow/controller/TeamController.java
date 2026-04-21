@@ -22,11 +22,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.reviewflow.model.dto.request.AutoAssignRequest;
 import com.reviewflow.model.dto.request.RenameTeamRequest;
 import com.reviewflow.model.dto.request.TeamInviteRequest;
 import com.reviewflow.model.dto.request.TeamRespondRequest;
 import com.reviewflow.model.dto.response.ApiResponse;
 import com.reviewflow.model.dto.response.SubmissionResponse;
+import com.reviewflow.model.dto.response.TeamMemberCreatedResponse;
 import com.reviewflow.model.dto.response.TeamResponse;
 import com.reviewflow.model.entity.Assignment;
 import com.reviewflow.model.entity.Submission;
@@ -155,10 +157,10 @@ public class TeamController {
     @PreAuthorize("hasRole('INSTRUCTOR') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<TeamResponse>>> autoAssign(
             @PathVariable String assignmentId,
-            @RequestBody(required = false) Map<String, Object> body,
+            @RequestBody(required = false) AutoAssignRequest body,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
         Long assignmentIdLong = hashidService.decodeOrThrow(assignmentId);
-        int maxSize = body != null && body.get("maxTeamSize") instanceof Number n ? n.intValue() : 3;
+        int maxSize = (body != null && body.getMaxTeamSize() != null) ? body.getMaxTeamSize() : 3;
         List<Team> created = teamService.autoAssignTeams(assignmentIdLong, user.getUserId(), maxSize);
         return ResponseEntity.ok(ApiResponse.ok(created.stream().map(this::toResponse).collect(Collectors.toList())));
     }
@@ -273,13 +275,16 @@ public class TeamController {
         )
     })
     @PostMapping("/teams/{id}/invite")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> invite(
+    public ResponseEntity<ApiResponse<TeamMemberCreatedResponse>> invite(
             @PathVariable String id,
             @Valid @RequestBody TeamInviteRequest request,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
         Long teamId = hashidService.decodeOrThrow(id);
         TeamMember member = teamService.inviteMember(teamId, request.getInviteeEmail(), user.getUserId());
-        return ResponseEntity.ok(ApiResponse.ok(Map.of("teamMemberId", hashidService.encode(member.getId()), "status", member.getStatus().name())));
+        return ResponseEntity.ok(ApiResponse.ok(TeamMemberCreatedResponse.builder()
+                .teamMemberId(hashidService.encode(member.getId()))
+                .status(member.getStatus().name())
+                .build()));
     }
 
     @Operation(

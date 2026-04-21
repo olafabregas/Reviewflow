@@ -9,6 +9,7 @@ import com.reviewflow.model.dto.response.InstructorScoreImportCommitResponse;
 import com.reviewflow.model.dto.response.InstructorScoreImportPreviewResponse;
 import com.reviewflow.model.dto.response.InstructorScoreListResponse;
 import com.reviewflow.model.dto.response.InstructorScoreResponse;
+import com.reviewflow.model.dto.response.PublishAllScoresResponse;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.CsvImportService;
 import com.reviewflow.util.HashidService;
@@ -30,8 +31,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -128,11 +127,14 @@ public class InstructorScoreController {
 
     @Operation(summary = "Publish all draft scores for assignment")
     @PostMapping("/assignments/{id}/instructor-scores/publish-all")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> publishAll(
+    public ResponseEntity<ApiResponse<PublishAllScoresResponse>> publishAll(
             @PathVariable String id,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
         int count = instructorScoreService.publishAll(hashidService.decodeOrThrow(id), user.getUserId());
-        return ResponseEntity.ok(ApiResponse.ok(Map.of("publishedCount", count, "message", count + " scores published")));
+        return ResponseEntity.ok(ApiResponse.ok(PublishAllScoresResponse.builder()
+                .publishedCount(count)
+                .message(count + " scores published")
+                .build()));
     }
 
     @Operation(summary = "Reopen published score")

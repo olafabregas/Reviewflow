@@ -1,6 +1,7 @@
 package com.reviewflow.controller;
 
 import com.reviewflow.model.dto.response.ApiResponse;
+import com.reviewflow.model.dto.response.MarkAllReadResponse;
 import com.reviewflow.model.dto.response.NotificationDto;
 import com.reviewflow.security.ReviewFlowUserDetails;
 import com.reviewflow.service.NotificationService;
@@ -126,13 +127,13 @@ public class NotificationController {
         )
     })
     @PatchMapping("/read-all")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> markAllRead(
+    public ResponseEntity<ApiResponse<MarkAllReadResponse>> markAllRead(
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
         int updatedCount = notificationService.markAllAsRead(user.getUserId());
-        return ResponseEntity.ok(ApiResponse.ok(Map.of(
-                "message", "All notifications marked as read",
-                "updatedCount", updatedCount
-        )));
+        return ResponseEntity.ok(ApiResponse.ok(MarkAllReadResponse.builder()
+                .message("All notifications marked as read")
+                .updatedCount(updatedCount)
+                .build()));
     }
 
     @Operation(

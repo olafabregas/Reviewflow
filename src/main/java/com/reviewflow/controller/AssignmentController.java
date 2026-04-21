@@ -24,7 +24,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.reviewflow.model.dto.request.AddRubricRequest;
 import com.reviewflow.model.dto.request.CreateAssignmentRequest;
+import com.reviewflow.model.dto.request.UpdateRubricRequest;
 import com.reviewflow.model.dto.response.ApiResponse;
 import com.reviewflow.model.dto.response.AssignmentResponse;
 import com.reviewflow.model.dto.response.GradebookEntryResponse;
@@ -338,25 +340,16 @@ public class AssignmentController {
     @PostMapping("/assignments/{id}/rubric")
     public ResponseEntity<ApiResponse<AssignmentResponse.RubricCriterionResponse>> addRubric(
             @PathVariable String id,
-            @RequestBody Map<String, Object> body,
+            @Valid @RequestBody AddRubricRequest body,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
         Long assignmentId = hashidService.decodeOrThrow(id);
-        String name = (String) body.get("name");
-        String description = (String) body.get("description");
-
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("name is required");
-        }
-        if (body.get("maxScore") == null) {
-            throw new IllegalArgumentException("maxScore is required");
-        }
-        if (body.get("displayOrder") == null) {
-            throw new IllegalArgumentException("displayOrder is required");
-        }
-
-        int maxScore = ((Number) body.get("maxScore")).intValue();
-        int displayOrder = ((Number) body.get("displayOrder")).intValue();
-        RubricCriterion c = assignmentService.addRubricCriteria(assignmentId, name, description, maxScore, displayOrder, user.getUserId());
+        RubricCriterion c = assignmentService.addRubricCriteria(
+                assignmentId,
+                body.getName(),
+                body.getDescription(),
+                body.getMaxScore(),
+                body.getDisplayOrder() != null ? body.getDisplayOrder() : 0,
+                user.getUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(toCriterionResponse(c)));
     }
 
@@ -396,15 +389,15 @@ public class AssignmentController {
     public ResponseEntity<ApiResponse<AssignmentResponse.RubricCriterionResponse>> updateRubric(
             @PathVariable String id,
             @PathVariable String criterionId,
-            @RequestBody Map<String, Object> body,
+            @RequestBody UpdateRubricRequest body,
             @AuthenticationPrincipal ReviewFlowUserDetails user) {
         Long assignmentId = hashidService.decodeOrThrow(id);
         Long criterionIdLong = hashidService.decodeOrThrow(criterionId);
-        String name = (String) body.get("name");
-        String description = (String) body.get("description");
-        Integer maxScore = body.get("maxScore") != null ? ((Number) body.get("maxScore")).intValue() : null;
-        Integer displayOrder = body.get("displayOrder") != null ? ((Number) body.get("displayOrder")).intValue() : null;
-        RubricCriterion c = assignmentService.updateRubricCriteria(assignmentId, criterionIdLong, name, description, maxScore, displayOrder, user.getUserId());
+        RubricCriterion c = assignmentService.updateRubricCriteria(
+                assignmentId, criterionIdLong,
+                body.getName(), body.getDescription(),
+                body.getMaxScore(), body.getDisplayOrder(),
+                user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(toCriterionResponse(c)));
     }
 

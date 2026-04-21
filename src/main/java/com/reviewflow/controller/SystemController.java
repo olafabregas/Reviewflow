@@ -1,6 +1,5 @@
 package com.reviewflow.controller;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -15,7 +14,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.reviewflow.dto.CacheEvictResponse;
 import com.reviewflow.dto.CacheStatsDto;
+import com.reviewflow.dto.ForceLogoutResponse;
+import com.reviewflow.dto.ReopenEvaluationResponse;
+import com.reviewflow.dto.SecurityEventDto;
+import com.reviewflow.dto.UnlockTeamResponse;
 import com.reviewflow.service.SystemService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -58,14 +62,9 @@ public class SystemController {
                 content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
-    public ResponseEntity<Map<String, Object>> getCacheStats() {
+    public ResponseEntity<List<CacheStatsDto>> getCacheStats() {
         List<CacheStatsDto> stats = systemService.getCacheStats();
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("caches", stats);
-        response.put("timestamp", java.time.Instant.now().toString());
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(stats);
     }
 
     /**
@@ -96,13 +95,12 @@ public class SystemController {
                 content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
-    public ResponseEntity<Map<String, Object>> evictCache(
+    public ResponseEntity<CacheEvictResponse> evictCache(
             @PathVariable String cacheName,
             Authentication authentication) {
 
         Long actorId = extractUserIdFromAuthentication(authentication);
-        Map<String, Object> result = systemService.evictCache(cacheName, actorId);
-
+        CacheEvictResponse result = systemService.evictCache(cacheName, actorId);
         return ResponseEntity.ok(result);
     }
 
@@ -129,14 +127,9 @@ public class SystemController {
                 content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
-    public ResponseEntity<Map<String, Object>> getSafeConfig() {
+    public ResponseEntity<Map<String, String>> getSafeConfig() {
         Map<String, String> config = systemService.getSafeConfig();
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("config", config);
-        response.put("timestamp", java.time.Instant.now().toString());
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(config);
     }
 
     /**
@@ -162,18 +155,11 @@ public class SystemController {
                 content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
-    public ResponseEntity<Map<String, Object>> getSecurityEvents(
+    public ResponseEntity<List<SecurityEventDto>> getSecurityEvents(
             @RequestParam(defaultValue = "50") int limit) {
 
-        List<Map<String, Object>> events = systemService.getSecurityEvents(Math.min(limit, 500));
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("events", events);
-        response.put("limit", limit);
-        response.put("count", events.size());
-        response.put("timestamp", java.time.Instant.now().toString());
-
-        return ResponseEntity.ok(response);
+        List<SecurityEventDto> events = systemService.getSecurityEvents(Math.min(limit, 500));
+        return ResponseEntity.ok(events);
     }
 
     /**
@@ -209,14 +195,13 @@ public class SystemController {
                 content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
-    public ResponseEntity<Map<String, Object>> forceLogout(
+    public ResponseEntity<ForceLogoutResponse> forceLogout(
             @PathVariable String targetUserId,
             @RequestBody ForceLogoutRequest request,
             Authentication authentication) {
 
         Long actorId = extractUserIdFromAuthentication(authentication);
-        Map<String, Object> result = systemService.forceLogout(targetUserId, actorId, request.getReason());
-
+        ForceLogoutResponse result = systemService.forceLogout(targetUserId, actorId, request.getReason());
         return ResponseEntity.ok(result);
     }
 
@@ -253,14 +238,13 @@ public class SystemController {
                 content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
-    public ResponseEntity<Map<String, Object>> unlockTeam(
+    public ResponseEntity<UnlockTeamResponse> unlockTeam(
             @PathVariable String teamId,
             @RequestBody UnlockTeamRequest request,
             Authentication authentication) {
 
         Long actorId = extractUserIdFromAuthentication(authentication);
-        Map<String, Object> result = systemService.unlockTeam(teamId, actorId, request.getReason());
-
+        UnlockTeamResponse result = systemService.unlockTeam(teamId, actorId, request.getReason());
         return ResponseEntity.ok(result);
     }
 
@@ -297,14 +281,13 @@ public class SystemController {
                 content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
         )
     })
-    public ResponseEntity<Map<String, Object>> reopenEvaluation(
+    public ResponseEntity<ReopenEvaluationResponse> reopenEvaluation(
             @PathVariable String evaluationId,
             @RequestBody ReopenEvaluationRequest request,
             Authentication authentication) {
 
         Long actorId = extractUserIdFromAuthentication(authentication);
-        Map<String, Object> result = systemService.reopenEvaluation(evaluationId, actorId, request.getReason());
-
+        ReopenEvaluationResponse result = systemService.reopenEvaluation(evaluationId, actorId, request.getReason());
         return ResponseEntity.ok(result);
     }
 
