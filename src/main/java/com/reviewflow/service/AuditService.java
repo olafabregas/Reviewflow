@@ -56,7 +56,7 @@ public class AuditService {
             log.error("Failed to serialize audit metadata to JSON; falling back to toString()", e);
             metadataJson = metadata.toString();
         }
-        AuditLog log = AuditLog.builder()
+        AuditLog entry = AuditLog.builder()
                 .actor(null)
                 .action(action)
                 .targetType(targetType)
@@ -65,7 +65,7 @@ public class AuditService {
                 .ipAddress(ip)
                 .createdAt(Instant.now())
                 .build();
-        auditLogRepository.save(log);
+        auditLogRepository.save(entry);
     }
 
     public Page<AuditLog> findFiltered(Long actorId, String action, String targetType, Instant dateFrom, Instant dateTo, Pageable pageable) {
