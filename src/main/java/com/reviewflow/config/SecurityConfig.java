@@ -75,9 +75,9 @@ public class SecurityConfig {
                         hsts.maxAgeInSeconds(0); // disable HSTS in local/dev
                     }
                 })
-                // Content Security Policy - restrict resource loading
-                // Updated to allow CDN resources (cdnjs, jsdelivr) for Redoc and Swagger UI
-                // while maintaining security restrictions for script and style
+                // Content Security Policy — cdnjs and jsdelivr are allowlisted because Redoc and
+                // Swagger UI load their assets from those CDNs. unsafe-inline is required by the
+                // Swagger renderer's inline style injection and cannot be removed without breaking the UI.
                 .contentSecurityPolicy(csp -> csp.policyDirectives(
                 "default-src 'self'; "
                 + "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "

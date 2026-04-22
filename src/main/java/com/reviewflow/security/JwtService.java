@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Date;
 
 @Service
@@ -41,8 +42,8 @@ public class JwtService {
                     .subject(userDetails.getUsername())
                     .claim("userId", details.getUserId())
                     .claim("role", details.getRole().name())
-                    .issuedAt(new Date())
-                    .expiration(new Date(System.currentTimeMillis() + accessExpirationMs));
+                    .issuedAt(Date.from(Instant.now()))
+                    .expiration(Date.from(Instant.now().plusMillis(accessExpirationMs)));
             
             if (userAgent != null) {
                 builder.claim("userAgent", userAgent);
@@ -52,8 +53,8 @@ public class JwtService {
         }
         var builder = Jwts.builder()
                 .subject(userDetails.getUsername())
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + accessExpirationMs));
+                .issuedAt(Date.from(Instant.now()))
+                .expiration(Date.from(Instant.now().plusMillis(accessExpirationMs)));
         
         if (userAgent != null) {
             builder.claim("userAgent", userAgent);
@@ -65,8 +66,8 @@ public class JwtService {
     public String generateRefreshToken() {
         return Jwts.builder()
                 .subject("refresh")
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + refreshExpirationMs))
+                .issuedAt(Date.from(Instant.now()))
+                .expiration(Date.from(Instant.now().plusMillis(refreshExpirationMs)))
                 .signWith(secretKey)
                 .compact();
     }
@@ -95,7 +96,7 @@ public class JwtService {
 
     public boolean isTokenExpired(String token) {
         try {
-            return extractClaims(token).getExpiration().before(new Date());
+            return extractClaims(token).getExpiration().toInstant().isBefore(Instant.now());
         } catch (ExpiredJwtException e) {
             return true;
         }

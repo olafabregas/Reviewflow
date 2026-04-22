@@ -49,7 +49,6 @@ public class DeadlineWarningScheduler {
                 continue;
             }
 
-            // Get assignment details
             Assignment assignment = assignmentRepository.findById(assignmentId).orElse(null);
             if (assignment == null) {
                 continue;

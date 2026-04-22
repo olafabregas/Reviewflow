@@ -44,7 +44,6 @@ public class NotificationService {
         Notification notification = notificationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification", id));
         
-        // Check if notification belongs to the user
         if (!notification.getUserId().equals(userId)) {
             throw new AccessDeniedException("Not authorized to access this notification");
         }
@@ -64,7 +63,6 @@ public class NotificationService {
         Notification notification = notificationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification", id));
         
-        // Check if notification belongs to the user
         if (!notification.getUserId().equals(userId)) {
             throw new AccessDeniedException("Not authorized to delete this notification");
         }
