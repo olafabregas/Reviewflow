@@ -147,9 +147,8 @@ public class SubmissionService {
             rateLimiterService.recordBlockedUpload(uploadKey);
             try {
                 java.nio.file.Files.deleteIfExists(tempFile);
-            // TODO [DEAD-CODE-AGENT]: Possible dead code — verify before removing.
-            // Empty catch block may be intentional for cleanup failures. Confidence: MEDIUM.
             } catch (IOException ex) {
+                log.warn("Failed to delete temp file after IO validation failure: {}", tempFile, ex);
             }
             throw new ValidationException("Failed to validate file: " + e.getMessage(), "FILE_VALIDATION_ERROR");
         } catch (MalwareDetectedException e) {
@@ -157,9 +156,8 @@ public class SubmissionService {
             rateLimiterService.recordBlockedUpload(uploadKey);
             try {
                 java.nio.file.Files.deleteIfExists(tempFile);
-            // TODO [DEAD-CODE-AGENT]: Possible dead code — verify before removing.
-            // Empty catch block may be intentional for cleanup failures. Confidence: MEDIUM.
             } catch (IOException ex) {
+                log.warn("Failed to delete temp file after malware detection: {}", tempFile, ex);
             }
             throw new ValidationException("File failed security validation: " + e.getMessage(), "MALWARE_DETECTED");
         } catch (RuntimeException e) {
@@ -168,9 +166,8 @@ public class SubmissionService {
             rateLimiterService.recordBlockedUpload(uploadKey);
             try {
                 java.nio.file.Files.deleteIfExists(tempFile);
-            // TODO [DEAD-CODE-AGENT]: Possible dead code — verify before removing.
-            // Empty catch block may be intentional for cleanup failures. Confidence: MEDIUM.
             } catch (IOException ex) {
+                log.warn("Failed to delete temp file after security validation failure: {}", tempFile, ex);
             }
             throw e; // Re-throw as-is (these are already user-friendly)
         }

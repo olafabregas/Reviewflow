@@ -49,21 +49,23 @@ public class AuditService {
      */
     @Transactional
     public void log(String action, String targetType, Long targetId, Map<String, Object> metadata, String ip) {
+        String metadataJson;
         try {
-            String metadataJson = objectMapper.writeValueAsString(metadata);
-            AuditLog log = AuditLog.builder()
-                    .actor(null)
-                    .action(action)
-                    .targetType(targetType)
-                    .targetId(targetId)
-                    .metadata(metadataJson)
-                    .ipAddress(ip)
-                    .createdAt(Instant.now())
-                    .build();
-            auditLogRepository.save(log);
+            metadataJson = objectMapper.writeValueAsString(metadata);
         } catch (Exception e) {
-            log.error("Error serializing audit metadata", e);
+            log.error("Failed to serialize audit metadata to JSON; falling back to toString()", e);
+            metadataJson = metadata.toString();
         }
+        AuditLog log = AuditLog.builder()
+                .actor(null)
+                .action(action)
+                .targetType(targetType)
+                .targetId(targetId)
+                .metadata(metadataJson)
+                .ipAddress(ip)
+                .createdAt(Instant.now())
+                .build();
+        auditLogRepository.save(log);
     }
 
     public Page<AuditLog> findFiltered(Long actorId, String action, String targetType, Instant dateFrom, Instant dateTo, Pageable pageable) {
