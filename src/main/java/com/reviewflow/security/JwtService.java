@@ -76,13 +76,11 @@ public class JwtService {
     }
 
     public String extractRole(String token) {
-        Object role = extractClaims(token).get("role");
-        return role != null ? role.toString() : null;
+        return extractClaims(token).get("role", String.class);
     }
 
     public String extractClaim(String token, String claimKey) {
-        Object claim = extractClaims(token).get(claimKey);
-        return claim != null ? claim.toString() : null;
+        return extractClaims(token).get(claimKey, String.class);
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {

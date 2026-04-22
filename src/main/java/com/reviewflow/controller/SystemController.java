@@ -295,11 +295,8 @@ public class SystemController {
      * Extract user ID from Spring Security authentication
      */
     private Long extractUserIdFromAuthentication(Authentication authentication) {
-        // Extract from JWT or security context
-        // This depends on your ReviewFlowUserDetails implementation
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof com.reviewflow.security.ReviewFlowUserDetails) {
-            return ((com.reviewflow.security.ReviewFlowUserDetails) principal).getUserId();
+        if (authentication.getPrincipal() instanceof com.reviewflow.security.ReviewFlowUserDetails details) {
+            return details.getUserId();
         }
         return null;
     }
