@@ -30,6 +30,7 @@ import com.reviewflow.repository.InstructorScoreRepository;
 import com.reviewflow.repository.SubmissionRepository;
 import com.reviewflow.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
@@ -49,6 +50,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class GradeCalculationService {
@@ -252,6 +254,8 @@ public class GradeCalculationService {
         } catch (NotEnrolledException | AccessDeniedException | ResourceNotFoundException ex) {
             throw ex;
         } catch (Exception ex) {
+            log.error("Unexpected error calculating grade overview for courseId={}, studentId={}",
+                courseId, studentId, ex);
             throw new GradeOverviewUnavailableException("Grade overview is temporarily unavailable");
         }
     }

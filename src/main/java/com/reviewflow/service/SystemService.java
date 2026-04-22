@@ -274,7 +274,7 @@ public class SystemService {
 
         // Fetch target user
         User targetUser = userRepository.findById(targetUserId)
-                .orElseThrow(() -> new RuntimeException("User not found: " + targetHashId));
+                .orElseThrow(() -> new com.reviewflow.exception.ResourceNotFoundException("User", targetHashId));
 
         // Prevent self-logout
         if (targetUserId.equals(actorId)) {
