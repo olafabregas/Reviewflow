@@ -1,20 +1,17 @@
 package com.reviewflow.event;
 
+import com.reviewflow.model.enums.SubmissionType;
 import java.util.List;
 
-import com.reviewflow.model.enums.SubmissionType;
-
 public record SubmissionUploadedEvent(
-        List<Long> recipientUserIds, // all ACCEPTED members EXCEPT the uploader
-        String uploaderName,
-        Long teamId,
-        Long studentId,
-        String teamName,
-        Long assignmentId,
-        String assignmentTitle,
-        int versionNumber,
-        SubmissionType submissionType,
-        Long submissionId
-        ) {
-
-}
+    List<Long> recipientUserIds, // all ACCEPTED members EXCEPT the uploader
+    String uploaderName,
+    Long teamId,
+    Long studentId,
+    String teamName,
+    Long assignmentId,
+    String assignmentTitle,
+    int versionNumber,
+    SubmissionType submissionType,
+    // TODO [STYLE-AGENT]: fix structural violation
+    Long submissionId) {}

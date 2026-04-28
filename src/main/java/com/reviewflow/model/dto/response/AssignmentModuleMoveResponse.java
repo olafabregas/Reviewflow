@@ -7,7 +7,7 @@ import lombok.Value;
 @Builder
 public class AssignmentModuleMoveResponse {
 
-    String assignmentId;
-    String moduleId;
-    String moduleName;
+  String assignmentId;
+  String moduleId;
+  String moduleName;
 }

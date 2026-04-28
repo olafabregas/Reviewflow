@@ -7,7 +7,9 @@ import lombok.Data;
 @Data
 public class ReopenInstructorScoreRequest {
 
-    @Schema(description = "Reason for reopening a published score", requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotBlank
-    private String reason;
+  @Schema(
+      description = "Reason for reopening a published score",
+      requiredMode = Schema.RequiredMode.REQUIRED)
+  @NotBlank
+  private String reason;
 }

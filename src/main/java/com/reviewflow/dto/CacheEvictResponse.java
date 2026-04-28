@@ -12,9 +12,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CacheEvictResponse {
 
-    @JsonProperty("cacheName")
-    private String cacheName;
+  @JsonProperty("cacheName")
+  private String cacheName;
 
-    @JsonProperty("evictedAt")
-    private String evictedAt;
+  @JsonProperty("evictedAt")
+  private String evictedAt;
 }

@@ -7,12 +7,12 @@ import lombok.Data;
 @Data
 public class UpdateUserRequest {
 
-    @Schema(description = "Updated first name of the user", example = "John")
-    private String firstName;
+  @Schema(description = "Updated first name of the user", example = "John")
+  private String firstName;
 
-    @Schema(description = "Updated last name of the user", example = "Doe")
-    private String lastName;
+  @Schema(description = "Updated last name of the user", example = "Doe")
+  private String lastName;
 
-    @Schema(description = "Updated role for the user", example = "INSTRUCTOR")
-    private UserRole role;
+  @Schema(description = "Updated role for the user", example = "INSTRUCTOR")
+  private UserRole role;
 }

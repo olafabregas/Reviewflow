@@ -1,9 +1,10 @@
 package com.reviewflow.model.entity;
 
+    // TODO [STYLE-AGENT]: fix structural violation
 import jakarta.persistence.*;
+import java.math.BigDecimal; // TODO [STYLE-AGENT]: fix structural violation
+    // TODO [STYLE-AGENT]: fix structural violation
 import lombok.*;
-
-import java.math.BigDecimal;
 
 @Entity
 @Table(name = "rubric_scores")
@@ -13,21 +14,21 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class RubricScore {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "evaluation_id", nullable = false)
-    private Evaluation evaluation;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "evaluation_id", nullable = false)
+  private Evaluation evaluation;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "criterion_id", nullable = false)
-    private RubricCriterion criterion;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "criterion_id", nullable = false)
+  private RubricCriterion criterion;
 
-    @Column(precision = 5, scale = 2)
-    private BigDecimal score;
+  @Column(precision = 5, scale = 2)
+  private BigDecimal score;
 
-    @Column(columnDefinition = "TEXT")
-    private String comment;
+  @Column(columnDefinition = "TEXT")
+  private String comment;
 }

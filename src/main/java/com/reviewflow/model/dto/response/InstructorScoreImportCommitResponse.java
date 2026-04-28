@@ -7,7 +7,7 @@ import lombok.Value;
 @Builder
 public class InstructorScoreImportCommitResponse {
 
-    int created;
-    int updated;
-    String message;
+  int created;
+  int updated;
+  String message;
 }

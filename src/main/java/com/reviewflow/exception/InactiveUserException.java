@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 @ResponseStatus(HttpStatus.FORBIDDEN)
 public class InactiveUserException extends RuntimeException {
 
-    public InactiveUserException(String message) {
-        super(message);
-    }
+  public InactiveUserException(String message) {
+    super(message);
+  }
 }

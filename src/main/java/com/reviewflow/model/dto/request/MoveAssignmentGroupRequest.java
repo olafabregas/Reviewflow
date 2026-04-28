@@ -6,6 +6,9 @@ import lombok.Data;
 @Data
 public class MoveAssignmentGroupRequest {
 
-    @Schema(description = "Target assignment group hashid", example = "grpTarget123", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String groupId;
+  @Schema(
+      description = "Target assignment group hashid",
+      example = "grpTarget123",
+      requiredMode = Schema.RequiredMode.REQUIRED)
+  private String groupId;
 }

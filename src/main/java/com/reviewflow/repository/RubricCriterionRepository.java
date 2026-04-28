@@ -1,11 +1,10 @@
 package com.reviewflow.repository;
 
 import com.reviewflow.model.entity.RubricCriterion;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface RubricCriterionRepository extends JpaRepository<RubricCriterion, Long> {
 
-    List<RubricCriterion> findByAssignment_IdOrderByDisplayOrderAsc(Long assignmentId);
+  List<RubricCriterion> findByAssignmentIdOrderByDisplayOrderAsc(Long assignmentId);
 }

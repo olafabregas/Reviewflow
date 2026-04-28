@@ -1,4 +1,2 @@
-/**
- * PDF report generation.
- */
+/** PDF report generation. */
 package com.reviewflow.pdf;

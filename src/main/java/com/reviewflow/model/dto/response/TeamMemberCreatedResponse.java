@@ -8,9 +8,9 @@ import lombok.Value;
 @Builder
 public class TeamMemberCreatedResponse {
 
-    @Schema(description = "Hashid of the created team membership record")
-    String teamMemberId;
+  @Schema(description = "Hashid of the created team membership record")
+  String teamMemberId;
 
-    @Schema(description = "Current membership status (e.g. PENDING, ACCEPTED)")
-    String status;
+  @Schema(description = "Current membership status (e.g. PENDING, ACCEPTED)")
+  String status;
 }

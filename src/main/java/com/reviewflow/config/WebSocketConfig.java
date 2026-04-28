@@ -13,35 +13,35 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    @Value("${app.cors.allowed-origins:http://localhost:5173}")
-    private String allowedOrigins;
+  @Value("${app.cors.allowed-origins:http://localhost:5173}")
+  private String allowedOrigins;
 
-    @Autowired
-    private WebSocketAuthInterceptor webSocketAuthInterceptor;
+  @Autowired private WebSocketAuthInterceptor webSocketAuthInterceptor;
 
-    @Override
-    public void configureMessageBroker(MessageBrokerRegistry config) {
-        // /queue → point-to-point (one specific user)
-        // /topic → broadcast (all subscribers) — available for future use
-        config.enableSimpleBroker("/queue", "/topic");
+  @Override
+  public void configureMessageBroker(MessageBrokerRegistry config) {
+    // /queue → point-to-point (one specific user)
+    // /topic → broadcast (all subscribers) — available for future use
+    config.enableSimpleBroker("/queue", "/topic");
 
-        // Prefix for messages sent FROM client TO server
-        config.setApplicationDestinationPrefixes("/app");
+    // Prefix for messages sent FROM client TO server
+    config.setApplicationDestinationPrefixes("/app");
 
-        // Prefix for user-specific destinations
-        // Makes /user/{userId}/queue/notifications work correctly
-        config.setUserDestinationPrefix("/user");
-    }
+    // Prefix for user-specific destinations
+    // Makes /user/{userId}/queue/notifications work correctly
+    config.setUserDestinationPrefix("/user");
+  }
 
-    @Override
-    public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns(allowedOrigins.split("\\s*,\\s*"))
-                .withSockJS(); // SockJS fallback for environments without native WebSocket
-    }
+  @Override
+  public void registerStompEndpoints(StompEndpointRegistry registry) {
+    registry
+        .addEndpoint("/ws")
+        .setAllowedOriginPatterns(allowedOrigins.split("\\s*,\\s*"))
+        .withSockJS(); // SockJS fallback for environments without native WebSocket
+  }
 
-    @Override
-    public void configureClientInboundChannel(ChannelRegistration registration) {
-        registration.interceptors(webSocketAuthInterceptor);
-    }
+  @Override
+  public void configureClientInboundChannel(ChannelRegistration registration) {
+    registration.interceptors(webSocketAuthInterceptor);
+  }
 }

@@ -12,9 +12,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ReopenEvaluationResponse {
 
-    @JsonProperty("evaluationId")
-    private String evaluationId;
+  @JsonProperty("evaluationId")
+  private String evaluationId;
 
-    @JsonProperty("isDraft")
-    private boolean isDraft;
+  @JsonProperty("isDraft")
+  private boolean isDraft;
 }

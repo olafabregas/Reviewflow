@@ -1,35 +1,33 @@
 package com.reviewflow.model.dto.response;
 
-import lombok.Builder;
-import lombok.Value;
-import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.time.Instant;
 import java.util.List;
+import lombok.Builder;
+import lombok.Value;
 
 @Value
 @Builder
 public class TeamResponse {
 
-    String id;
-    String assignmentId;
-    String assignmentTitle;
-    String name;
-    Boolean isLocked;
-    String createdById;
-    Integer memberCount;
-    List<TeamMemberResponse> members;
+  String id;
+  String assignmentId;
+  String assignmentTitle;
+  String name;
+  Boolean isLocked;
+  String createdById;
+  Integer memberCount;
+  List<TeamMemberResponse> members;
 
-    @Value
-    @Builder
-    public static class TeamMemberResponse {
-        String teamMemberId;
-        String userId;
-        String firstName;
-        String lastName;
-        String email;
-        String status;
-        String invitedById;
-        Instant joinedAt;
-    }
+  @Value
+  @Builder
+  public static class TeamMemberResponse {
+    String teamMemberId;
+    String userId;
+    String firstName;
+    String lastName;
+    String email;
+    String status;
+    String invitedById;
+    Instant joinedAt;
+  }
 }

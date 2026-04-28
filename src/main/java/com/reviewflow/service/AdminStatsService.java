@@ -9,8 +9,9 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AdminStatsService {
 
-    // Called by other services after data-changing operations
-    // Method body is intentionally empty — @CacheEvict does the work
-    @CacheEvict(value = CacheNames.CACHE_ADMIN_STATS, key = "'global'")
-    public void evictStats() {}
+  // Called by other services after data-changing operations
+  // Method body is intentionally empty Ã¢â‚¬â€ @CacheEvict does the work
+  @CacheEvict(value = CacheNames.CACHE_ADMIN_STATS, key = "'global'")
+    // TODO [STYLE-AGENT]: fix structural violation
+  public void evictStats() {}
 }

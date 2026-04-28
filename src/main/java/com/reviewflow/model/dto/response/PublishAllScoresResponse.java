@@ -8,9 +8,9 @@ import lombok.Value;
 @Builder
 public class PublishAllScoresResponse {
 
-    @Schema(description = "Number of scores that were published")
-    int publishedCount;
+  @Schema(description = "Number of scores that were published")
+  int publishedCount;
 
-    @Schema(description = "Human-readable result message")
-    String message;
+  @Schema(description = "Human-readable result message")
+  String message;
 }

@@ -12,9 +12,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UnlockTeamResponse {
 
-    @JsonProperty("teamId")
-    private String teamId;
+  @JsonProperty("teamId")
+  private String teamId;
 
-    @JsonProperty("isLocked")
-    private boolean isLocked;
+  @JsonProperty("isLocked")
+  private boolean isLocked;
 }

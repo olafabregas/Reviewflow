@@ -1,6 +1,6 @@
 package com.reviewflow.model.enums;
 
 public enum AnnouncementTarget {
-    COURSE,
-    PLATFORM
+  COURSE,
+  PLATFORM
 }

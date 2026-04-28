@@ -1,6 +1,8 @@
 package com.reviewflow.model.entity;
 
-import jakarta.persistence.*;
+    // TODO [STYLE-AGENT]: fix structural violation
+import jakarta.persistence.*; // TODO [STYLE-AGENT]: fix structural violation
+    // TODO [STYLE-AGENT]: fix structural violation
 import lombok.*;
 
 @Entity
@@ -11,24 +13,24 @@ import lombok.*;
 @AllArgsConstructor
 public class RubricCriterion {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assignment_id", nullable = false)
-    private Assignment assignment;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "assignment_id", nullable = false)
+  private Assignment assignment;
 
-    @Column(nullable = false, length = 255)
-    private String name;
+  @Column(nullable = false, length = 255)
+  private String name;
 
-    @Column(columnDefinition = "TEXT")
-    private String description;
+  @Column(columnDefinition = "TEXT")
+  private String description;
 
-    @Column(name = "max_score", nullable = false)
-    private Integer maxScore;
+  @Column(name = "max_score", nullable = false)
+  private Integer maxScore;
 
-    @Column(name = "display_order")
-    @Builder.Default
-    private Integer displayOrder = 0;
+  @Column(name = "display_order")
+  @Builder.Default
+  private Integer displayOrder = 0;
 }

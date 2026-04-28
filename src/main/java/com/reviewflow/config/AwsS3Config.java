@@ -12,11 +12,11 @@ import software.amazon.awssdk.services.s3.S3Client;
 @Profile("!local")
 public class AwsS3Config {
 
-    @Bean
-    public S3Client s3Client(@Value("${aws.region:${app.s3.region}}") String region) {
-        return S3Client.builder()
-                .region(Region.of(region))
-                .credentialsProvider(DefaultCredentialsProvider.create())
-                .build();
-    }
+  @Bean
+  public S3Client s3Client(@Value("${aws.region:${app.s3.region}}") String region) {
+    return S3Client.builder()
+        .region(Region.of(region))
+        .credentialsProvider(DefaultCredentialsProvider.create())
+        .build();
+  }
 }

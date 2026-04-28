@@ -1,11 +1,12 @@
 package com.reviewflow.model.entity;
 
+    // TODO [STYLE-AGENT]: fix structural violation
 import jakarta.persistence.*;
-import lombok.*;
-
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.List; // TODO [STYLE-AGENT]: fix structural violation
+    // TODO [STYLE-AGENT]: fix structural violation
+import lombok.*;
 
 @Entity
 @Table(name = "teams")
@@ -15,29 +16,29 @@ import java.util.List;
 @AllArgsConstructor
 public class Team {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assignment_id", nullable = false)
-    private Assignment assignment;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "assignment_id", nullable = false)
+  private Assignment assignment;
 
-    @Column(nullable = false, length = 100)
-    private String name;
+  @Column(nullable = false, length = 100)
+  private String name;
 
-    @Column(name = "is_locked", nullable = false)
-    @Builder.Default
-    private Boolean isLocked = false;
+  @Column(name = "is_locked", nullable = false)
+  @Builder.Default
+  private Boolean isLocked = false;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by")
-    private User createdBy;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "created_by")
+  private User createdBy;
 
-    @Column(name = "created_at")
-    private Instant createdAt;
+  @Column(name = "created_at")
+  private Instant createdAt;
 
-    @OneToMany(mappedBy = "team", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<TeamMember> members = new ArrayList<>();
+  @OneToMany(mappedBy = "team", cascade = CascadeType.ALL, orphanRemoval = true)
+  @Builder.Default
+  private List<TeamMember> members = new ArrayList<>();
 }

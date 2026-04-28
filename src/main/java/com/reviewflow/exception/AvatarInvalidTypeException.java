@@ -2,14 +2,14 @@ package com.reviewflow.exception;
 
 public class AvatarInvalidTypeException extends RuntimeException {
 
-    private final String code;
+  private final String code;
 
-    public AvatarInvalidTypeException(String message) {
-        super(message);
-        this.code = "AVATAR_INVALID_TYPE";
-    }
+  public AvatarInvalidTypeException(String message) {
+    super(message);
+    this.code = "AVATAR_INVALID_TYPE";
+  }
 
-    public String getCode() {
-        return code;
-    }
+  public String getCode() {
+    return code;
+  }
 }

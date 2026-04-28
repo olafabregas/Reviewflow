@@ -1,4 +1,2 @@
-/**
- * JWT and security components.
- */
+/** JWT and security components. */
 package com.reviewflow.security;

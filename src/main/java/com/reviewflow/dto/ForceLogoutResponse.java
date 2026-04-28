@@ -12,9 +12,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ForceLogoutResponse {
 
-    @JsonProperty("userId")
-    private String userId;
+  @JsonProperty("userId")
+  private String userId;
 
-    @JsonProperty("revokedTokenCount")
-    private int revokedTokenCount;
+  @JsonProperty("revokedTokenCount")
+  private int revokedTokenCount;
 }

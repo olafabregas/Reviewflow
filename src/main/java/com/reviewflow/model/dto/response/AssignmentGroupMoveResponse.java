@@ -7,7 +7,7 @@ import lombok.Value;
 @Builder
 public class AssignmentGroupMoveResponse {
 
-    String assignmentId;
-    String newGroupId;
-    String newGroupName;
+  String assignmentId;
+  String newGroupId;
+  String newGroupName;
 }

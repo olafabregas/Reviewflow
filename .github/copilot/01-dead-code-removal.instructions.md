@@ -1,17 +1,20 @@
 ---
-applyTo: "**/*.java"
+
+
 ---
-
-# Subagent 1: Dead Code Removal
-
-> Run this FIRST. Removing dead code before any other track reduces noise and
-> prevents other agents from wasting effort analysing code that will be deleted.
 
 ## Objective
 
 Find and remove all confirmed-dead Java code in the ReviewFlow backend.
-Confirmed-dead means: unreachable, unreferenced, and not required by any
-framework convention, dynamic lookup, or external configuration.
+
+**Confirmed-dead means:**
+
+* Unreachable
+* Unreferenced
+* Not required by framework conventions
+* Not used via reflection, configuration, or external systems
+
+If there is any uncertainty → it is NOT dead.
 
 ---
 
@@ -19,53 +22,189 @@ framework convention, dynamic lookup, or external configuration.
 
 Scan the entire backend module for:
 
-1. **Unused private methods** — methods declared `private` with no callers in the same class
-2. **Unused private fields** — fields declared `private` that are never read or written outside their declaration
-3. **Unreferenced classes** — classes with no imports anywhere in the codebase and no framework annotation that implies dynamic registration (e.g. `@Component`, `@Service`, `@Repository`, `@RestController`, `@Configuration`, `@EventListener`)
-4. **Unreachable code blocks** — code after `return`, `throw`, or `break` statements
-5. **Commented-out code blocks** — large blocks of code wrapped in comments
-6. **Unused imports** — imports not referenced in the file body
-7. **Empty catch blocks** — `catch` blocks with no body or only a comment
-8. **Unused local variables** — variables declared but never read
+1. **Unused private methods**
+2. **Unused private fields**
+3. **Unreferenced classes**
+4. **Unreachable code blocks**
+5. **Commented-out code blocks**
+6. **Unused imports**
+7. **Empty catch blocks**
+8. **Unused local variables**
 
-**Spring Boot / Framework exceptions — do NOT flag these as dead:**
-- Any class or method annotated with: `@Bean`, `@Component`, `@Service`, `@Repository`,
-  `@RestController`, `@Controller`, `@Configuration`, `@Scheduled`, `@EventListener`,
+---
+
+### Framework Exceptions (DO NOT TOUCH)
+
+Do NOT classify as dead if ANY of the following apply:
+
+* Spring annotations:
+  `@Bean`, `@Component`, `@Service`, `@Repository`, `@RestController`,
+  `@Controller`, `@Configuration`, `@Scheduled`, `@EventListener`,
   `@KafkaListener`, `@RabbitListener`, `@MessageMapping`
-- Any method matching standard lifecycle contracts: `init()`, `destroy()`, `afterPropertiesSet()`,
-  `configure()`, `run()`, `execute()`
-- Any class referenced in `application.yml`, `application.properties`, or any Flyway migration file
-- Any class used via reflection, `Class.forName()`, or Spring's `@ConditionalOn*` annotations
-- Serialization classes implementing `Serializable` — their fields may be required by the JVM
 
-**Flyway migration files — never touch these.**
+* Lifecycle methods:
+  `init()`, `destroy()`, `afterPropertiesSet()`, `configure()`, `run()`, `execute()`
+
+* Referenced in:
+
+  * `application.yml` / `application.properties`
+  * Flyway migrations
+
+* Reflection / dynamic usage:
+
+  * `Class.forName()`
+  * `@ConditionalOn*`
+  * Indirect wiring via configuration
+
+* Serialization:
+
+  * Classes implementing `Serializable`
+
+* External/API usage:
+
+  * Controllers or endpoints that may still be consumed externally
 
 ---
 
-## Step 2 — Write Critical Assessment
+### HARD RULE
 
-Before removing anything, output a table:
+> “No references found” is NOT sufficient proof of dead code.
+
+You must consider:
+
+* Reflection
+* External clients
+* Config-driven wiring
+
+---
+
+## Step 2 — Write Critical Assessment (WITH PROOF)
+
+Before removing anything, output:
 
 ```
-| File | Element | Type | Confidence | Reason |
-|------|---------|------|------------|--------|
-| UserService.java | sendWelcomeEmail() | Unused private method | HIGH | No callers found, no framework annotation |
-| AuthController.java | legacyLogin() | Commented-out block | HIGH | 47 lines of commented code, no active reference |
+| File | Element | Type | Confidence | Proof of Deadness | Reason |
+|------|---------|------|------------|-------------------|--------|
+| UserService.java | sendWelcomeEmail() | Private method | HIGH | No callers + not injected + not referenced in config | Safe to remove |
+| AuthController.java | legacyLogin() | Endpoint | MEDIUM | No internal calls but externally exposed | Needs verification |
 ```
 
 ---
 
-## Step 3 — Implement HIGH Confidence Removals Only
+### Proof of Deadness Requirements
 
-Remove only items marked HIGH confidence.
+For HIGH confidence, you MUST demonstrate:
 
-For MEDIUM items: add a comment above the element:
+* No callers in codebase
+* Not injected or wired by Spring
+* Not referenced in configuration
+* Not part of public API surface
+* Not used via reflection
+
+If ANY of these are uncertain → downgrade to MEDIUM.
+
+---
+
+## Step 2.5 — Produce PRD Before Implementation (MANDATORY)
+
+Before making changes, generate a **Product Requirements Document (PRD)**.
+
+This PRD is a **safety gate** — not documentation.
+
+---
+
+### PRD Structure
+
+#### 1. Scope & Objective
+
+* What parts of the system are being analyzed
+* Why dead code removal is needed now (e.g., reducing hidden bugs, improving clarity)
+
+#### 2. Key Findings
+
+* Types of dead code discovered:
+
+  * Private unused logic
+  * Unreachable blocks
+  * Legacy endpoints
+  * Commented-out code
+* Identify patterns (e.g., “abandoned features”, “partial implementations”)
+
+#### 3. Risk Analysis
+
+For each category:
+
+* What could break?
+* Could this be externally used?
+* Could this be dynamically referenced?
+
+If unclear → NOT HIGH confidence.
+
+---
+
+#### 4. Action Plan (STRICTLY ORDERED)
+
+1. Safe removals (purely internal, proven dead)
+2. Structural removals (classes, modules)
+3. Deferred items (uncertain usage)
+
+Each item must include:
+
+* File / element
+* Action
+* Proof of deadness
+* Confidence
+
+---
+
+#### 5. Actions NOT Taken
+
+* All MEDIUM / LOW confidence items
+* Explicit reasoning (e.g., “possible external dependency”)
+
+---
+
+#### 6. Expected Impact
+
+* Reduced codebase size
+* Improved readability
+* Lower cognitive load
+* Potential risk areas identified
+
+---
+
+### Enforcement Rules
+
+* NO deletion before PRD completion
+* PRD must align with assessment table
+* Only HIGH confidence items may proceed
+
+---
+
+## Step 3 — Implement HIGH Confidence Removals ONLY
+
+### Rules
+
+* Remove ONLY items with proven deadness
+* Do NOT assume
+* Do NOT remove public-facing code without explicit proof
+
+---
+
+### Handling MEDIUM Confidence
+
 ```java
-// TODO [DEAD-CODE-AGENT]: Possible dead code — verify before removing.
-// No callers found but could be referenced dynamically. Confidence: MEDIUM.
+// TODO [DEAD-CODE-AGENT]:
+// Possible dead code — no internal references found.
+// May be used externally or via reflection. DO NOT REMOVE without verification.
 ```
 
-For LOW items: document in the assessment and stop.
+---
+
+### Handling LOW Confidence
+
+* Do nothing
+* Document only
 
 ---
 
@@ -79,5 +218,15 @@ mvn spotbugs:check
 mvn pmd:check
 ```
 
-If any check fails, revert the last removal and report which element caused the failure.
+If any check fails:
+
+* Revert the last removal
+* Identify the exact element causing failure
+
+---
+
+## Final Rule
+
+> If you cannot prove it is dead, it is not dead.
+
 Do NOT proceed to Subagent 2 until all checks pass.

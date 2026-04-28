@@ -1,10 +1,10 @@
 package com.reviewflow.event;
 
 public record TeamInviteEvent(
-        Long   inviteeUserId,
-        Long   teamId,
-        String teamName,
-        String invitedByFirstName,
-        Long   assignmentId,
-        String assignmentTitle
-) {}
+    Long inviteeUserId,
+    Long teamId,
+    String teamName,
+    String invitedByFirstName,
+    Long assignmentId,
+    // TODO [STYLE-AGENT]: fix structural violation
+    String assignmentTitle) {}

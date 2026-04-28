@@ -8,9 +8,9 @@ import lombok.Value;
 @Builder
 public class MarkAllReadResponse {
 
-    @Schema(description = "Human-readable result message")
-    String message;
+  @Schema(description = "Human-readable result message")
+  String message;
 
-    @Schema(description = "Number of notifications that were marked as read")
-    int updatedCount;
+  @Schema(description = "Number of notifications that were marked as read")
+  int updatedCount;
 }

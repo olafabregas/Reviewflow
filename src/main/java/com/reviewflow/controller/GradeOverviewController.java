@@ -23,50 +23,50 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Grade Overview", description = "Student overview and class roster grade views")
 public class GradeOverviewController {
 
-    private final GradeCalculationService gradeCalculationService;
-    private final HashidService hashidService;
+  private final GradeCalculationService gradeCalculationService;
+  private final HashidService hashidService;
 
-    @Operation(summary = "Get my grade overview")
-    @GetMapping("/courses/{courseId}/grade-overview")
-    public ResponseEntity<ApiResponse<GradeOverviewDto>> getMyOverview(
-            @PathVariable String courseId,
-            @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        GradeOverviewDto response = gradeCalculationService.calculateMyOverview(
-                hashidService.decodeOrThrow(courseId),
-                user.getUserId(),
-                user.getRole());
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @Operation(summary = "Get my grade overview")
+  @GetMapping("/courses/{courseId}/grade-overview")
+  public ResponseEntity<ApiResponse<GradeOverviewDto>> getMyOverview(
+      @PathVariable String courseId, @AuthenticationPrincipal ReviewFlowUserDetails user) {
+    GradeOverviewDto response =
+        gradeCalculationService.calculateMyOverview(
+            hashidService.decodeOrThrow(courseId), user.getUserId(), user.getRole());
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @Operation(summary = "Get grade overview for a specific student")
-    @GetMapping("/courses/{courseId}/grade-overview/student/{studentId}")
-    public ResponseEntity<ApiResponse<GradeOverviewDto>> getStudentOverview(
-            @PathVariable String courseId,
-            @PathVariable String studentId,
-            @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        GradeOverviewDto response = gradeCalculationService.calculateStudentOverview(
-                hashidService.decodeOrThrow(courseId),
-                hashidService.decodeOrThrow(studentId),
-                user.getUserId(),
-                user.getRole());
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @Operation(summary = "Get grade overview for a specific student")
+  @GetMapping("/courses/{courseId}/grade-overview/student/{studentId}")
+  public ResponseEntity<ApiResponse<GradeOverviewDto>> getStudentOverview(
+      @PathVariable String courseId,
+      @PathVariable String studentId,
+      @AuthenticationPrincipal ReviewFlowUserDetails user) {
+    GradeOverviewDto response =
+        gradeCalculationService.calculateStudentOverview(
+            hashidService.decodeOrThrow(courseId),
+            hashidService.decodeOrThrow(studentId),
+            user.getUserId(),
+            user.getRole());
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @Operation(summary = "Get grade overview roster for a course")
-    @GetMapping("/courses/{courseId}/grade-overview/roster")
-    public ResponseEntity<ApiResponse<ClassRosterDto>> getRoster(
-            @PathVariable String courseId,
-            @RequestParam(defaultValue = "standing") String sortBy,
-            @RequestParam(defaultValue = "asc") String direction,
-            @RequestParam(defaultValue = "false") boolean atRiskOnly,
-            @AuthenticationPrincipal ReviewFlowUserDetails user) {
-        ClassRosterDto response = gradeCalculationService.calculateRoster(
-                hashidService.decodeOrThrow(courseId),
-                user.getUserId(),
-                user.getRole(),
-                sortBy,
-                direction,
-                atRiskOnly);
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @Operation(summary = "Get grade overview roster for a course")
+  @GetMapping("/courses/{courseId}/grade-overview/roster")
+  public ResponseEntity<ApiResponse<ClassRosterDto>> getRoster(
+      @PathVariable String courseId,
+      @RequestParam(defaultValue = "standing") String sortBy,
+      @RequestParam(defaultValue = "asc") String direction,
+      @RequestParam(defaultValue = "false") boolean atRiskOnly,
+      @AuthenticationPrincipal ReviewFlowUserDetails user) {
+    ClassRosterDto response =
+        gradeCalculationService.calculateRoster(
+            hashidService.decodeOrThrow(courseId),
+            user.getUserId(),
+            user.getRole(),
+            sortBy,
+            direction,
+            atRiskOnly);
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 }

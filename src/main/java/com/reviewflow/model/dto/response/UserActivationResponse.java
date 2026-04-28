@@ -8,9 +8,9 @@ import lombok.Value;
 @Builder
 public class UserActivationResponse {
 
-    @Schema(description = "Human-readable result message")
-    String message;
+  @Schema(description = "Human-readable result message")
+  String message;
 
-    @Schema(description = "New active state of the user account")
-    boolean isActive;
+  @Schema(description = "New active state of the user account")
+  boolean isActive;
 }

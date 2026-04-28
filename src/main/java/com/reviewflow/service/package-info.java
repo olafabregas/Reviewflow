@@ -1,4 +1,2 @@
-/**
- * Business logic services.
- */
+/** Business logic services. */
 package com.reviewflow.service;

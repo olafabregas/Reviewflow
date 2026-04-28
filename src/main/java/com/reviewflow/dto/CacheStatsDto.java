@@ -12,24 +12,24 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CacheStatsDto {
 
-    @JsonProperty("hitCount")
-    private long hitCount;
+  @JsonProperty("hitCount")
+  private long hitCount;
 
-    @JsonProperty("missCount")
-    private long missCount;
+  @JsonProperty("missCount")
+  private long missCount;
 
-    @JsonProperty("size")
-    private long size;
+  @JsonProperty("size")
+  private long size;
 
-    @JsonProperty("hitRate")
-    private double hitRate;
+  @JsonProperty("hitRate")
+  private double hitRate;
 
-    @JsonProperty("evictionCount")
-    private long evictionCount;
+  @JsonProperty("evictionCount")
+  private long evictionCount;
 
-    @JsonProperty("lastEvictedAt")
-    private String lastEvictedAt;
+  @JsonProperty("lastEvictedAt")
+  private String lastEvictedAt;
 
-    @JsonProperty("name")
-    private String name;
+  @JsonProperty("name")
+  private String name;
 }
