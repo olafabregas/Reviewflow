@@ -1,7 +1,6 @@
 package com.reviewflow.exception;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -253,5 +252,32 @@ class GlobalExceptionHandlerTest {
     assertEquals(
         "Request body is required and must be valid JSON",
         response.getBody().getError().getMessage());
+  }
+
+  @Test
+  void announcementNotFound_mapsTo404WithCode() {
+    ResponseEntity<ErrorResponse> response =
+        handler.handleAnnouncementNotFound(new AnnouncementNotFoundException(123L));
+
+    assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+    assertEquals("ANNOUNCEMENT_NOT_FOUND", response.getBody().getError().getCode());
+  }
+
+  @Test
+  void alreadyPublished_mapsTo409WithCode() {
+    ResponseEntity<ErrorResponse> response =
+        handler.handleAlreadyPublished(new AlreadyPublishedException());
+
+    assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+    assertEquals("ALREADY_PUBLISHED", response.getBody().getError().getCode());
+  }
+
+  @Test
+  void courseNotOwned_mapsTo403WithCode() {
+    ResponseEntity<ErrorResponse> response =
+        handler.handleCourseNotOwned(new CourseNotOwnedException());
+
+    assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+    assertEquals("COURSE_NOT_OWNED", response.getBody().getError().getCode());
   }
 }

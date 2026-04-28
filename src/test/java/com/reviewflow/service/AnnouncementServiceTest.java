@@ -1,33 +1,48 @@
 package com.reviewflow.service;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-
-import com.reviewflow.event.AnnouncementPublishedEvent;
-import com.reviewflow.exception.AccessDeniedException;
-import com.reviewflow.exception.AlreadyPublishedException;
-import com.reviewflow.exception.CourseNotOwnedException;
-import com.reviewflow.model.entity.*;
-import com.reviewflow.model.enums.AnnouncementTarget;
-import com.reviewflow.model.enums.RecipientType;
-import com.reviewflow.repository.*;
-import com.reviewflow.util.HashidService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+
+import com.reviewflow.event.AnnouncementPublishedEvent;
+import com.reviewflow.exception.AccessDeniedException;
+import com.reviewflow.exception.AlreadyPublishedException;
+import com.reviewflow.exception.CourseNotOwnedException;
+import com.reviewflow.model.entity.Announcement;
+import com.reviewflow.model.entity.Course;
+import com.reviewflow.model.entity.User;
+import com.reviewflow.model.entity.UserRole;
+import com.reviewflow.model.enums.AnnouncementTarget;
+import com.reviewflow.model.enums.RecipientType;
+import com.reviewflow.repository.AnnouncementRepository;
+import com.reviewflow.repository.CourseEnrollmentRepository;
+import com.reviewflow.repository.CourseInstructorRepository;
+import com.reviewflow.repository.UserRepository;
+import com.reviewflow.util.HashidService;
 
 @ExtendWith(MockitoExtension.class)
 class AnnouncementServiceTest {
@@ -103,7 +118,7 @@ class AnnouncementServiceTest {
     assertFalse(result.getIsPublished());
     verify(announcementRepository, times(1)).save(any(Announcement.class));
     verify(auditService, times(1))
-        .log(eq(10L), eq("ANNOUNCEMENT_CREATED"), any(), any(), any(), any());
+      .log(eq(10L), eq("ANNOUNCEMENT_CREATED"), any(), any(), (String) any(), any());
   }
 
   @Test
@@ -116,7 +131,7 @@ class AnnouncementServiceTest {
         () -> announcementService.createCourseAnnouncement("course_hash", 10L, "Title", "Body"));
 
     verify(auditService, times(1))
-        .log(eq(10L), eq("ANNOUNCEMENT_CREATE_DENIED"), any(), any(), any(), any());
+      .log(eq(10L), eq("ANNOUNCEMENT_CREATE_DENIED"), any(), any(), (String) any(), any());
   }
 
   // â”€â”€ CREATE PLATFORM ANNOUNCEMENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -204,7 +219,7 @@ class AnnouncementServiceTest {
 
     verify(announcementRepository, times(1)).deleteById(1000L);
     verify(auditService, times(1))
-        .log(eq(10L), eq("ANNOUNCEMENT_DELETED"), any(), any(), any(), any());
+      .log(eq(10L), eq("ANNOUNCEMENT_DELETED"), any(), any(), (String) any(), any());
   }
 
   @Test
