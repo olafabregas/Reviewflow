@@ -7,21 +7,21 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import com.reviewflow.exception.SubmissionTypeLockedException;
-import com.reviewflow.exception.ValidationException;
+import com.reviewflow.shared.exception.ValidationException;
 import com.reviewflow.model.entity.Assignment;
 import com.reviewflow.model.entity.AssignmentGroup;
-import com.reviewflow.model.entity.Course;
+import com.reviewflow.shared.domain.Course;
 import com.reviewflow.model.entity.Team;
-import com.reviewflow.model.enums.SubmissionType;
+import com.reviewflow.shared.domain.SubmissionType;
 import com.reviewflow.repository.AssignmentGroupRepository;
 import com.reviewflow.repository.AssignmentRepository;
-import com.reviewflow.repository.CourseInstructorRepository;
-import com.reviewflow.repository.CourseRepository;
+import com.reviewflow.course.repository.CourseInstructorRepository;
+import com.reviewflow.course.repository.CourseRepository;
 import com.reviewflow.repository.RubricCriterionRepository;
 import com.reviewflow.repository.RubricScoreRepository;
 import com.reviewflow.repository.SubmissionRepository;
 import com.reviewflow.repository.TeamRepository;
-import com.reviewflow.util.HashidService;
+import com.reviewflow.shared.util.HashidService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -45,7 +45,7 @@ class AssignmentServiceTest {
 
   @Mock
   @SuppressWarnings("unused")
-  private com.reviewflow.repository.CourseEnrollmentRepository courseEnrollmentRepository;
+  private com.reviewflow.course.repository.CourseEnrollmentRepository courseEnrollmentRepository;
 
   @Mock private SubmissionRepository submissionRepository;
 

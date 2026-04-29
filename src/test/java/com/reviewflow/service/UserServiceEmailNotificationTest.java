@@ -1,4 +1,4 @@
-package com.reviewflow.service;
+package com.reviewflow.user.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -11,18 +11,18 @@ import static org.mockito.Mockito.when;
 
 import com.reviewflow.event.email.AccountReactivatedEmailEvent;
 import com.reviewflow.event.email.WelcomeEmailEvent;
-import com.reviewflow.exception.BusinessRuleException;
+import com.reviewflow.shared.exception.BusinessRuleException;
 import com.reviewflow.exception.DuplicateResourceException;
-import com.reviewflow.exception.ValidationException;
-import com.reviewflow.model.dto.response.AuthUserResponse;
+import com.reviewflow.shared.exception.ValidationException;
+import com.reviewflow.user.dto.response.AuthUserResponse;
 import com.reviewflow.model.entity.User;
-import com.reviewflow.model.entity.UserRole;
-import com.reviewflow.repository.CourseEnrollmentRepository;
-import com.reviewflow.repository.CourseInstructorRepository;
+import com.reviewflow.shared.domain.UserRole;
+import com.reviewflow.course.repository.CourseEnrollmentRepository;
+import com.reviewflow.course.repository.CourseInstructorRepository;
 import com.reviewflow.repository.TeamMemberRepository;
-import com.reviewflow.repository.UserRepository;
-import com.reviewflow.storage.StorageService;
-import com.reviewflow.util.HashidService;
+import com.reviewflow.user.repository.UserRepository;
+import com.reviewflow.infra.storage.StorageService;
+import com.reviewflow.shared.util.HashidService;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

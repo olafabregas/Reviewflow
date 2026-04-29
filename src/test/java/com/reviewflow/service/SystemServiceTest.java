@@ -5,11 +5,12 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.github.benmanes.caffeine.cache.Cache;
-import com.reviewflow.dto.*;
+import com.reviewflow.shared.dto.*;
 import com.reviewflow.exception.*;
 import com.reviewflow.model.entity.*;
 import com.reviewflow.repository.*;
-import com.reviewflow.util.HashidService;
+import com.reviewflow.user.repository.UserRepository;
+import com.reviewflow.shared.util.HashidService;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;

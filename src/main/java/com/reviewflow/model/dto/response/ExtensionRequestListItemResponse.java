@@ -1,7 +1,9 @@
 package com.reviewflow.model.dto.response;
 
-import com.reviewflow.model.enums.ExtensionRequestStatus;
 import java.time.Instant;
+
+import com.reviewflow.shared.domain.ExtensionRequestStatus;
+
 import lombok.Builder;
 import lombok.Value;
 

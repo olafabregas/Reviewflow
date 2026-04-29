@@ -1,5 +1,6 @@
 package com.reviewflow.model.entity;
 
+import com.reviewflow.shared.domain.Course;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

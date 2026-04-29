@@ -1,6 +1,6 @@
 package com.reviewflow.model.dto.response;
 
-import com.reviewflow.model.enums.SubmissionType;
+import com.reviewflow.shared.domain.SubmissionType;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;

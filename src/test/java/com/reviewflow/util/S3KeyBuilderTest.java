@@ -2,8 +2,10 @@ package com.reviewflow.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.reviewflow.infra.storage.S3KeyBuilder;
 
 import org.junit.jupiter.api.Test;
+import com.reviewflow.infra.storage.S3KeyBuilder;
 
 class S3KeyBuilderTest {
 

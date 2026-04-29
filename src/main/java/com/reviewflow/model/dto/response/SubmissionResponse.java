@@ -1,8 +1,8 @@
 package com.reviewflow.model.dto.response;
 
 import com.reviewflow.model.entity.Submission;
-import com.reviewflow.model.enums.SubmissionType;
-import com.reviewflow.util.HashidService;
+import com.reviewflow.shared.domain.SubmissionType;
+import com.reviewflow.shared.util.HashidService;
 import java.time.Instant;
 import lombok.Builder;
 import lombok.Value;

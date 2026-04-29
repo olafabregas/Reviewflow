@@ -1,7 +1,7 @@
 package com.reviewflow.repository;
 
 import com.reviewflow.model.entity.TeamMember;
-import com.reviewflow.model.entity.TeamMemberStatus;
+import com.reviewflow.shared.domain.TeamMemberStatus;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;

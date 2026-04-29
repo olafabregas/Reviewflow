@@ -1,8 +1,8 @@
 package com.reviewflow.service;
 
-import com.reviewflow.exception.AccessDeniedException;
+import com.reviewflow.shared.exception.AccessDeniedException;
 import com.reviewflow.exception.AlreadyPublishedException;
-import com.reviewflow.exception.ResourceNotFoundException;
+import com.reviewflow.shared.exception.ResourceNotFoundException;
 import com.reviewflow.exception.ScoreExceedsMaxException;
 import com.reviewflow.exception.ScoreNotPublishedException;
 import com.reviewflow.model.dto.response.InstructorScoreListResponse;
@@ -11,15 +11,15 @@ import com.reviewflow.model.entity.Assignment;
 import com.reviewflow.model.entity.InstructorScore;
 import com.reviewflow.model.entity.Team;
 import com.reviewflow.model.entity.User;
-import com.reviewflow.model.entity.UserRole;
-import com.reviewflow.model.enums.SubmissionType;
+import com.reviewflow.shared.domain.UserRole;
+import com.reviewflow.shared.domain.SubmissionType;
 import com.reviewflow.repository.AssignmentRepository;
-import com.reviewflow.repository.CourseEnrollmentRepository;
-import com.reviewflow.repository.CourseInstructorRepository;
+import com.reviewflow.course.repository.CourseEnrollmentRepository;
+import com.reviewflow.course.repository.CourseInstructorRepository;
 import com.reviewflow.repository.InstructorScoreRepository;
 import com.reviewflow.repository.TeamRepository;
-import com.reviewflow.repository.UserRepository;
-import com.reviewflow.util.HashidService;
+import com.reviewflow.user.repository.UserRepository;
+import com.reviewflow.shared.util.HashidService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -63,7 +63,7 @@ public class InstructorScoreService {
 
     if (assignment.getSubmissionType() == SubmissionType.TEAM) {
       if (teamId == null) {
-        throw new com.reviewflow.exception.ValidationException(
+        throw new com.reviewflow.shared.exception.ValidationException(
             "teamId is required for team assignments", "VALIDATION_ERROR");
       }
       team =
@@ -71,7 +71,7 @@ public class InstructorScoreService {
               .findById(teamId)
               .orElseThrow(() -> new ResourceNotFoundException("Team", teamId));
       if (!team.getAssignment().getId().equals(assignmentId)) {
-        throw new com.reviewflow.exception.ValidationException(
+        throw new com.reviewflow.shared.exception.ValidationException(
             "Team does not belong to this assignment", "VALIDATION_ERROR");
       }
       existing =
@@ -80,7 +80,7 @@ public class InstructorScoreService {
               .orElse(null);
     } else {
       if (studentId == null) {
-        throw new com.reviewflow.exception.ValidationException(
+        throw new com.reviewflow.shared.exception.ValidationException(
             "studentId is required", "VALIDATION_ERROR");
       }
       if (!courseEnrollmentRepository.existsByCourseIdAndUserId(
@@ -292,18 +292,18 @@ public class InstructorScoreService {
 
   private void validateInstructorGraded(Assignment assignment) {
     if (assignment.getSubmissionType() != SubmissionType.INSTRUCTOR_GRADED) {
-      throw new com.reviewflow.exception.ValidationException(
+      throw new com.reviewflow.shared.exception.ValidationException(
           "Assignment is not instructor graded", "VALIDATION_ERROR");
     }
     if (assignment.getMaxScore() == null) {
-      throw new com.reviewflow.exception.ValidationException(
+      throw new com.reviewflow.shared.exception.ValidationException(
           "Instructor graded assignment must define maxScore", "VALIDATION_ERROR");
     }
   }
 
   private void validateScore(BigDecimal score, BigDecimal maxScore) {
     if (score == null || score.compareTo(BigDecimal.ZERO) < 0) {
-      throw new com.reviewflow.exception.ValidationException(
+      throw new com.reviewflow.shared.exception.ValidationException(
           "Score must be greater than or equal to 0", "VALIDATION_ERROR");
     }
     if (maxScore != null && score.compareTo(maxScore) > 0) {

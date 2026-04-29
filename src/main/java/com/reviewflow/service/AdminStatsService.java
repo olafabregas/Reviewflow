@@ -1,6 +1,6 @@
 package com.reviewflow.service;
 
-import com.reviewflow.util.CacheNames;
+import com.reviewflow.shared.constant.CacheNames;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;

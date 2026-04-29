@@ -1,4 +1,4 @@
-package com.reviewflow.service;
+package com.reviewflow.user.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -13,18 +13,18 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.reviewflow.exception.AvatarInvalidTypeException;
-import com.reviewflow.exception.AvatarNotFoundException;
-import com.reviewflow.exception.AvatarUploadFailedException;
-import com.reviewflow.model.dto.response.AuthUserResponse;
+import com.reviewflow.user.dto.response.AuthUserResponse;
+import com.reviewflow.user.exception.AvatarInvalidTypeException;
+import com.reviewflow.user.exception.AvatarNotFoundException;
+import com.reviewflow.user.exception.AvatarUploadFailedException;
 import com.reviewflow.model.entity.User;
-import com.reviewflow.model.entity.UserRole;
-import com.reviewflow.repository.CourseEnrollmentRepository;
-import com.reviewflow.repository.CourseInstructorRepository;
+import com.reviewflow.shared.domain.UserRole;
+import com.reviewflow.course.repository.CourseEnrollmentRepository;
+import com.reviewflow.course.repository.CourseInstructorRepository;
 import com.reviewflow.repository.TeamMemberRepository;
-import com.reviewflow.repository.UserRepository;
-import com.reviewflow.storage.StorageService;
-import com.reviewflow.util.HashidService;
+import com.reviewflow.user.repository.UserRepository;
+import com.reviewflow.infra.storage.StorageService;
+import com.reviewflow.shared.util.HashidService;
 import java.io.ByteArrayInputStream;
 import java.time.Instant;
 import java.util.Optional;

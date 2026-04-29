@@ -1,6 +1,6 @@
 package com.reviewflow.controller;
 
-import com.reviewflow.security.ReviewFlowUserDetails;
+import com.reviewflow.infra.security.ReviewFlowUserDetails;
 import com.reviewflow.service.GradeExportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;

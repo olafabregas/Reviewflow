@@ -1,5 +1,7 @@
 package com.reviewflow.exception;
 
+import com.reviewflow.shared.exception.BusinessRuleException;
+
 public class ExtensionRequestExistsException extends BusinessRuleException {
 
   public ExtensionRequestExistsException(String message) {

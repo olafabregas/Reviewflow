@@ -2,13 +2,13 @@ package com.reviewflow.controller;
 
 import com.reviewflow.model.dto.request.LoginRequest;
 import com.reviewflow.model.dto.response.ApiResponse;
-import com.reviewflow.model.dto.response.AuthUserResponse;
-import com.reviewflow.security.ReviewFlowUserDetails;
+import com.reviewflow.infra.security.ReviewFlowUserDetails;
 import com.reviewflow.service.AuthService;
 import com.reviewflow.service.AuthService.LoginResult;
 import com.reviewflow.service.AuthService.RefreshResult;
-import com.reviewflow.service.UserService;
-import com.reviewflow.util.HashidService;
+import com.reviewflow.shared.util.HashidService;
+import com.reviewflow.user.dto.response.AuthUserResponse;
+import com.reviewflow.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

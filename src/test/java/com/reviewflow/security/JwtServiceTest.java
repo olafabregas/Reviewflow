@@ -1,4 +1,4 @@
-package com.reviewflow.security;
+package com.reviewflow.infra.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
@@ -33,7 +33,7 @@ class JwtServiceTest {
   void generateAccessToken_ShouldIncludeVersionClaim() {
     when(userDetails.getUsername()).thenReturn("user@test.com");
     when(userDetails.getUserId()).thenReturn(123L);
-    when(userDetails.getRole()).thenReturn(com.reviewflow.model.entity.UserRole.ADMIN);
+    when(userDetails.getRole()).thenReturn(com.reviewflow.shared.domain.UserRole.ADMIN);
 
     String token = jwtService.generateAccessToken(userDetails, 5);
 

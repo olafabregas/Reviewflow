@@ -1,5 +1,7 @@
 package com.reviewflow.exception;
 
+import com.reviewflow.shared.exception.BusinessRuleException;
+
 public class ScoreNotPublishedException extends BusinessRuleException {
 
   public ScoreNotPublishedException(String message) {

@@ -1,5 +1,7 @@
 package com.reviewflow.exception;
 
+import com.reviewflow.shared.exception.BusinessRuleException;
+
 public class NotEnrolledException extends BusinessRuleException {
 
   public NotEnrolledException(String message) {

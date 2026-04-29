@@ -3,14 +3,20 @@ package com.reviewflow.service;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import com.reviewflow.infra.storage.S3Service;
 
 import com.reviewflow.exception.*;
+import com.reviewflow.shared.exception.AccessDeniedException;
+import com.reviewflow.shared.exception.ResourceNotFoundException;
 import com.reviewflow.model.dto.response.PreviewResponseDto;
 import com.reviewflow.model.entity.*;
-import com.reviewflow.model.enums.SubmissionType;
+import com.reviewflow.shared.domain.Course;
+import com.reviewflow.shared.domain.SubmissionType;
+import com.reviewflow.shared.domain.UserRole;
 import com.reviewflow.pdf.PdfGenerationService;
 import com.reviewflow.repository.*;
-import com.reviewflow.util.HashidService;
+import com.reviewflow.user.repository.UserRepository;
+import com.reviewflow.shared.util.HashidService;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +25,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import com.reviewflow.infra.storage.S3Service;
 
 @ExtendWith(MockitoExtension.class)
 class EvaluationServicePreviewTest {

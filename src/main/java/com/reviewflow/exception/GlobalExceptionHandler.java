@@ -1,5 +1,18 @@
 package com.reviewflow.exception;
 
+import com.reviewflow.announcement.exception.AnnouncementNotFoundException;
+import com.reviewflow.course.exception.AssignmentNotInCourseException;
+import com.reviewflow.course.exception.CourseArchivedReadOnlyException;
+import com.reviewflow.course.exception.CourseNotOwnedException;
+import com.reviewflow.course.exception.ModuleNotInCourseException;
+import com.reviewflow.shared.exception.BusinessRuleException;
+import com.reviewflow.shared.exception.InactiveUserException;
+import com.reviewflow.shared.exception.ResourceNotFoundException;
+import com.reviewflow.shared.exception.ValidationException;
+import com.reviewflow.user.exception.AvatarInvalidTypeException;
+import com.reviewflow.user.exception.AvatarNotFoundException;
+import com.reviewflow.user.exception.AvatarTooLargeException;
+import com.reviewflow.user.exception.AvatarUploadFailedException;
 import java.time.Instant;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
@@ -422,9 +435,9 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
   }
 
-  @ExceptionHandler(com.reviewflow.exception.AccessDeniedException.class)
+  @ExceptionHandler(com.reviewflow.shared.exception.AccessDeniedException.class)
   public ResponseEntity<ErrorResponse> handleCustomAccessDenied(
-      com.reviewflow.exception.AccessDeniedException ex) {
+      com.reviewflow.shared.exception.AccessDeniedException ex) {
     ErrorResponse body =
         ErrorResponse.builder()
             .error(

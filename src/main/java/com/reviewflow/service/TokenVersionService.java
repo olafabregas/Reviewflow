@@ -2,8 +2,8 @@ package com.reviewflow.service;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import com.reviewflow.exception.ResourceNotFoundException;
-import com.reviewflow.repository.UserRepository;
+import com.reviewflow.shared.exception.ResourceNotFoundException;
+import com.reviewflow.user.repository.UserRepository;
 import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;

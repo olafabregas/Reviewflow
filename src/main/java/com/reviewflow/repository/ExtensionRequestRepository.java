@@ -1,12 +1,14 @@
 package com.reviewflow.repository;
 
-import com.reviewflow.model.entity.ExtensionRequest;
-import com.reviewflow.model.enums.ExtensionRequestStatus;
 import java.util.Collection;
 import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.reviewflow.model.entity.ExtensionRequest;
+import com.reviewflow.shared.domain.ExtensionRequestStatus;
 
 public interface ExtensionRequestRepository extends JpaRepository<ExtensionRequest, Long> {
 

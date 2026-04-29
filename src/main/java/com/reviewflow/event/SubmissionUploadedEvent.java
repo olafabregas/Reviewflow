@@ -1,6 +1,6 @@
 package com.reviewflow.event;
 
-import com.reviewflow.model.enums.SubmissionType;
+import com.reviewflow.shared.domain.SubmissionType;
 import java.util.List;
 
 public record SubmissionUploadedEvent(

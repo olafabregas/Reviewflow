@@ -1,6 +1,7 @@
 package com.reviewflow.model.entity;
 
-import com.reviewflow.model.enums.SubmissionType;
+import com.reviewflow.shared.domain.Course;
+import com.reviewflow.shared.domain.SubmissionType;
     // TODO [STYLE-AGENT]: fix structural violation
 import jakarta.persistence.*;
 import java.math.BigDecimal;

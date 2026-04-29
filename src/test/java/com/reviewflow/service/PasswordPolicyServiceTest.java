@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.reviewflow.config.PasswordPolicyProperties;
-import com.reviewflow.exception.ValidationException;
+import com.reviewflow.infra.security.PasswordPolicyProperties;
+import com.reviewflow.shared.exception.ValidationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

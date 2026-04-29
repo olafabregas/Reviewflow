@@ -1,24 +1,24 @@
 package com.reviewflow.service;
 
-import static com.reviewflow.util.CacheNames.CACHE_ADMIN_STATS;
-import static com.reviewflow.util.CacheNames.CACHE_ASSIGNMENT;
-import static com.reviewflow.util.CacheNames.CACHE_ASSIGNMENT_GROUPS;
-import static com.reviewflow.util.CacheNames.CACHE_UNREAD_COUNT;
-import static com.reviewflow.util.CacheNames.CACHE_USER_COURSES;
+import static com.reviewflow.shared.constant.CacheNames.CACHE_ADMIN_STATS;
+import static com.reviewflow.shared.constant.CacheNames.CACHE_ASSIGNMENT;
+import static com.reviewflow.shared.constant.CacheNames.CACHE_ASSIGNMENT_GROUPS;
+import static com.reviewflow.shared.constant.CacheNames.CACHE_UNREAD_COUNT;
+import static com.reviewflow.shared.constant.CacheNames.CACHE_USER_COURSES;
 
 import com.github.benmanes.caffeine.cache.Cache;
-import com.reviewflow.dto.AuditLogDto;
-import com.reviewflow.dto.CacheEvictResponse;
-import com.reviewflow.dto.CacheStatsDto;
-import com.reviewflow.dto.ForceLogoutResponse;
-import com.reviewflow.dto.ReopenEvaluationResponse;
-import com.reviewflow.dto.SecurityEventDto;
-import com.reviewflow.dto.SystemMetricsDto;
-import com.reviewflow.dto.UnlockTeamResponse;
-import com.reviewflow.dto.UserDto;
-import com.reviewflow.event.CacheEvictedEvent;
+import com.reviewflow.shared.dto.AuditLogDto;
+import com.reviewflow.shared.dto.CacheEvictResponse;
+import com.reviewflow.shared.dto.CacheStatsDto;
+import com.reviewflow.shared.dto.ForceLogoutResponse;
+import com.reviewflow.shared.dto.ReopenEvaluationResponse;
+import com.reviewflow.shared.dto.SecurityEventDto;
+import com.reviewflow.shared.dto.SystemMetricsDto;
+import com.reviewflow.shared.dto.UnlockTeamResponse;
+import com.reviewflow.shared.dto.UserDto;
+import com.reviewflow.shared.event.CacheEvictedEvent;
 import com.reviewflow.event.EvaluationReopenedEvent;
-import com.reviewflow.event.ForceLogoutEvent;
+import com.reviewflow.shared.event.ForceLogoutEvent;
 import com.reviewflow.event.TeamUnlockedBySystemEvent;
 import com.reviewflow.exception.CacheEvictionThrottledException;
 import com.reviewflow.exception.EvaluationNotFoundException;
@@ -28,12 +28,12 @@ import com.reviewflow.exception.UnknownCacheException;
 import com.reviewflow.model.entity.Evaluation;
 import com.reviewflow.model.entity.Team;
 import com.reviewflow.model.entity.User;
-import com.reviewflow.model.entity.UserRole;
+import com.reviewflow.shared.domain.UserRole;
 import com.reviewflow.repository.EvaluationRepository;
 import com.reviewflow.repository.RefreshTokenRepository;
 import com.reviewflow.repository.TeamRepository;
-import com.reviewflow.repository.UserRepository;
-import com.reviewflow.util.HashidService;
+import com.reviewflow.user.repository.UserRepository;
+import com.reviewflow.shared.util.HashidService;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -256,7 +256,7 @@ public class SystemService {
         userRepository
             .findById(targetUserId)
             .orElseThrow(
-                () -> new com.reviewflow.exception.ResourceNotFoundException("User", targetHashId));
+                () -> new com.reviewflow.shared.exception.ResourceNotFoundException("User", targetHashId));
 
     // Prevent self-logout
     if (targetUserId.equals(actorId)) {

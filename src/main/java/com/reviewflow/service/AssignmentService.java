@@ -1,38 +1,38 @@
 package com.reviewflow.service;
 
-import com.reviewflow.exception.BusinessRuleException;
-import com.reviewflow.exception.GroupNotInCourseException;
-import com.reviewflow.exception.ModuleNotInCourseException;
-import com.reviewflow.exception.ResourceNotFoundException;
+import com.reviewflow.shared.exception.BusinessRuleException;
+import com.reviewflow.course.exception.GroupNotInCourseException;
+import com.reviewflow.course.exception.ModuleNotInCourseException;
+import com.reviewflow.shared.exception.ResourceNotFoundException;
 import com.reviewflow.exception.ScoresExistException;
 import com.reviewflow.exception.SubmissionTypeLockedException;
-import com.reviewflow.exception.ValidationException;
+import com.reviewflow.shared.exception.ValidationException;
 import com.reviewflow.model.dto.response.AssignmentResponse;
 import com.reviewflow.model.dto.response.GradebookEntryResponse;
 import com.reviewflow.model.entity.Assignment;
 import com.reviewflow.model.entity.AssignmentGroup;
 import com.reviewflow.model.entity.AssignmentModule;
-import com.reviewflow.model.entity.Course;
+import com.reviewflow.shared.domain.Course;
 import com.reviewflow.model.entity.Evaluation;
 import com.reviewflow.model.entity.RubricCriterion;
 import com.reviewflow.model.entity.Submission;
 import com.reviewflow.model.entity.Team;
-import com.reviewflow.model.entity.UserRole;
-import com.reviewflow.model.enums.SubmissionType;
+import com.reviewflow.shared.domain.UserRole;
+import com.reviewflow.shared.domain.SubmissionType;
 import com.reviewflow.repository.AssignmentGroupRepository;
 import com.reviewflow.repository.AssignmentModuleRepository;
 import com.reviewflow.repository.AssignmentRepository;
-import com.reviewflow.repository.CourseEnrollmentRepository;
-import com.reviewflow.repository.CourseInstructorRepository;
-import com.reviewflow.repository.CourseRepository;
+import com.reviewflow.course.repository.CourseEnrollmentRepository;
+import com.reviewflow.course.repository.CourseInstructorRepository;
+import com.reviewflow.course.repository.CourseRepository;
 import com.reviewflow.repository.EvaluationRepository;
 import com.reviewflow.repository.InstructorScoreRepository;
 import com.reviewflow.repository.RubricCriterionRepository;
 import com.reviewflow.repository.RubricScoreRepository;
 import com.reviewflow.repository.SubmissionRepository;
 import com.reviewflow.repository.TeamRepository;
-import com.reviewflow.util.CacheNames;
-import com.reviewflow.util.HashidService;
+import com.reviewflow.shared.constant.CacheNames;
+import com.reviewflow.shared.util.HashidService;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Comparator;
@@ -473,7 +473,7 @@ public class AssignmentService {
     if (courseEnrollmentRepository.existsByCourseIdAndUserId(courseId, userId)) {
       return assignmentRepository.findByCourseIdAndIsPublishedTrue(courseId);
     }
-    throw new com.reviewflow.exception.AccessDeniedException(
+    throw new com.reviewflow.shared.exception.AccessDeniedException(
         "You do not have access to this course");
   }
 

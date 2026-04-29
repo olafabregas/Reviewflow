@@ -1,18 +1,21 @@
 package com.reviewflow.service;
 
-import com.reviewflow.exception.MalwareDetectedException;
-import com.reviewflow.model.enums.ClamAvScanResult;
-import com.reviewflow.monitoring.SecurityMetrics;
-import fi.solita.clamav.ClamAVClient;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
-import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+
+import com.reviewflow.exception.MalwareDetectedException;
+import com.reviewflow.infra.monitoring.SecurityMetrics;
+import com.reviewflow.shared.domain.ClamAvScanResult;
+
+import fi.solita.clamav.ClamAVClient;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service

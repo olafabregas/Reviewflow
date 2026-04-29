@@ -1,5 +1,12 @@
 package com.reviewflow.exception;
 
+import com.reviewflow.announcement.exception.AnnouncementNotFoundException;
+import com.reviewflow.course.exception.AssignmentNotInCourseException;
+import com.reviewflow.course.exception.CourseArchivedReadOnlyException;
+import com.reviewflow.course.exception.CourseNotOwnedException;
+import com.reviewflow.course.exception.ModuleNotInCourseException;
+import com.reviewflow.user.exception.AvatarInvalidTypeException;
+import com.reviewflow.user.exception.AvatarNotFoundException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;

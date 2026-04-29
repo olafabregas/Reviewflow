@@ -1,11 +1,11 @@
 package com.reviewflow.controller;
 
-import com.reviewflow.dto.CacheEvictResponse;
-import com.reviewflow.dto.CacheStatsDto;
-import com.reviewflow.dto.ForceLogoutResponse;
-import com.reviewflow.dto.ReopenEvaluationResponse;
-import com.reviewflow.dto.SecurityEventDto;
-import com.reviewflow.dto.UnlockTeamResponse;
+import com.reviewflow.shared.dto.CacheEvictResponse;
+import com.reviewflow.shared.dto.CacheStatsDto;
+import com.reviewflow.shared.dto.ForceLogoutResponse;
+import com.reviewflow.shared.dto.ReopenEvaluationResponse;
+import com.reviewflow.shared.dto.SecurityEventDto;
+import com.reviewflow.shared.dto.UnlockTeamResponse;
 import com.reviewflow.service.SystemService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -268,7 +268,7 @@ public class SystemController {
   /** Extract user ID from Spring Security authentication */
   private Long extractUserIdFromAuthentication(Authentication authentication) {
     if (authentication.getPrincipal()
-        instanceof com.reviewflow.security.ReviewFlowUserDetails details) {
+        instanceof com.reviewflow.infra.security.ReviewFlowUserDetails details) {
       return details.getUserId();
     }
     return null;

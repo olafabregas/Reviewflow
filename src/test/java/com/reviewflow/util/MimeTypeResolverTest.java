@@ -1,4 +1,4 @@
-package com.reviewflow.util;
+package com.reviewflow.shared.util;
 
 import static org.junit.jupiter.api.Assertions.*;
 

@@ -1,11 +1,11 @@
 package com.reviewflow.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.reviewflow.dto.AuditLogDto;
+import com.reviewflow.shared.dto.AuditLogDto;
 import com.reviewflow.model.entity.AuditLog;
 import com.reviewflow.model.entity.User;
 import com.reviewflow.repository.AuditLogRepository;
-import com.reviewflow.repository.UserRepository;
+import com.reviewflow.user.repository.UserRepository;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;

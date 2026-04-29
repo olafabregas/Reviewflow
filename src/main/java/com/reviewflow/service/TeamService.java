@@ -2,16 +2,21 @@ package com.reviewflow.service;
 
 import com.reviewflow.event.TeamInviteEvent;
 import com.reviewflow.event.TeamLockedEvent;
-import com.reviewflow.exception.AccessDeniedException;
-import com.reviewflow.exception.BusinessRuleException;
+import com.reviewflow.shared.exception.AccessDeniedException;
+import com.reviewflow.shared.exception.BusinessRuleException;
 import com.reviewflow.exception.DuplicateResourceException;
-import com.reviewflow.exception.ResourceNotFoundException;
+import com.reviewflow.shared.exception.ResourceNotFoundException;
 import com.reviewflow.exception.TeamNotAllowedException;
     // TODO [STYLE-AGENT]: fix structural violation
+import com.reviewflow.course.repository.CourseEnrollmentRepository;
+import com.reviewflow.course.repository.CourseInstructorRepository;
 import com.reviewflow.model.entity.*;
-import com.reviewflow.model.enums.SubmissionType; // TODO [STYLE-AGENT]: fix structural violation
+import com.reviewflow.shared.domain.SubmissionType; // TODO [STYLE-AGENT]: fix structural violation
     // TODO [STYLE-AGENT]: fix structural violation
 import com.reviewflow.repository.*;
+import com.reviewflow.user.repository.UserRepository;
+import com.reviewflow.shared.domain.UserRole;
+import com.reviewflow.shared.domain.TeamMemberStatus;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;

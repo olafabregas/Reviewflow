@@ -1,13 +1,13 @@
 package com.reviewflow.service;
 
 import com.reviewflow.event.EvaluationPublishedEvent;
-import com.reviewflow.exception.AccessDeniedException;
-import com.reviewflow.exception.BusinessRuleException;
+import com.reviewflow.shared.exception.AccessDeniedException;
+import com.reviewflow.shared.exception.BusinessRuleException;
 import com.reviewflow.exception.DuplicateResourceException;
 import com.reviewflow.exception.FileTooLargeForPreviewException;
 import com.reviewflow.exception.PreviewNotSupportedException;
-import com.reviewflow.exception.ResourceNotFoundException;
-import com.reviewflow.exception.ValidationException;
+import com.reviewflow.shared.exception.ResourceNotFoundException;
+import com.reviewflow.shared.exception.ValidationException;
 import com.reviewflow.model.dto.request.UpdateScoresRequest;
 import com.reviewflow.model.dto.response.PreviewResponseDto;
 import com.reviewflow.model.entity.Assignment;
@@ -15,19 +15,19 @@ import com.reviewflow.model.entity.Evaluation;
 import com.reviewflow.model.entity.RubricCriterion;
 import com.reviewflow.model.entity.RubricScore;
 import com.reviewflow.model.entity.Submission;
-import com.reviewflow.model.entity.TeamMemberStatus;
 import com.reviewflow.model.entity.User;
-import com.reviewflow.model.entity.UserRole;
-import com.reviewflow.model.enums.SubmissionType;
+import com.reviewflow.shared.domain.UserRole;
+import com.reviewflow.shared.domain.SubmissionType;
 import com.reviewflow.pdf.PdfGenerationService;
 import com.reviewflow.repository.EvaluationRepository;
 import com.reviewflow.repository.RubricCriterionRepository;
 import com.reviewflow.repository.RubricScoreRepository;
 import com.reviewflow.repository.SubmissionRepository;
 import com.reviewflow.repository.TeamMemberRepository;
-import com.reviewflow.repository.UserRepository;
-import com.reviewflow.util.HashidService;
-import com.reviewflow.util.MimeTypeResolver;
+import com.reviewflow.user.repository.UserRepository;
+import com.reviewflow.shared.domain.TeamMemberStatus;
+import com.reviewflow.shared.util.HashidService;
+import com.reviewflow.shared.util.MimeTypeResolver;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -37,6 +37,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.reviewflow.infra.storage.S3Service;
 
 @Service
 @RequiredArgsConstructor

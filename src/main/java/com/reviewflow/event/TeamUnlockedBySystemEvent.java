@@ -1,6 +1,6 @@
 package com.reviewflow.event;
 
-import com.reviewflow.dto.UserDto;
+import com.reviewflow.shared.dto.UserDto;
 import java.util.List;
 import org.springframework.context.ApplicationEvent;
 

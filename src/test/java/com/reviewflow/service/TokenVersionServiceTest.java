@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
-import com.reviewflow.exception.ResourceNotFoundException;
-import com.reviewflow.repository.UserRepository;
+import com.reviewflow.shared.exception.ResourceNotFoundException;
+import com.reviewflow.user.repository.UserRepository;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

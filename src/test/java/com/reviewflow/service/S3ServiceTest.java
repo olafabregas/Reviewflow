@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import com.reviewflow.infra.storage.S3Service;
 
 import com.reviewflow.exception.StorageException;
 import com.reviewflow.exception.StorageNotFoundException;
@@ -37,6 +38,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
+import com.reviewflow.infra.storage.S3Service;
 
 @ExtendWith(MockitoExtension.class)
 class S3ServiceTest {

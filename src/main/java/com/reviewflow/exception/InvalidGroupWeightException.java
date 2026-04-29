@@ -1,5 +1,7 @@
 package com.reviewflow.exception;
 
+import com.reviewflow.shared.exception.ValidationException;
+
 public class InvalidGroupWeightException extends ValidationException {
 
   public InvalidGroupWeightException(String message) {

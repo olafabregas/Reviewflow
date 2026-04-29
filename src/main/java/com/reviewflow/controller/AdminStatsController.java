@@ -1,12 +1,12 @@
 package com.reviewflow.controller;
 
 import com.reviewflow.model.dto.response.ApiResponse;
-import com.reviewflow.model.entity.UserRole;
+import com.reviewflow.shared.domain.UserRole;
 import com.reviewflow.repository.AssignmentRepository;
-import com.reviewflow.repository.CourseRepository;
+import com.reviewflow.course.repository.CourseRepository;
 import com.reviewflow.repository.SubmissionRepository;
 import com.reviewflow.repository.TeamRepository;
-import com.reviewflow.repository.UserRepository;
+import com.reviewflow.user.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

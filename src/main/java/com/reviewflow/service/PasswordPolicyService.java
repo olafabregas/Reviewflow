@@ -1,7 +1,7 @@
 package com.reviewflow.service;
 
-import com.reviewflow.config.PasswordPolicyProperties;
-import com.reviewflow.exception.ValidationException;
+import com.reviewflow.infra.security.PasswordPolicyProperties;
+import com.reviewflow.shared.exception.ValidationException;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

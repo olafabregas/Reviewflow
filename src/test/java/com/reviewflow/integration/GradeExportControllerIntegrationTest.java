@@ -6,8 +6,8 @@ import static org.mockito.Mockito.when;
 
 import com.reviewflow.controller.GradeExportController;
 import com.reviewflow.model.entity.User;
-import com.reviewflow.model.entity.UserRole;
-import com.reviewflow.security.ReviewFlowUserDetails;
+import com.reviewflow.shared.domain.UserRole;
+import com.reviewflow.infra.security.ReviewFlowUserDetails;
 import com.reviewflow.service.GradeExportService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

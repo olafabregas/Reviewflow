@@ -1,6 +1,6 @@
 package com.reviewflow.service;
 
-import com.reviewflow.exception.AvatarUploadFailedException;
+import com.reviewflow.user.exception.AvatarUploadFailedException;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

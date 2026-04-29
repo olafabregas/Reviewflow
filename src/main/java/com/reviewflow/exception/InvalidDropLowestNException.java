@@ -1,5 +1,7 @@
 package com.reviewflow.exception;
 
+import com.reviewflow.shared.exception.ValidationException;
+
 public class InvalidDropLowestNException extends ValidationException {
 
   public InvalidDropLowestNException(String message) {

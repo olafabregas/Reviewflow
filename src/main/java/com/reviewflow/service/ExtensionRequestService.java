@@ -1,42 +1,45 @@
 package com.reviewflow.service;
 
-import com.reviewflow.event.ExtensionDecidedEvent;
-import com.reviewflow.event.ExtensionRequestedEvent;
-import com.reviewflow.exception.AccessDeniedException;
-import com.reviewflow.exception.AlreadyRespondedException;
-import com.reviewflow.exception.ExtensionCutoffPassedException;
-import com.reviewflow.exception.ExtensionRequestExistsException;
-import com.reviewflow.exception.InvalidRequestedDateException;
-import com.reviewflow.exception.NotInTeamException;
-import com.reviewflow.exception.ResourceNotFoundException;
-import com.reviewflow.model.entity.Assignment;
-import com.reviewflow.model.entity.ExtensionRequest;
-import com.reviewflow.model.entity.Submission;
-import com.reviewflow.model.entity.Team;
-import com.reviewflow.model.entity.TeamMember;
-import com.reviewflow.model.entity.TeamMemberStatus;
-import com.reviewflow.model.entity.User;
-import com.reviewflow.model.entity.UserRole;
-import com.reviewflow.model.enums.ExtensionRequestStatus;
-import com.reviewflow.model.enums.SubmissionType;
-import com.reviewflow.repository.AssignmentRepository;
-import com.reviewflow.repository.CourseEnrollmentRepository;
-import com.reviewflow.repository.CourseInstructorRepository;
-import com.reviewflow.repository.ExtensionRequestRepository;
-import com.reviewflow.repository.SubmissionRepository;
-import com.reviewflow.repository.TeamMemberRepository;
-import com.reviewflow.repository.UserRepository;
-import com.reviewflow.util.HashidService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.reviewflow.event.ExtensionDecidedEvent;
+import com.reviewflow.event.ExtensionRequestedEvent;
+import com.reviewflow.shared.exception.AccessDeniedException;
+import com.reviewflow.exception.AlreadyRespondedException;
+import com.reviewflow.exception.ExtensionCutoffPassedException;
+import com.reviewflow.exception.ExtensionRequestExistsException;
+import com.reviewflow.exception.InvalidRequestedDateException;
+import com.reviewflow.exception.NotInTeamException;
+import com.reviewflow.shared.exception.ResourceNotFoundException;
+import com.reviewflow.model.entity.Assignment;
+import com.reviewflow.model.entity.ExtensionRequest;
+import com.reviewflow.model.entity.Submission;
+import com.reviewflow.model.entity.Team;
+import com.reviewflow.model.entity.TeamMember;
+import com.reviewflow.model.entity.User;
+import com.reviewflow.shared.domain.UserRole;
+import com.reviewflow.shared.domain.SubmissionType;
+import com.reviewflow.repository.AssignmentRepository;
+import com.reviewflow.course.repository.CourseEnrollmentRepository;
+import com.reviewflow.course.repository.CourseInstructorRepository;
+import com.reviewflow.repository.ExtensionRequestRepository;
+import com.reviewflow.repository.SubmissionRepository;
+import com.reviewflow.repository.TeamMemberRepository;
+import com.reviewflow.user.repository.UserRepository;
+import com.reviewflow.shared.domain.ExtensionRequestStatus;
+import com.reviewflow.shared.domain.TeamMemberStatus;
+import com.reviewflow.shared.util.HashidService;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor

@@ -2,19 +2,19 @@ package com.reviewflow.service;
 
 import com.reviewflow.exception.CannotCommitWithErrorsException;
 import com.reviewflow.exception.ImportSessionExpiredException;
-import com.reviewflow.exception.ResourceNotFoundException;
+import com.reviewflow.shared.exception.ResourceNotFoundException;
 import com.reviewflow.model.dto.response.InstructorScoreImportCommitResponse;
 import com.reviewflow.model.dto.response.InstructorScoreImportPreviewResponse;
 import com.reviewflow.model.entity.Assignment;
 import com.reviewflow.model.entity.User;
-import com.reviewflow.model.enums.SubmissionType;
+import com.reviewflow.shared.domain.SubmissionType;
 import com.reviewflow.repository.AssignmentRepository;
-import com.reviewflow.repository.CourseEnrollmentRepository;
-import com.reviewflow.repository.CourseInstructorRepository;
+import com.reviewflow.course.repository.CourseEnrollmentRepository;
+import com.reviewflow.course.repository.CourseInstructorRepository;
 import com.reviewflow.repository.InstructorScoreRepository;
 import com.reviewflow.repository.TeamRepository;
-import com.reviewflow.repository.UserRepository;
-import com.reviewflow.util.CacheNames;
+import com.reviewflow.user.repository.UserRepository;
+import com.reviewflow.shared.constant.CacheNames;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -59,7 +59,7 @@ public class CsvImportService {
     ensureCanManage(assignment, actorId);
 
     if (file == null || file.isEmpty()) {
-      throw new com.reviewflow.exception.ValidationException(
+      throw new com.reviewflow.shared.exception.ValidationException(
           "CSV file is required", "VALIDATION_ERROR");
     }
 
@@ -69,7 +69,7 @@ public class CsvImportService {
 
     List<String[]> rows = parseRows(file);
     if (rows.isEmpty()) {
-      throw new com.reviewflow.exception.ValidationException(
+      throw new com.reviewflow.shared.exception.ValidationException(
           "CSV file is empty", "VALIDATION_ERROR");
     }
 
@@ -248,12 +248,12 @@ public class CsvImportService {
         userRepository
             .findById(actorId)
             .orElseThrow(() -> new ResourceNotFoundException("User", actorId));
-    if (actor.getRole() == com.reviewflow.model.entity.UserRole.SYSTEM_ADMIN) {
+    if (actor.getRole() == com.reviewflow.shared.domain.UserRole.SYSTEM_ADMIN) {
       return;
     }
     if (!courseInstructorRepository.existsByCourseIdAndUserId(
         assignment.getCourse().getId(), actorId)) {
-      throw new com.reviewflow.exception.AccessDeniedException(
+      throw new com.reviewflow.shared.exception.AccessDeniedException(
           "Not authorized to import scores for this course");
     }
   }
@@ -270,7 +270,7 @@ public class CsvImportService {
       }
       return rows;
     } catch (IOException e) {
-      throw new com.reviewflow.exception.ValidationException(
+      throw new com.reviewflow.shared.exception.ValidationException(
           "Unable to read CSV file", "VALIDATION_ERROR");
     }
   }
@@ -280,13 +280,13 @@ public class CsvImportService {
       if (header.length < 2
           || !"team_id".equalsIgnoreCase(header[0].trim())
           || !"score".equalsIgnoreCase(header[1].trim())) {
-        throw new com.reviewflow.exception.ValidationException(
+        throw new com.reviewflow.shared.exception.ValidationException(
             "CSV headers must be: team_id,score[,comment]", "VALIDATION_ERROR");
       }
     } else if (header.length < 2
         || !"student_email".equalsIgnoreCase(header[0].trim())
         || !"score".equalsIgnoreCase(header[1].trim())) {
-      throw new com.reviewflow.exception.ValidationException(
+      throw new com.reviewflow.shared.exception.ValidationException(
           "CSV headers must be: student_email,score[,comment]", "VALIDATION_ERROR");
     }
   }

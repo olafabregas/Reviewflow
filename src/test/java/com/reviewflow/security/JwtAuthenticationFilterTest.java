@@ -1,14 +1,14 @@
-package com.reviewflow.security;
+package com.reviewflow.infra.security;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import com.reviewflow.exception.TokenVersionMismatchException;
-import com.reviewflow.monitoring.SecurityMetrics;
+import com.reviewflow.infra.monitoring.SecurityMetrics;
 import com.reviewflow.service.RateLimiterService;
 import com.reviewflow.service.TokenVersionService;
-import com.reviewflow.util.HashidService;
-import com.reviewflow.util.IpAddressExtractor;
+import com.reviewflow.shared.util.HashidService;
+import com.reviewflow.shared.util.IpAddressExtractor;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

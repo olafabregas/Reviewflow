@@ -2,10 +2,10 @@ package com.reviewflow.service;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.reviewflow.config.FileSecurityProperties;
-import com.reviewflow.exception.AvatarInvalidTypeException;
-import com.reviewflow.exception.AvatarTooLargeException;
-import com.reviewflow.monitoring.ReviewFlowMetrics;
+import com.reviewflow.infra.storage.FileSecurityProperties;
+import com.reviewflow.user.exception.AvatarTooLargeException;
+import com.reviewflow.infra.monitoring.ReviewFlowMetrics;
+import com.reviewflow.user.exception.AvatarInvalidTypeException;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

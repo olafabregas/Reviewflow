@@ -1,16 +1,16 @@
 package com.reviewflow.service;
 
 import com.lowagie.text.pdf.PdfReader;
-import com.reviewflow.config.FileSecurityProperties;
+import com.reviewflow.infra.storage.FileSecurityProperties;
 import com.reviewflow.exception.ArchiveTooLargeException;
-import com.reviewflow.exception.AvatarInvalidTypeException;
-import com.reviewflow.exception.AvatarTooLargeException;
+import com.reviewflow.user.exception.AvatarInvalidTypeException;
+import com.reviewflow.user.exception.AvatarTooLargeException;
 import com.reviewflow.exception.BlockedFileTypeException;
 import com.reviewflow.exception.InvalidFileStructureException;
 import com.reviewflow.exception.InvalidFileTypeException;
 import com.reviewflow.exception.InvalidMimeTypeException;
 import com.reviewflow.exception.PdfEncryptedException;
-import com.reviewflow.monitoring.ReviewFlowMetrics;
+import com.reviewflow.infra.monitoring.ReviewFlowMetrics;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
