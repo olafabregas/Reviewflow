@@ -30,14 +30,14 @@ import org.springframework.data.domain.Pageable;
 
 import com.reviewflow.announcement.event.AnnouncementPublishedEvent;
 import com.reviewflow.announcement.repository.AnnouncementRepository;
-import com.reviewflow.exception.AlreadyPublishedException;
+import com.reviewflow.evaluation.exception.AlreadyPublishedException;
 import com.reviewflow.course.exception.CourseNotOwnedException;
 import com.reviewflow.shared.domain.Course;
-import com.reviewflow.model.entity.User;
+import com.reviewflow.shared.domain.User;
 import com.reviewflow.course.repository.CourseEnrollmentRepository;
 import com.reviewflow.course.repository.CourseInstructorRepository;
 import com.reviewflow.user.repository.UserRepository;
-import com.reviewflow.service.AuditService;
+import com.reviewflow.admin.service.AuditService;
 import com.reviewflow.shared.domain.Announcement;
 import com.reviewflow.shared.domain.AnnouncementTarget;
 import com.reviewflow.shared.domain.RecipientType;

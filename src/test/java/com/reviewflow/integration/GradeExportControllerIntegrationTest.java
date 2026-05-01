@@ -4,11 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
-import com.reviewflow.controller.GradeExportController;
-import com.reviewflow.model.entity.User;
+import com.reviewflow.grading.controller.GradeExportController;
+import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.domain.UserRole;
-import com.reviewflow.infra.security.ReviewFlowUserDetails;
-import com.reviewflow.service.GradeExportService;
+import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
+import com.reviewflow.grading.service.GradeExportService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

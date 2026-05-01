@@ -118,7 +118,7 @@
 ### Must Have
 
 - [ ] Endpoint exists and accepts `GET`
-- [ ] Requires valid access token cookie
+- [ ] Req\uires valid access token cookie
 - [ ] Returns `{ userId, firstName, lastName, email, role }` for current user
 - [ ] Uses `@AuthenticationPrincipal` to get current user
 - [ ] **CRITICAL:** Has null check on `@AuthenticationPrincipal` — returns `401` not `500` when null

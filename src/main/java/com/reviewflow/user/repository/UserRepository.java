@@ -1,6 +1,6 @@
 package com.reviewflow.user.repository;
 
-import com.reviewflow.model.entity.User;
+import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.domain.UserRole;
 import java.util.Optional;
 import org.springframework.data.domain.Page;

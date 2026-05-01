@@ -1,0 +1,31 @@
+package com.reviewflow.extension.repository;
+
+import java.util.Collection;
+import java.util.Optional;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.reviewflow.shared.domain.ExtensionRequest;
+import com.reviewflow.shared.domain.ExtensionRequestStatus;
+
+public interface ExtensionRequestRepository extends JpaRepository<ExtensionRequest, Long> {
+
+  Optional<ExtensionRequest> findTopByAssignmentIdAndStudentIdAndStatusInOrderByCreatedAtDesc(
+      Long assignmentId, Long studentId, Collection<ExtensionRequestStatus> statuses);
+
+  Optional<ExtensionRequest> findTopByAssignmentIdAndTeamIdAndStatusInOrderByCreatedAtDesc(
+      Long assignmentId, Long teamId, Collection<ExtensionRequestStatus> statuses);
+
+  Optional<ExtensionRequest> findTopByAssignmentIdAndStudentIdAndStatusOrderByRespondedAtDesc(
+      Long assignmentId, Long studentId, ExtensionRequestStatus status);
+
+  Optional<ExtensionRequest> findTopByAssignmentIdAndTeamIdAndStatusOrderByRespondedAtDesc(
+      Long assignmentId, Long teamId, ExtensionRequestStatus status);
+
+  Page<ExtensionRequest> findByAssignmentIdOrderByCreatedAtDesc(
+      Long assignmentId, Pageable pageable);
+
+  Page<ExtensionRequest> findByStudentIdOrderByCreatedAtDesc(Long studentId, Pageable pageable);
+}

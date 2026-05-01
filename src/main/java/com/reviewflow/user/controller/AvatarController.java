@@ -1,9 +1,9 @@
 package com.reviewflow.user.controller;
 
-import com.reviewflow.model.dto.response.ApiResponse;
+import com.reviewflow.shared.exception.ApiResponse;
 import com.reviewflow.user.dto.request.UpdateEmailPreferenceRequest;
 import com.reviewflow.user.dto.response.AuthUserResponse;
-import com.reviewflow.infra.security.ReviewFlowUserDetails;
+import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
 import com.reviewflow.user.service.UserService;
 import com.reviewflow.shared.util.HashidService;
 import io.swagger.v3.oas.annotations.Operation;

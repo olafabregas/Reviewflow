@@ -48,7 +48,7 @@ public class HashidService {
   public Long decodeOrThrow(String hash) {
     Long id = decode(hash);
     // TODO [STYLE-AGENT]: fix structural violation
-    if (id == null) throw new com.reviewflow.exception.InvalidHashException(hash);
+    if (id == null) throw new com.reviewflow.shared.exception.InvalidHashException(hash);
     return id;
   }
 }

@@ -1,12 +1,14 @@
-package com.reviewflow.infra.security;
+package com.reviewflow.security;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-import com.reviewflow.exception.TokenVersionMismatchException;
-import com.reviewflow.infra.monitoring.SecurityMetrics;
-import com.reviewflow.service.RateLimiterService;
-import com.reviewflow.service.TokenVersionService;
+import com.reviewflow.auth.exception.TokenVersionMismatchException;
+import com.reviewflow.infrastructure.monitoring.SecurityMetrics;
+import com.reviewflow.infrastructure.security.JwtAuthenticationFilter;
+import com.reviewflow.infrastructure.security.JwtService;
+import com.reviewflow.infrastructure.security.RateLimiterService;
+import com.reviewflow.auth.service.TokenVersionService;
 import com.reviewflow.shared.util.HashidService;
 import com.reviewflow.shared.util.IpAddressExtractor;
 import jakarta.servlet.FilterChain;
@@ -60,7 +62,7 @@ class JwtAuthenticationFilterTest {
     when(jwtService.extractUserId(token)).thenReturn(userId);
     when(tokenVersionService.getCurrentVersion(userId)).thenReturn(version);
 
-    filter.doFilterInternal(request, response, filterChain);
+    filter.doFilter(request, response, filterChain);
 
     verify(filterChain).doFilter(request, response);
   }
@@ -80,7 +82,7 @@ class JwtAuthenticationFilterTest {
     when(jwtService.extractUserId(token)).thenReturn(userId);
     when(tokenVersionService.getCurrentVersion(userId)).thenReturn(currentVersion);
 
-    filter.doFilterInternal(request, response, filterChain);
+    filter.doFilter(request, response, filterChain);
 
     // Verify authentication was NOT set (or rather, the chain continued without authentication)
     // The filter catches the exception and calls filterChain.doFilter

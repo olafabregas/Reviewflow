@@ -3,13 +3,13 @@ package com.reviewflow.integration;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
-import com.reviewflow.model.dto.response.ApiResponse;
+import com.reviewflow.shared.exception.ApiResponse;
 import com.reviewflow.user.controller.AvatarController;
 import com.reviewflow.user.dto.request.UpdateEmailPreferenceRequest;
 import com.reviewflow.user.dto.response.AuthUserResponse;
-import com.reviewflow.model.entity.User;
+import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.domain.UserRole;
-import com.reviewflow.infra.security.ReviewFlowUserDetails;
+import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
 import com.reviewflow.user.service.UserService;
 import com.reviewflow.shared.util.HashidService;
 import jakarta.servlet.http.HttpServletRequest;

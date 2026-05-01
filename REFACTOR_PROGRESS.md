@@ -224,41 +224,95 @@
 - **Verification:**
   - `mvn "-Dspotbugs.skip=true" clean test` → PASS (321 tests)
 - **Notes:** Migrated user feature to correct feature-first structure. User entity remains in `com.reviewflow.shared.domain` (Law 5). `UserRepository` → `com.reviewflow.user.repository`. `UserService` → `com.reviewflow.user.service`. Controllers → `com.reviewflow.user.controller`. DTOs split into request/response sub-packages. Avatar exceptions → `com.reviewflow.user.exception`. Test files migrated to test/user/service/. Explicit import fixes applied to 24+ production and test files. Old files deleted from original locations. GlobalExceptionHandler updated. All 321 tests passing.
+
 ### Session: phase-3.5-auth
 
-- **Status:** NOT STARTED
+- **Status:** COMPLETED
+- **Start:** 2026-04-29
+- **End:** 2026-04-29
+- **Verification:**
+  - `mvn "-Dspotbugs.skip=true" clean test` → PASS (321 tests)
+- **Notes:** Migrated auth feature to `com.reviewflow.auth.*`. `AuthController` moved to `com.reviewflow.auth.controller`, `AuthService` to `com.reviewflow.auth.service`, `LoginRequest` to `com.reviewflow.auth.dto.request`, and `AuthServiceTest` to `src/test/java/com/reviewflow/auth/service/`. Updated the controller and service imports to the new feature packages, kept the shared/support services in place, and deleted the old layer-first auth copies. All 321 tests still passing.
 
 ### Session: phase-3.6-assignment
 
-- **Status:** NOT STARTED
+- **Status:** COMPLETED
+- **Start:** 2026-04-29
+- **End:** 2026-04-29
+- **Verification:**
+  - `mvn "-Dspotbugs.skip=true" -DskipTests compile` → PASS
+  - `mvn "-Dspotbugs.skip=true" "-Dtest=AssignmentServiceTest,AssignmentGroupServiceTest,ModuleServiceTest,AssignmentControllerIntegrationTest,AssignmentGroupControllerIntegrationTest,AssignmentGroupDatabaseConstraintIntegrationTest,ModuleControllerIntegrationTest" test` → PASS
+- **Notes:** Migrated assignment feature to `com.reviewflow.assignment.*` with full feature split: controllers (`AssignmentController`, `AssignmentGroupController`, `ModuleController`), services (`AssignmentService`, `AssignmentGroupService`, `ModuleService`), repositories (`AssignmentRepository`, `AssignmentGroupRepository`, `AssignmentModuleRepository`), assignment request/response DTOs, and assignment-specific exceptions (including previously parked course-scoped exceptions). Moved `Assignment`, `AssignmentGroup`, and `AssignmentModule` entities to `com.reviewflow.shared.domain` and updated dependent imports in domain/services/tests. Moved service tests to `src/test/java/com/reviewflow/assignment/service/` and updated cross-feature consumers/imports (e.g., `TeamService`, `GlobalExceptionHandler`, preview tests). Targeted assignment feature tests now pass.
 
 ### Session: phase-3.7-extension
 
-- **Status:** NOT STARTED
+- **Status:** COMPLETED
+- **Start:** 2026-04-29
+- **End:** 2026-04-29
+- **Verification:**
+  - `mvn "-Dspotbugs.skip=true" -DskipTests compile` → PASS
+  - `mvn "-Dspotbugs.skip=true" "-Dtest=ExtensionRequestServiceTest" test` → PASS (17 tests)
+- **Notes:** Migrated extension feature to `com.reviewflow.extension.*`: `ExtensionRequestController` → `extension.controller`, `ExtensionRequestService` → `extension.service`, `ExtensionRequestRepository` → `extension.repository`, request DTOs (`CreateExtensionRequest`, `RespondExtensionRequest`) → `extension.dto.request`, response DTOs (`ExtensionRequestResponse`, `ExtensionRequestListItemResponse`) → `extension.dto.response`, exceptions (`ExtensionCutoffPassedException`, `ExtensionRequestExistsException`, `AlreadyRespondedException`, `InvalidRequestedDateException`) → `extension.exception`, and events (`ExtensionRequestedEvent`, `ExtensionDecidedEvent`) → `extension.event`. Moved `ExtensionRequest` entity to `com.reviewflow.shared.domain` and updated dependent imports in services, handlers, and tests. Moved `ExtensionRequestServiceTest` to `src/test/java/com/reviewflow/extension/service/`.
 
 ### Session: phase-3.8-team
 
-- **Status:** NOT STARTED
+- **Status:** COMPLETED
+- **Start:** 2026-04-29
+- **End:** 2026-04-29
+- **Verification:**
+  - `mvn "-Dspotbugs.skip=true" -DskipTests compile` → PASS
+  - `mvn "-Dspotbugs.skip=true" "-Dtest=TeamServiceTest,TeamControllerIntegrationTest" test` → PASS (20 tests)
+- **Notes:** Migrated team feature to `com.reviewflow.team.*`: `TeamController` → `team.controller`, `TeamService` → `team.service`, `TeamRepository`/`TeamMemberRepository` → `team.repository`, request DTOs (`TeamInviteRequest`, `TeamRespondRequest`, `RenameTeamRequest`) → `team.dto.request`, response DTOs (`TeamResponse`, `TeamInviteResponse`, `TeamMemberCreatedResponse`) → `team.dto.response`, exceptions (`TeamNotAllowedException`, `TeamNotFoundException`, `NotInTeamException`, `TeamSubmissionRequiredException`) → `team.exception`, and events (`TeamInviteEvent`, `TeamLockedEvent`, `TeamUnlockedBySystemEvent`) → `team.event`. Moved `Team` and `TeamMember` entities to `com.reviewflow.shared.domain`, moved `TeamServiceTest` to `src/test/java/com/reviewflow/team/service/`, and updated dependent imports across controllers/services/entities/tests.
 
 ### Session: phase-3.9-submission
 
-- **Status:** NOT STARTED
+- **Status:** COMPLETED
+- **Start:** 2026-04-29
+- **End:** 2026-04-29
+- **Verification:**
+  - `mvn "-Dspotbugs.skip=true" -DskipTests compile` → PASS
+  - `mvn "-Dspotbugs.skip=true" "-Dtest=SubmissionServiceTest,SubmissionServicePreviewTest,SubmissionControllerIntegrationTest,SubmissionControllerPreviewTest" test` → PASS (33 tests)
+- **Notes:** Migrated submission feature to `com.reviewflow.submission.*`: `SubmissionController` → `submission.controller`, `SubmissionService` → `submission.service`, `SubmissionRepository` → `submission.repository`, `SubmissionResponse` → `submission.dto.response`, `SubmissionUploadedEvent` → `submission.event`, and submission-specific exceptions (`IndividualSubmissionOnlyException`, `NoSubmissionsFoundException`, `BlockedFileTypeException`, `InvalidFileTypeException`, `InvalidMimeTypeException`, `InvalidFileStructureException`, `ArchiveTooLargeException`, `FileTooLargeForPreviewException`, `PreviewNotSupportedException`, `MalwareDetectedException`, `PdfEncryptedException`) → `submission.exception`. Moved `Submission` entity to `com.reviewflow.shared.domain`, moved service tests to `src/test/java/com/reviewflow/submission/service/`, and updated dependent imports across controllers/services/entities/handlers/tests.
 
 ### Session: phase-3.10-evaluation
 
-- **Status:** NOT STARTED
+- **Status:** COMPLETED
+- **Start:** 2026-04-29
+- **End:** 2026-04-29
+- **Verification:**
+  - `mvn "-Dspotbugs.skip=true" -DskipTests compile` -> PASS
+  - `mvn "-Dspotbugs.skip=true" "-Dtest=EvaluationServicePreviewTest,EvaluationControllerPreviewTest,PdfGenerationServiceTest" test` -> PASS (16 tests)
+- **Notes:** Migrated evaluation feature to `com.reviewflow.evaluation.*`: `EvaluationController` -> `evaluation.controller`, `EvaluationService` -> `evaluation.service`, `EvaluationRepository` -> `evaluation.repository`, `CreateEvaluationRequest` -> `evaluation.dto.request`, `EvaluationResponse` -> `evaluation.dto.response`, exceptions (`EvaluationNotFoundException`, `AlreadyPublishedException`) -> `evaluation.exception`, and events (`EvaluationPublishedEvent`, `EvaluationReopenedEvent`) -> `evaluation.event`. Moved `Evaluation` entity to `com.reviewflow.shared.domain`, absorbed `PdfGenerationService` into `evaluation.service`, moved tests to `src/test/java/com/reviewflow/evaluation/service/`, and updated dependent imports/usages across controllers/services/entities/handlers/tests (including static helper visibility in `EvaluationController`).
 
 ### Session: phase-3.11-grading
 
-- **Status:** NOT STARTED
+- **Status:** COMPLETED
+- **Start:** 2026-04-29
+- **End:** 2026-04-29
+- **Verification:**
+  - `mvn "-Dspotbugs.skip=true" -DskipTests compile` -> PASS
+  - `mvn "-Dspotbugs.skip=true" "-Dtest=GradeCalculationServiceTest,GradeExportServiceTest,GradeOverviewControllerIntegrationTest,GradeExportControllerIntegrationTest" test` -> PASS (25 tests)
+- **Notes:** Migrated grading feature to `com.reviewflow.grading.*`: `GradeOverviewController`/`GradeExportController` -> `grading.controller`, `GradeCalculationService`/`GradeExportService` -> `grading.service`, grading response DTOs (`AssignmentGradeDto`, `GroupGradeDto`, `GradeOverviewDto`, `GradebookEntryResponse`) -> `grading.dto.response`, and grading exceptions (`GradeOverviewUnavailableException`, `ScoreExceedsMaxException`, `ScoreNotPublishedException`, `ScoresExistException`, `SubmissionNotRequiredException`, `CannotCommitWithErrorsException`, `ImportSessionExpiredException`) -> `grading.exception`. Moved grading service tests to `src/test/java/com/reviewflow/grading/service/` and updated dependent imports/usages across services, exception handling, and tests.
 
 ### Session: phase-3.12-admin
 
-- **Status:** NOT STARTED
+- **Status:** COMPLETED
+- **Start:** 2026-04-29
+- **End:** 2026-04-29
+- **Verification:**
+  - `mvn "-Dspotbugs.skip=true" -DskipTests compile` -> PASS
+  - `mvn "-Dspotbugs.skip=true" "-Dtest=SystemServiceTest,UserServiceTest,UserServiceAvatarTest,UserServiceEmailNotificationTest" test` -> PASS (34 tests)
+- **Notes:** Migrated admin feature controllers/services to `com.reviewflow.admin.*`: `AdminStatsController` and `AdminAuditController` moved to `admin.controller`, and `AdminStatsService` moved to `admin.service`. Updated package declarations and dependent imports/usages across main and test code.
 
 ### Session: phase-3.13-system
 
-- **Status:** NOT STARTED
+- **Status:** COMPLETED
+- **Start:** 2026-04-29
+- **End:** 2026-04-29
+- **Verification:**
+  - `mvn "-Dspotbugs.skip=true" -DskipTests compile` -> PASS
+  - `mvn "-Dspotbugs.skip=true" "-Dtest=SystemServiceTest" test` -> PASS (12 tests)
+- **Notes:** Migrated system feature to `com.reviewflow.system.*`: `SystemController` -> `system.controller`, `SystemService` -> `system.service`, and system exceptions (`SystemAdminLimitExceededException`, `ForceLogoutBlockedException`, `UnknownCacheException`, `CacheEvictionThrottledException`) -> `system.exception`. Moved `SystemServiceTest` to `src/test/java/com/reviewflow/system/service/` and updated dependent imports/usages across main and test code.
 
 ---
 
@@ -266,15 +320,37 @@
 
 ### Session: phase-4.1-verification
 
-- **Status:** NOT STARTED
+- **Status:** COMPLETED
+- **Start:** 2026-04-29
+- **End:** 2026-04-29
+- **Verification:**
+  - `mvn "-Dspotbugs.skip=true" -DskipTests compile` -> PASS
+  - `mvn "-Dspotbugs.skip=true" clean test` -> PASS
+- **Notes:** Completed full-build verification after feature migrations. Fixed package-path mismatch for `MimeTypeResolverTest` by moving it to `src/test/java/com/reviewflow/shared/util/`, then ran a clean full test suite to eliminate stale test classes from prior package paths.
 
 ### Session: phase-4.2-health-check
 
-- **Status:** NOT STARTED
+- **Status:** BLOCKED
+- **Start:** 2026-04-29
+- **End:** 2026-04-29
+- **Verification:**
+  - `mvnw spring-boot:run` -> STARTED (local server reachable)
+  - `curl http://localhost:8081/actuator/health` -> `{"groups":["liveness","readiness"],"status":"DOWN"}`
+- **Notes:** Health endpoint is reachable on configured port `8081`, but overall status is `DOWN` instead of required `UP`. Additional actuator group endpoints (`/actuator/health/liveness`, `/actuator/health/readiness`) require `X-Actuator-Key` and currently return unauthorized without that header. Server process was stopped after verification.
 
 ### Session: phase-4.3-postman-verification
 
 - **Status:** NOT STARTED
+
+### Session: phase-4.4-structural-cleanup
+
+- **Status:** COMPLETED
+- **Start:** 2026-04-30
+- **End:** 2026-04-30
+- **Verification:**
+  - `mvn "-Dspotbugs.skip=true" -DskipTests compile` -> PASS
+  - `mvn "-Dspotbugs.skip=true" test-compile` -> PASS
+- **Notes:** Completed a broad cleanup pass to finish remaining package-by-feature alignment from `REFACTOR_STRATEGY.md`: moved leftover layer-root controllers/services/repositories/entities/DTOs/exceptions/events into `feature.*`, `shared.*`, and `infrastructure.*` destinations; updated package declarations and imports across main/test code; removed obsolete legacy `package-info.java` files under old `model.dto` and `service` roots. Main and test compilation now pass after import/package reconciliation.
 
 ---
 

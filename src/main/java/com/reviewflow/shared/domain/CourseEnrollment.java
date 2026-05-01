@@ -1,6 +1,6 @@
 package com.reviewflow.shared.domain;
 
-import com.reviewflow.model.entity.User;
+import com.reviewflow.shared.domain.User;
 import jakarta.persistence.*;
 import java.time.Instant;
 import lombok.*;

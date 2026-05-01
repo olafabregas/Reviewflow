@@ -3,7 +3,7 @@ package com.reviewflow.shared.domain;
 import java.time.Instant;
 
 import com.reviewflow.shared.domain.Course;
-import com.reviewflow.model.entity.User;
+import com.reviewflow.shared.domain.User;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

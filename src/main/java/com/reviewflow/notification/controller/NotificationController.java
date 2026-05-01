@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.reviewflow.infra.security.ReviewFlowUserDetails;
-import com.reviewflow.model.dto.response.ApiResponse;
+import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
+import com.reviewflow.shared.exception.ApiResponse;
 import com.reviewflow.notification.dto.response.MarkAllReadResponse;
 import com.reviewflow.notification.dto.response.NotificationDto;
 import com.reviewflow.notification.service.NotificationService;

@@ -1,9 +1,9 @@
 package com.reviewflow.user.controller;
 
-import com.reviewflow.model.dto.response.ApiResponse;
-import com.reviewflow.model.entity.User;
+import com.reviewflow.shared.exception.ApiResponse;
+import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.domain.UserRole;
-import com.reviewflow.infra.security.ReviewFlowUserDetails;
+import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
 import com.reviewflow.user.dto.request.CreateUserRequest;
 import com.reviewflow.user.dto.request.UpdateUserRequest;
 import com.reviewflow.user.dto.response.AuthUserResponse;

@@ -1,0 +1,37 @@
+package com.reviewflow.shared.domain;
+
+import com.reviewflow.shared.domain.Assignment;
+    // TODO [STYLE-AGENT]: fix structural violation
+import jakarta.persistence.*; // TODO [STYLE-AGENT]: fix structural violation
+    // TODO [STYLE-AGENT]: fix structural violation
+import lombok.*;
+
+@Entity
+@Table(name = "rubric_criteria")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class RubricCriterion {
+
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "assignment_id", nullable = false)
+  private Assignment assignment;
+
+  @Column(nullable = false, length = 255)
+  private String name;
+
+  @Column(columnDefinition = "TEXT")
+  private String description;
+
+  @Column(name = "max_score", nullable = false)
+  private Integer maxScore;
+
+  @Column(name = "display_order")
+  @Builder.Default
+  private Integer displayOrder = 0;
+}

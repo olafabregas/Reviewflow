@@ -19,8 +19,8 @@ import com.reviewflow.announcement.dto.request.CreateAnnouncementRequest;
 import com.reviewflow.announcement.dto.response.AnnouncementResponse;
 import com.reviewflow.announcement.dto.response.PaginatedAnnouncementResponse;
 import com.reviewflow.announcement.service.AnnouncementService;
-import com.reviewflow.infra.security.ReviewFlowUserDetails;
-import com.reviewflow.model.dto.response.ApiResponse;
+import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
+import com.reviewflow.shared.exception.ApiResponse;
 import com.reviewflow.shared.domain.Announcement;
 import com.reviewflow.shared.util.HashidService;
 

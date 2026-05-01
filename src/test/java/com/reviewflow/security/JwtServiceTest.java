@@ -1,8 +1,10 @@
-package com.reviewflow.infra.security;
+package com.reviewflow.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
+import com.reviewflow.infrastructure.security.JwtService;
+import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
