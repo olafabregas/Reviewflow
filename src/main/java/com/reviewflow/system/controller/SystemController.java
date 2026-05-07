@@ -1,5 +1,6 @@
 package com.reviewflow.system.controller;
 
+import com.reviewflow.auth.annotation.RequiresStepUp;
 import com.reviewflow.shared.dto.CacheEvictResponse;
 import com.reviewflow.shared.dto.CacheStatsDto;
 import com.reviewflow.shared.dto.ForceLogoutResponse;
@@ -67,6 +68,7 @@ public class SystemController {
 
   /** PRD-09 Flow B: Evict a cache with 60-second throttle protection */
   @PostMapping("/cache/evict/{cacheName}")
+  @RequiresStepUp(maxAgeSeconds = 300)
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @Operation(
       summary = "Evict cache by name",
@@ -153,6 +155,7 @@ public class SystemController {
 
   /** PRD-09 Flow E: Force logout a user */
   @PostMapping("/users/{targetUserId}/force-logout")
+  @RequiresStepUp(maxAgeSeconds = 300)
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @Operation(
       summary = "Force logout a user",
@@ -228,6 +231,7 @@ public class SystemController {
 
   /** PRD-09 Flow G: Reopen an evaluation (system override) */
   @PostMapping("/evaluations/{evaluationId}/reopen")
+  @RequiresStepUp(maxAgeSeconds = 300)
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @Operation(
       summary = "Reopen an evaluation",

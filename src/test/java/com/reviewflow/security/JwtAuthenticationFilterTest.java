@@ -1,14 +1,19 @@
 package com.reviewflow.security;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.reviewflow.auth.exception.TokenVersionMismatchException;
+import com.reviewflow.auth.service.TokenVersionService;
+import com.reviewflow.auth.service.UserDetailsCacheService;
 import com.reviewflow.infrastructure.monitoring.SecurityMetrics;
+import com.reviewflow.infrastructure.security.HttpErrorJsonWriter;
 import com.reviewflow.infrastructure.security.JwtAuthenticationFilter;
 import com.reviewflow.infrastructure.security.JwtService;
 import com.reviewflow.infrastructure.security.RateLimiterService;
-import com.reviewflow.auth.service.TokenVersionService;
+import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
+import com.reviewflow.shared.domain.UserRole;
 import com.reviewflow.shared.util.HashidService;
 import com.reviewflow.shared.util.IpAddressExtractor;
 import jakarta.servlet.FilterChain;
@@ -23,22 +28,22 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 
 @ExtendWith(MockitoExtension.class)
 class JwtAuthenticationFilterTest {
 
   @Mock private JwtService jwtService;
-  @Mock private UserDetailsService userDetailsService;
+  @Mock private UserDetailsCacheService userDetailsCacheService;
   @Mock private RateLimiterService rateLimiterService;
   @Mock private IpAddressExtractor ipAddressExtractor;
   @Mock private SecurityMetrics securityMetrics;
   @Mock private HashidService hashidService;
   @Mock private TokenVersionService tokenVersionService;
+  @Mock private HttpErrorJsonWriter httpErrorJsonWriter;
   @Mock private HttpServletRequest request;
   @Mock private HttpServletResponse response;
   @Mock private FilterChain filterChain;
-  @Mock private UserDetails userDetails;
+  @Mock private ReviewFlowUserDetails userDetails;
 
   @InjectMocks private JwtAuthenticationFilter filter;
 
@@ -46,17 +51,21 @@ class JwtAuthenticationFilterTest {
   void setUp() {
     when(ipAddressExtractor.extract(request)).thenReturn("127.0.0.1");
     when(rateLimiterService.isTokenRateLimited("127.0.0.1")).thenReturn(false);
+    lenient().when(userDetails.getRole()).thenReturn(UserRole.STUDENT);
+    lenient().when(userDetails.getUserId()).thenReturn(1L);
+    lenient().when(hashidService.encode(1L)).thenReturn("U1");
   }
 
   @Test
-  void doFilterInternal_ShouldContinue_WhenTokenVersionMatches() throws ServletException, IOException {
+  void doFilterInternal_ShouldContinue_WhenTokenVersionMatches()
+      throws ServletException, IOException {
     String token = "valid-token";
     Long userId = 1L;
     int version = 1;
 
     when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
     when(jwtService.extractEmail(token)).thenReturn("user@test.com");
-    when(userDetailsService.loadUserByUsername("user@test.com")).thenReturn(userDetails);
+    when(userDetailsCacheService.loadUserByUsername("user@test.com")).thenReturn(userDetails);
     when(jwtService.isTokenValid(token, userDetails)).thenReturn(true);
     when(jwtService.extractTokenVersion(token)).thenReturn(version);
     when(jwtService.extractUserId(token)).thenReturn(userId);
@@ -65,10 +74,12 @@ class JwtAuthenticationFilterTest {
     filter.doFilter(request, response, filterChain);
 
     verify(filterChain).doFilter(request, response);
+    verify(securityMetrics).recordAuthTokenFromBearer();
   }
 
   @Test
-  void doFilterInternal_ShouldNotAuthenticate_WhenTokenVersionMismatches() throws ServletException, IOException {
+  void doFilterInternal_ShouldNotAuthenticate_WhenTokenVersionMismatches()
+      throws ServletException, IOException {
     String token = "old-token";
     Long userId = 1L;
     int oldVersion = 1;
@@ -76,7 +87,7 @@ class JwtAuthenticationFilterTest {
 
     when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
     when(jwtService.extractEmail(token)).thenReturn("user@test.com");
-    when(userDetailsService.loadUserByUsername("user@test.com")).thenReturn(userDetails);
+    when(userDetailsCacheService.loadUserByUsername("user@test.com")).thenReturn(userDetails);
     when(jwtService.isTokenValid(token, userDetails)).thenReturn(true);
     when(jwtService.extractTokenVersion(token)).thenReturn(oldVersion);
     when(jwtService.extractUserId(token)).thenReturn(userId);
@@ -84,9 +95,20 @@ class JwtAuthenticationFilterTest {
 
     filter.doFilter(request, response, filterChain);
 
-    // Verify authentication was NOT set (or rather, the chain continued without authentication)
-    // The filter catches the exception and calls filterChain.doFilter
     verify(rateLimiterService).recordFailedTokenValidation("127.0.0.1");
     verify(filterChain).doFilter(request, response);
+  }
+
+  @Test
+  void doFilterInternal_WhenTokenRateLimited_WritesJson429() throws Exception {
+    when(rateLimiterService.isTokenRateLimited("127.0.0.1")).thenReturn(true);
+    when(rateLimiterService.getTokenRetryAfterSeconds("127.0.0.1")).thenReturn(42L);
+
+    filter.doFilter(request, response, filterChain);
+
+    verify(securityMetrics).recordTokenRateLimited();
+    verify(httpErrorJsonWriter)
+        .writeTooManyRequests(
+            response, 42L, "Too many token validation attempts. Try again later.");
   }
 }

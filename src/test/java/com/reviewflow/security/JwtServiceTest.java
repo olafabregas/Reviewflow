@@ -3,6 +3,7 @@ package com.reviewflow.security;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
+import com.reviewflow.infrastructure.security.JwtKeyRegistry;
 import com.reviewflow.infrastructure.security.JwtService;
 import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
 import io.jsonwebtoken.Claims;
@@ -28,7 +29,7 @@ class JwtServiceTest {
 
   @BeforeEach
   void setUp() {
-    jwtService = new JwtService(secret, 900000, 604800000);
+    jwtService = new JwtService(JwtKeyRegistry.forTests(secret), 900000, 604800000);
   }
 
   @Test
@@ -39,17 +40,22 @@ class JwtServiceTest {
 
     String token = jwtService.generateAccessToken(userDetails, 5);
 
-    Claims claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
+    Claims claims =
+        Jwts.parser().keyLocator(header -> secretKey).build().parseSignedClaims(token).getPayload();
     assertEquals(5, claims.get("ver", Integer.class));
     assertEquals(123L, claims.get("userId", Long.class));
   }
 
   @Test
   void extractTokenVersion_ShouldReturnCorrectVersion() {
-    String token = Jwts.builder()
-        .claim("ver", 10)
-        .signWith(secretKey)
-        .compact();
+    String token =
+        Jwts.builder()
+            .header()
+            .keyId("default")
+            .and()
+            .claim("ver", 10)
+            .signWith(secretKey, Jwts.SIG.HS256)
+            .compact();
 
     assertEquals(10, jwtService.extractTokenVersion(token));
   }

@@ -64,15 +64,19 @@
     <!-- Async Appender - improves performance by buffering logs -->
     <appender name="ASYNC_CONSOLE" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="CONSOLE"/>
-        <queueSize>512</queueSize>
+        <queueSize>2048</queueSize>
         <discardingThreshold>0</discardingThreshold>
+        <maxFlushTime>10000</maxFlushTime>
+        <neverBlock>false</neverBlock>
         <includeCallerData>false</includeCallerData>
     </appender>
 
     <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="FILE"/>
-        <queueSize>512</queueSize>
+        <queueSize>2048</queueSize>
         <discardingThreshold>0</discardingThreshold>
+        <maxFlushTime>10000</maxFlushTime>
+        <neverBlock>false</neverBlock>
         <includeCallerData>false</includeCallerData>
     </appender>
 

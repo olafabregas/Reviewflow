@@ -1,5 +1,6 @@
 package com.reviewflow.user.controller;
 
+import com.reviewflow.auth.annotation.RequiresStepUp;
 import com.reviewflow.shared.exception.ApiResponse;
 import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.domain.UserRole;
@@ -128,6 +129,7 @@ public class AdminUserController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PostMapping
+  @RequiresStepUp(maxAgeSeconds = 300)
   public ResponseEntity<ApiResponse<AuthUserResponse>> create(
       @Valid @RequestBody CreateUserRequest request) {
     User user =
@@ -168,6 +170,7 @@ public class AdminUserController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PatchMapping("/{id}")
+  @RequiresStepUp(maxAgeSeconds = 300)
   public ResponseEntity<ApiResponse<AuthUserResponse>> update(
       @PathVariable String id, @RequestBody UpdateUserRequest body) {
     Long userId = hashidService.decodeOrThrow(id);
@@ -200,6 +203,7 @@ public class AdminUserController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PatchMapping("/{id}/deactivate")
+  @RequiresStepUp(maxAgeSeconds = 300)
   public ResponseEntity<ApiResponse<UserActivationResponse>> deactivate(
       @PathVariable String id, @AuthenticationPrincipal ReviewFlowUserDetails principal) {
     Long userId = hashidService.decodeOrThrow(id);
@@ -232,6 +236,7 @@ public class AdminUserController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PatchMapping("/{id}/reactivate")
+  @RequiresStepUp(maxAgeSeconds = 300)
   public ResponseEntity<ApiResponse<UserActivationResponse>> reactivate(@PathVariable String id) {
     Long userId = hashidService.decodeOrThrow(id);
     userService.reactivateUser(userId);
@@ -250,6 +255,7 @@ public class AdminUserController {
         .emailNotificationsEnabled(u.getEmailNotificationsEnabled())
         .isActive(u.getIsActive())
         .role(u.getRole())
+        .deviceId(null)
         .build();
   }
 }

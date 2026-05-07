@@ -64,6 +64,16 @@ public class User {
   @Builder.Default
   private Integer tokenVersion = 1;
 
+  @Column(name = "failed_login_count", nullable = false)
+  @Builder.Default
+  private Integer failedLoginCount = 0;
+
+  @Column(name = "locked_until")
+  private Instant lockedUntil;
+
+  @Column(name = "last_failed_login_at")
+  private Instant lastFailedLoginAt;
+
   /**
    * Returns the user's full name (trimmed), falling back to email when both firstName and lastName
    * are blank or null.

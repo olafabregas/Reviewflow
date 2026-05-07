@@ -13,6 +13,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
@@ -94,8 +95,24 @@ public class SecurityConfig {
                                     + " https://cdnjs.cloudflare.com; frame-ancestors 'none'")))
         .authorizeHttpRequests(
             auth ->
-                auth.requestMatchers("/api/v1/auth/**")
+                auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/login")
                     .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/auth/password-reset/request")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/auth/password-reset/confirm")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/auth/token")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/auth/ws-ticket")
+                    .authenticated()
+                    .requestMatchers("/api/v1/auth/sessions/**")
+                    .authenticated()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout")
+                    .authenticated()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/auth/me")
+                    .authenticated()
                     .requestMatchers("/swagger-ui/**", "/v3/api-docs/**")
                     .permitAll()
                     .requestMatchers("/docs")

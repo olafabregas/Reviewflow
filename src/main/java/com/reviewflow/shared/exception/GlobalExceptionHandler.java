@@ -2,6 +2,7 @@ package com.reviewflow.shared.exception;
 
 import com.reviewflow.announcement.exception.AnnouncementNotFoundException;
 import com.reviewflow.auth.exception.SessionExpiredException;
+import com.reviewflow.auth.exception.StepUpRequiredException;
 import com.reviewflow.assignment.exception.AssignmentNotInCourseException;
 import com.reviewflow.assignment.exception.CannotDeleteUncategorizedException;
 import com.reviewflow.assignment.exception.GroupNotEmptyException;
@@ -103,6 +104,21 @@ public class GlobalExceptionHandler {
             .timestamp(Instant.now())
             .build();
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
+  }
+
+  @ExceptionHandler(StepUpRequiredException.class)
+  public ResponseEntity<ErrorResponse> handleStepUpRequired(StepUpRequiredException ex) {
+    ErrorResponse body =
+        ErrorResponse.builder()
+            .error(
+                ErrorResponse.ErrorDetail.builder()
+                    .code("STEP_UP_REQUIRED")
+                    .message(ex.getMessage())
+                    .details(ex.getDetails())
+                    .build())
+            .timestamp(Instant.now())
+            .build();
+    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
   }
 
   @ExceptionHandler(SessionExpiredException.class)

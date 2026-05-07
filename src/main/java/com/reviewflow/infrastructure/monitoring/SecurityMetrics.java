@@ -16,6 +16,9 @@ public class SecurityMetrics {
   private final Counter tokenRateLimitedCounter;
   private final Counter tokenFingerprintMismatchCounter;
 
+  private final Counter authTokenSourceCookieCounter;
+  private final Counter authTokenSourceBearerCounter;
+
   private final Counter fileBlockedCounter;
   private final Counter fileExecutableCounter;
   private final Counter fileMimeMismatchCounter;
@@ -56,6 +59,18 @@ public class SecurityMetrics {
         Counter.builder("reviewflow.security.token")
             .tag("result", "fingerprint_mismatch")
             .description("Token fingerprint mismatch")
+            .register(meterRegistry);
+
+    this.authTokenSourceCookieCounter =
+        Counter.builder("reviewflow.security.auth_token_source")
+            .tag("source", "cookie")
+            .description("Authenticated requests using access cookie")
+            .register(meterRegistry);
+
+    this.authTokenSourceBearerCounter =
+        Counter.builder("reviewflow.security.auth_token_source")
+            .tag("source", "bearer")
+            .description("Authenticated requests using Bearer access token")
             .register(meterRegistry);
 
     // File upload metrics
@@ -123,6 +138,14 @@ public class SecurityMetrics {
 
   public void recordTokenFingerprintMismatch() {
     tokenFingerprintMismatchCounter.increment();
+  }
+
+  public void recordAuthTokenFromCookie() {
+    authTokenSourceCookieCounter.increment();
+  }
+
+  public void recordAuthTokenFromBearer() {
+    authTokenSourceBearerCounter.increment();
   }
 
   // File upload

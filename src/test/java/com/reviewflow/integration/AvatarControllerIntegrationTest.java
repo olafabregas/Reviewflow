@@ -54,10 +54,14 @@ class AvatarControllerIntegrationTest {
     AuthUserResponse payload =
         AuthUserResponse.builder()
             .userId("HASH77")
+            .firstName("S")
+            .lastName("T")
             .email("student@test.local")
             .avatarUrl("https://bucket.s3.us-east-1.amazonaws.com/avatars/HASH77/avatar.jpg?v=1")
+            .emailNotificationsEnabled(true)
             .role(UserRole.STUDENT)
             .isActive(true)
+            .deviceId(null)
             .build();
 
     when(request.getRemoteAddr()).thenReturn("127.0.0.1");
@@ -78,10 +82,14 @@ class AvatarControllerIntegrationTest {
     AuthUserResponse payload =
         AuthUserResponse.builder()
             .userId("HASH15")
+            .firstName("S")
+            .lastName("T")
             .email("student@test.local")
             .avatarUrl(null)
+            .emailNotificationsEnabled(true)
             .role(UserRole.STUDENT)
             .isActive(true)
+            .deviceId(null)
             .build();
 
     when(hashidService.decodeOrThrow("USER15")).thenReturn(15L);
@@ -106,10 +114,14 @@ class AvatarControllerIntegrationTest {
     AuthUserResponse payload =
         AuthUserResponse.builder()
             .userId("HASH88")
+            .firstName("S")
+            .lastName("T")
             .email("student@test.local")
+            .avatarUrl(null)
             .emailNotificationsEnabled(false)
             .role(UserRole.STUDENT)
             .isActive(true)
+            .deviceId(null)
             .build();
 
     when(userService.updateEmailPreference(88L, false)).thenReturn(payload);

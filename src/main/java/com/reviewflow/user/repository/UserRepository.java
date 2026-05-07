@@ -71,7 +71,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
   @Query("SELECT u.tokenVersion FROM User u WHERE u.id = :id")
   Optional<Integer> findTokenVersionById(@Param("id") Long id);
 
-  @Modifying
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("UPDATE User u SET u.tokenVersion = u.tokenVersion + 1 WHERE u.id = :id")
   void incrementTokenVersion(@Param("id") Long id);
 }

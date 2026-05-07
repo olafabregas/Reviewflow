@@ -9,9 +9,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.UncategorizedSQLException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
+@TestPropertySource(
+    properties = {
+      "spring.flyway.validate-on-migrate=false",
+      "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration"
+    })
 class InstructorScoreDatabaseConstraintIntegrationTest {
 
   @Autowired private JdbcTemplate jdbcTemplate;

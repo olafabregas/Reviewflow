@@ -22,7 +22,8 @@ class TokenVersionServiceTest {
 
   @BeforeEach
   void setUp() {
-    tokenVersionService = new TokenVersionService(userRepository, 30, 50000);
+    TokenVersionStore store = new CaffeineTokenVersionStore(userRepository, 30, 50000);
+    tokenVersionService = new TokenVersionService(store);
   }
 
   @Test

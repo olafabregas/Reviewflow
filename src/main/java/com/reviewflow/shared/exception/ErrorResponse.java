@@ -2,6 +2,7 @@ package com.reviewflow.shared.exception;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.Instant;
+import java.util.Map;
 import lombok.Builder;
 import lombok.Value;
 
@@ -21,5 +22,6 @@ public class ErrorResponse {
   public static class ErrorDetail {
     String code;
     String message;
+    Map<String, Object> details;
   }
 }

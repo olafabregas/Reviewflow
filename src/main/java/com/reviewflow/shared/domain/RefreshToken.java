@@ -49,4 +49,28 @@ public class RefreshToken {
 
   @Column(name = "session_issued_at", nullable = false)
   private Instant sessionIssuedAt;
+
+  @Column(name = "family_id", nullable = false, length = 36)
+  private String familyId;
+
+  @Column(name = "parent_token_hash", length = 64)
+  private String parentTokenHash;
+
+  @Column(name = "device_id", length = 64)
+  private String deviceId;
+
+  @Column(name = "ip_created", length = 45)
+  private String ipCreated;
+
+  @Column(name = "user_agent_created", length = 500)
+  private String userAgentCreated;
+
+  @Column(name = "ip_last_seen", length = 45)
+  private String ipLastSeen;
+
+  @Column(name = "user_agent_last_seen", length = 500)
+  private String userAgentLastSeen;
+
+  @Column(name = "session_group_id")
+  private Long sessionGroupId;
 }

@@ -362,6 +362,7 @@ public class UserService {
         .emailNotificationsEnabled(user.getEmailNotificationsEnabled())
         .isActive(user.getIsActive())
         .role(user.getRole())
+        .deviceId(null)
         .build();
   }
 

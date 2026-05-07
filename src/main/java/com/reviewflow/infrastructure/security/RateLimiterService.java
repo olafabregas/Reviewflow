@@ -37,8 +37,50 @@ public class RateLimiterService {
   private final Map<String, AttemptRecord> loginAttempts = new ConcurrentHashMap<>();
   private final Map<String, AttemptRecord> tokenAttempts = new ConcurrentHashMap<>();
   private final Map<String, AttemptRecord> uploadBlockAttempts = new ConcurrentHashMap<>();
+  private final Map<String, AttemptRecord> refreshIpAttempts = new ConcurrentHashMap<>();
+  private final Map<String, AttemptRecord> refreshUserAttempts = new ConcurrentHashMap<>();
+  private final Map<String, AttemptRecord> passwordResetRequestIpAttempts = new ConcurrentHashMap<>();
+  private final Map<String, AttemptRecord> passwordResetRequestEmailAttempts =
+      new ConcurrentHashMap<>();
+  private final Map<String, AttemptRecord> passwordResetConfirmIpAttempts = new ConcurrentHashMap<>();
+  private final Map<String, AttemptRecord> stepUpUserAttempts = new ConcurrentHashMap<>();
 
-  // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+  @Value("${rate-limit.refresh.ip.max-attempts:30}")
+  private int refreshIpMaxAttempts;
+
+  @Value("${rate-limit.refresh.ip.window-seconds:60}")
+  private long refreshIpWindowSeconds;
+
+  @Value("${rate-limit.refresh.user.max-attempts:60}")
+  private int refreshUserMaxAttempts;
+
+  @Value("${rate-limit.refresh.user.window-seconds:3600}")
+  private long refreshUserWindowSeconds;
+
+  @Value("${rate-limit.password-reset.request.ip.max-attempts:3}")
+  private int passwordResetRequestIpMaxAttempts;
+
+  @Value("${rate-limit.password-reset.request.ip.window-seconds:3600}")
+  private long passwordResetRequestIpWindowSeconds;
+
+  @Value("${rate-limit.password-reset.request.email.max-attempts:5}")
+  private int passwordResetRequestEmailMaxAttempts;
+
+  @Value("${rate-limit.password-reset.request.email.window-seconds:3600}")
+  private long passwordResetRequestEmailWindowSeconds;
+
+  @Value("${rate-limit.password-reset.confirm.ip.max-attempts:20}")
+  private int passwordResetConfirmIpMaxAttempts;
+
+  @Value("${rate-limit.password-reset.confirm.ip.window-seconds:3600}")
+  private long passwordResetConfirmIpWindowSeconds;
+
+  @Value("${rate-limit.step-up.user.max-attempts:10}")
+  private int stepUpUserMaxAttempts;
+
+  @Value("${rate-limit.step-up.user.window-seconds:900}")
+  private long stepUpUserWindowSeconds;
+
   // LOGIN
   // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
@@ -75,7 +117,114 @@ public class RateLimiterService {
     return getRetryAfter(ip, tokenAttempts, tokenWindowSeconds);
   }
 
-  // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+  public void recordRefreshAttemptIp(String ip) {
+    record(ip, refreshIpAttempts, refreshIpWindowSeconds);
+  }
+
+  public boolean isRefreshIpRateLimited(String ip) {
+    return isLimited(ip, refreshIpAttempts, refreshIpWindowSeconds, refreshIpMaxAttempts);
+  }
+
+  public long getRefreshIpRetryAfterSeconds(String ip) {
+    return getRetryAfter(ip, refreshIpAttempts, refreshIpWindowSeconds);
+  }
+
+  public void recordRefreshAttemptUser(Long userId) {
+    if (userId == null) return;
+    record("u:" + userId, refreshUserAttempts, refreshUserWindowSeconds);
+  }
+
+  public boolean isRefreshUserRateLimited(Long userId) {
+    if (userId == null) return false;
+    return isLimited(
+        "u:" + userId, refreshUserAttempts, refreshUserWindowSeconds, refreshUserMaxAttempts);
+  }
+
+  public long getRefreshUserRetryAfterSeconds(Long userId) {
+    if (userId == null) return 0;
+    return getRetryAfter("u:" + userId, refreshUserAttempts, refreshUserWindowSeconds);
+  }
+
+  public void recordPasswordResetRequestIp(String ip) {
+    record(ip, passwordResetRequestIpAttempts, passwordResetRequestIpWindowSeconds);
+  }
+
+  public boolean isPasswordResetRequestIpRateLimited(String ip) {
+    return isLimited(
+        ip,
+        passwordResetRequestIpAttempts,
+        passwordResetRequestIpWindowSeconds,
+        passwordResetRequestIpMaxAttempts);
+  }
+
+  public long getPasswordResetRequestIpRetryAfterSeconds(String ip) {
+    return getRetryAfter(ip, passwordResetRequestIpAttempts, passwordResetRequestIpWindowSeconds);
+  }
+
+  public void recordPasswordResetRequestEmail(String normalizedEmail) {
+    if (normalizedEmail == null || normalizedEmail.isBlank()) return;
+    record(
+        "e:" + normalizedEmail,
+        passwordResetRequestEmailAttempts,
+        passwordResetRequestEmailWindowSeconds);
+  }
+
+  public boolean isPasswordResetRequestEmailRateLimited(String normalizedEmail) {
+    if (normalizedEmail == null || normalizedEmail.isBlank()) return false;
+    return isLimited(
+        "e:" + normalizedEmail,
+        passwordResetRequestEmailAttempts,
+        passwordResetRequestEmailWindowSeconds,
+        passwordResetRequestEmailMaxAttempts);
+  }
+
+  public long getPasswordResetRequestEmailRetryAfterSeconds(String normalizedEmail) {
+    if (normalizedEmail == null || normalizedEmail.isBlank()) return 0;
+    return getRetryAfter(
+        "e:" + normalizedEmail,
+        passwordResetRequestEmailAttempts,
+        passwordResetRequestEmailWindowSeconds);
+  }
+
+  public void recordPasswordResetConfirmIp(String ip) {
+    record(ip, passwordResetConfirmIpAttempts, passwordResetConfirmIpWindowSeconds);
+  }
+
+  public boolean isPasswordResetConfirmIpRateLimited(String ip) {
+    return isLimited(
+        ip,
+        passwordResetConfirmIpAttempts,
+        passwordResetConfirmIpWindowSeconds,
+        passwordResetConfirmIpMaxAttempts);
+  }
+
+  public long getPasswordResetConfirmIpRetryAfterSeconds(String ip) {
+    return getRetryAfter(
+        ip, passwordResetConfirmIpAttempts, passwordResetConfirmIpWindowSeconds);
+  }
+
+  public void recordStepUpAttempt(Long userId) {
+    if (userId == null) return;
+    record("su:" + userId, stepUpUserAttempts, stepUpUserWindowSeconds);
+  }
+
+  public boolean isStepUpRateLimited(Long userId) {
+    if (userId == null) return false;
+    return isLimited(
+        "su:" + userId, stepUpUserAttempts, stepUpUserWindowSeconds, stepUpUserMaxAttempts);
+  }
+
+  public long getStepUpRetryAfterSeconds(Long userId) {
+    if (userId == null) return 0;
+    return getRetryAfter("su:" + userId, stepUpUserAttempts, stepUpUserWindowSeconds);
+  }
+
+  public void clearStepUpAttempts(Long userId) {
+    if (userId != null) {
+      stepUpUserAttempts.remove("su:" + userId);
+    }
+  }
+
   // UPLOAD BLOCK (FileSecurityValidator blocked attempts)
   // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
@@ -157,6 +306,13 @@ public class RateLimiterService {
     removed += cleanup(loginAttempts, loginWindowSeconds, now);
     removed += cleanup(tokenAttempts, tokenWindowSeconds, now);
     removed += cleanup(uploadBlockAttempts, uploadBlockWindowSeconds, now);
+    removed += cleanup(refreshIpAttempts, refreshIpWindowSeconds, now);
+    removed += cleanup(refreshUserAttempts, refreshUserWindowSeconds, now);
+    removed += cleanup(passwordResetRequestIpAttempts, passwordResetRequestIpWindowSeconds, now);
+    removed +=
+        cleanup(passwordResetRequestEmailAttempts, passwordResetRequestEmailWindowSeconds, now);
+    removed += cleanup(passwordResetConfirmIpAttempts, passwordResetConfirmIpWindowSeconds, now);
+    removed += cleanup(stepUpUserAttempts, stepUpUserWindowSeconds, now);
 
     if (removed > 0) {
       log.info("Rate limiter cleanup: removed {} stale entries", removed);

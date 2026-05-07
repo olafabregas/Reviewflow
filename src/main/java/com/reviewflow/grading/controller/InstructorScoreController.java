@@ -1,5 +1,6 @@
 package com.reviewflow.grading.controller;
 
+import com.reviewflow.auth.annotation.RequiresStepUp;
 import com.reviewflow.grading.dto.request.CreateInstructorScoreRequest;
 import com.reviewflow.grading.dto.request.InstructorScoreImportCommitRequest;
 import com.reviewflow.grading.dto.request.ReopenInstructorScoreRequest;
@@ -104,6 +105,7 @@ public class InstructorScoreController {
 
   @Operation(summary = "Commit CSV score import")
   @PostMapping("/assignments/{id}/instructor-scores/import/commit")
+  @RequiresStepUp(maxAgeSeconds = 300)
   public ResponseEntity<ApiResponse<InstructorScoreImportCommitResponse>> commitImport(
       @PathVariable String id,
       @Valid @RequestBody InstructorScoreImportCommitRequest request,

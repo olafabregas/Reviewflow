@@ -7,6 +7,8 @@ import com.reviewflow.infrastructure.email.event.EmailEvent;
 import com.reviewflow.infrastructure.email.event.EvaluationPublishedEmailEvent;
 import com.reviewflow.infrastructure.email.event.ExtensionDecisionEmailEvent;
 import com.reviewflow.infrastructure.email.event.ExtensionRequestReceivedEmailEvent;
+import com.reviewflow.infrastructure.email.event.PasswordResetCompletedEmailEvent;
+import com.reviewflow.infrastructure.email.event.PasswordResetRequestedEmailEvent;
 import com.reviewflow.infrastructure.email.event.SubmissionReceivedEmailEvent;
 import com.reviewflow.infrastructure.email.event.TeamInviteReceivedEmailEvent;
 import com.reviewflow.infrastructure.email.event.TeamInviteRespondedEmailEvent;
@@ -205,6 +207,33 @@ public class EmailEventListener {
         "account-reactivated",
         withCommon(event, vars("firstName", event.getFirstName())),
         "Your ReviewFlow account has been reactivated");
+  }
+
+  @Async("emailTaskExecutor")
+  @EventListener
+  public void handlePasswordResetRequested(PasswordResetRequestedEmailEvent event) {
+    sendEmail(
+        event,
+        "password-reset-requested",
+        withCommon(
+            event,
+            vars(
+                "firstName", event.getFirstName(),
+                "resetUrl", event.getResetUrl())),
+        "Reset your ReviewFlow password");
+  }
+
+  @Async("emailTaskExecutor")
+  @EventListener
+  public void handlePasswordResetCompleted(PasswordResetCompletedEmailEvent event) {
+    if (!isEmailEnabled(event)) {
+      return;
+    }
+    sendEmail(
+        event,
+        "password-reset-completed",
+        withCommon(event, vars("firstName", event.getFirstName())),
+        "Your ReviewFlow password was changed");
   }
 
   private Map<String, Object> withCommon(EmailEvent event, Map<String, Object> variables) {

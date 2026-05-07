@@ -16,4 +16,6 @@ public class AuthUserResponse {
   Boolean emailNotificationsEnabled;
   Boolean isActive;
   UserRole role;
+  /** Server-bound device id (echoed from X-Device-Id or generated). */
+  String deviceId;
 }
