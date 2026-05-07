@@ -1,6 +1,7 @@
 package com.reviewflow.auth.controller;
 
 import com.reviewflow.auth.dto.request.StepUpRequest;
+import com.reviewflow.auth.dto.response.StepUpResponse;
 import com.reviewflow.auth.service.AuthCookieIssuer;
 import com.reviewflow.auth.service.SessionPolicyResolver;
 import com.reviewflow.auth.service.StepUpService;
@@ -11,7 +12,7 @@ import com.reviewflow.shared.exception.TooManyRequestsException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import java.util.Map;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -32,7 +33,7 @@ public class StepUpController {
   private final RateLimiterService rateLimiterService;
 
   @PostMapping("/step-up")
-  public ResponseEntity<ApiResponse<Map<String, Long>>> stepUp(
+  public ResponseEntity<ApiResponse<StepUpResponse>> stepUp(
       @AuthenticationPrincipal ReviewFlowUserDetails user,
       @Valid @RequestBody StepUpRequest body,
       HttpServletRequest request,
@@ -56,8 +57,9 @@ public class StepUpController {
       long accessTtlMs = sessionPolicyResolver.resolveFor(user.getRole()).accessTtlMs();
       authCookieIssuer.writeAccess(response, accessToken, accessTtlMs / 1000);
       rateLimiterService.clearStepUpAttempts(user.getUserId());
-      long stepUpAt = java.time.Instant.now().getEpochSecond();
-      return ResponseEntity.ok(ApiResponse.ok(Map.of("stepUpAt", stepUpAt)));
+      long stepUpValidUntil = Instant.now().getEpochSecond() + 300;
+      return ResponseEntity.ok(
+          ApiResponse.ok(StepUpResponse.builder().stepUpValidUntil(stepUpValidUntil).build()));
     } catch (BadCredentialsException e) {
       rateLimiterService.recordStepUpAttempt(user.getUserId());
       throw e;

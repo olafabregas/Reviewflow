@@ -1,6 +1,5 @@
 package com.reviewflow.auth.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,7 +7,6 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class StepUpRequest {
-
-  @NotBlank private String password;
+public class PasswordResetRequest {
+  private String email;
 }
