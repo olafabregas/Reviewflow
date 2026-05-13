@@ -58,7 +58,7 @@ class StepUpControllerTest {
     when(stepUpService.completeStepUp(anyLong(), anyString(), anyString(), anyString()))
         .thenReturn("new-access-token");
     when(sessionPolicyResolver.resolveFor(UserRole.ADMIN))
-        .thenReturn(new SessionPolicyResolver.SessionPolicy(2, 12, 900000L, 604800000L));
+        .thenReturn(new SessionPolicyResolver.SessionPolicy(2, 12, 900000L, 604800000L, false));
     when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
     when(request.getHeader("X-Forwarded-For")).thenReturn(null);
     when(request.getRemoteAddr()).thenReturn("203.0.113.5");

@@ -110,7 +110,7 @@ public class SessionService {
   public void logoutAll(Long userId) {
     refreshTokenRepository.revokeAllForUser(userId);
     userRepository.incrementTokenVersion(userId);
-    tokenVersionService.evict(userId);
+    tokenVersionService.invalidate(userId);
     auditService.log(
         userId, "USER_LOGOUT_ALL", "User", userId, "All sessions revoked by user", null);
     webSocketUserEventService.notifySessionsRevoked(userId);

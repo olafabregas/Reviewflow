@@ -55,7 +55,7 @@ class AuthServiceTest {
   @InjectMocks private AuthService authService;
 
   private static SessionPolicyResolver.SessionPolicy defaultPolicy() {
-    return new SessionPolicyResolver.SessionPolicy(2, 12, 900_000L, 604_800_000L);
+    return new SessionPolicyResolver.SessionPolicy(2, 12, 900_000L, 604_800_000L, false);
   }
 
   @Test

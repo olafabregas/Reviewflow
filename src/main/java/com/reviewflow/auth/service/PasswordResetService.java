@@ -154,7 +154,7 @@ public class PasswordResetService {
 
     refreshTokenRepository.revokeAllForUser(user.getId());
     userRepository.incrementTokenVersion(user.getId());
-    tokenVersionService.evict(user.getId());
+    tokenVersionService.invalidate(user.getId());
     userDetailsCacheService.evict(user.getEmail());
 
     eventPublisher.publishEvent(

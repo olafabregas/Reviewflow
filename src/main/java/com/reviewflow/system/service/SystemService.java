@@ -270,7 +270,7 @@ public class SystemService {
 
     // Bump token version for immediate access token invalidation
     userRepository.incrementTokenVersion(targetUserId);
-    tokenVersionService.evict(targetUserId);
+    tokenVersionService.invalidate(targetUserId);
 
     // Log to audit
     auditService.log(

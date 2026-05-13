@@ -17,7 +17,11 @@ public class TokenVersionService {
     return store.getCurrentVersion(userId);
   }
 
+  public void invalidate(Long userId) {
+    store.invalidate(userId);
+  }
+
   public void evict(Long userId) {
-    store.evict(userId);
+    invalidate(userId);
   }
 }

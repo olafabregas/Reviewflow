@@ -1,6 +1,7 @@
 package com.reviewflow.infrastructure.security;
 
 import com.reviewflow.auth.exception.TokenVersionMismatchException;
+import com.reviewflow.auth.service.SessionPolicyResolver;
 import com.reviewflow.auth.service.TokenVersionService;
 import com.reviewflow.auth.service.UserDetailsCacheService;
 import com.reviewflow.infrastructure.monitoring.SecurityMetrics;
@@ -36,6 +37,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   private final SecurityMetrics securityMetrics;
   private final HashidService hashidService;
   private final TokenVersionService tokenVersionService;
+  private final SessionPolicyResolver sessionPolicyResolver;
   private final HttpErrorJsonWriter httpErrorJsonWriter;
 
   @Value("${jwt.cookie-name:reviewflow_access}")
@@ -91,7 +93,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
           }
 
-          if (tokenFingerprintingEnabled) {
+          boolean fingerprintRequired = tokenFingerprintingEnabled;
+          if (userDetails instanceof ReviewFlowUserDetails rfDetails) {
+            fingerprintRequired = fingerprintRequired || sessionPolicyResolver.resolveFor(rfDetails.getRole()).requireFingerprint();
+          }
+
+          if (fingerprintRequired) {
             String tokenUserAgent = jwtService.extractClaim(token, "userAgent");
             String requestUserAgent = request.getHeader("User-Agent");
 

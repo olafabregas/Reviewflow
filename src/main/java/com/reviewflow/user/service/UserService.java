@@ -318,7 +318,7 @@ public class UserService {
     // invalidation
     int revokedCount = refreshTokenRepository.revokeAllForUser(id);
     userRepository.incrementTokenVersion(id);
-    tokenVersionService.evict(id);
+    tokenVersionService.invalidate(id);
 
     adminStatsService.evictStats();
 

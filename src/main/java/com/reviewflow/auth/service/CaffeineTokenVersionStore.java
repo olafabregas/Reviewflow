@@ -35,7 +35,7 @@ public class CaffeineTokenVersionStore implements TokenVersionStore {
   }
 
   @Override
-  public void evict(Long userId) {
+  public void invalidate(Long userId) {
     cache.invalidate(userId);
   }
 }

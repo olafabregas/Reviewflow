@@ -26,18 +26,23 @@ public class JwtKeyRegistry {
     this.allowLegacyTokensWithoutKid = props.isAllowLegacyTokensWithoutKid();
 
     String chosenActive = null;
+    int activeCount = 0;
     if (props.getKeys() != null) {
       for (JwtKeyConfigurationProperties.KeyEntry entry : props.getKeys()) {
         if (entry.getKid() == null || entry.getKid().isBlank()) {
-          continue;
+          throw new IllegalStateException("jwt.keys[].kid must be set");
         }
         if (entry.getSecret() == null || entry.getSecret().isBlank()) {
-          continue;
+          throw new IllegalStateException("jwt.keys[" + entry.getKid() + "].secret must be set");
+        }
+        if (keysByKid.containsKey(entry.getKid())) {
+          throw new IllegalStateException("Duplicate jwt kid configured: " + entry.getKid());
         }
         SecretKey k = Keys.hmacShaKeyFor(entry.getSecret().getBytes(StandardCharsets.UTF_8));
         keysByKid.put(entry.getKid(), k);
         if (entry.isActive()) {
           chosenActive = entry.getKid();
+          activeCount++;
         }
       }
     }
@@ -45,10 +50,15 @@ public class JwtKeyRegistry {
     if (keysByKid.isEmpty()) {
       keysByKid.put("default", legacyKey);
       this.activeKid = "default";
-    } else if (chosenActive != null && keysByKid.containsKey(chosenActive)) {
+    } else if (activeCount == 1 && chosenActive != null && keysByKid.containsKey(chosenActive)) {
       this.activeKid = chosenActive;
     } else {
-      this.activeKid = keysByKid.keySet().iterator().next();
+      if (activeCount == 0) {
+        throw new IllegalStateException(
+            "Exactly one jwt.keys[] entry must be marked active=true when jwt.keys[] is configured");
+      }
+      throw new IllegalStateException(
+          "Exactly one jwt.keys[] entry must be marked active=true; found " + activeCount);
     }
   }
 

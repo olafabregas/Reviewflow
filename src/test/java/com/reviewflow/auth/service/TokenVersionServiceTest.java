@@ -58,12 +58,12 @@ class TokenVersionServiceTest {
   }
 
   @Test
-  void evict_ShouldForceReloadOnNextCall() {
+  void invalidate_ShouldForceReloadOnNextCall() {
     Long userId = 1L;
     when(userRepository.findTokenVersionById(userId)).thenReturn(Optional.of(5), Optional.of(6));
 
     tokenVersionService.getCurrentVersion(userId); // loads 5
-    tokenVersionService.evict(userId);
+    tokenVersionService.invalidate(userId);
     int version = tokenVersionService.getCurrentVersion(userId); // loads 6
 
     assertEquals(6, version);
