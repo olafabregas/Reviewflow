@@ -44,6 +44,21 @@ public class RateLimiterService {
       new ConcurrentHashMap<>();
   private final Map<String, AttemptRecord> passwordResetConfirmIpAttempts = new ConcurrentHashMap<>();
   private final Map<String, AttemptRecord> stepUpUserAttempts = new ConcurrentHashMap<>();
+  private final Map<String, AttemptRecord> messagingSendAttempts = new ConcurrentHashMap<>();
+  private final Map<String, AttemptRecord> messagingConversationCreateAttempts =
+      new ConcurrentHashMap<>();
+
+  @Value("${messaging.rate-limit.messages-per-minute:30}")
+  private int messagingSendMaxAttempts;
+
+  @Value("${messaging.rate-limit.messages-window-seconds:60}")
+  private long messagingSendWindowSeconds;
+
+  @Value("${messaging.rate-limit.conversations-per-hour:10}")
+  private int messagingConversationCreateMaxAttempts;
+
+  @Value("${messaging.rate-limit.conversations-window-seconds:3600}")
+  private long messagingConversationCreateWindowSeconds;
 
   @Value("${rate-limit.refresh.ip.max-attempts:30}")
   private int refreshIpMaxAttempts;
@@ -225,6 +240,43 @@ public class RateLimiterService {
     }
   }
 
+  public void recordMessagingSend(Long userId) {
+    if (userId == null) return;
+    record("ms:" + userId, messagingSendAttempts, messagingSendWindowSeconds);
+  }
+
+  public boolean isMessagingSendRateLimited(Long userId) {
+    if (userId == null) return false;
+    return isLimited(
+        "ms:" + userId, messagingSendAttempts, messagingSendWindowSeconds, messagingSendMaxAttempts);
+  }
+
+  public long getMessagingSendRetryAfterSeconds(Long userId) {
+    if (userId == null) return 0;
+    return getRetryAfter("ms:" + userId, messagingSendAttempts, messagingSendWindowSeconds);
+  }
+
+  public void recordMessagingConversationCreated(Long userId) {
+    if (userId == null) return;
+    record(
+        "mc:" + userId, messagingConversationCreateAttempts, messagingConversationCreateWindowSeconds);
+  }
+
+  public boolean isMessagingConversationCreateRateLimited(Long userId) {
+    if (userId == null) return false;
+    return isLimited(
+        "mc:" + userId,
+        messagingConversationCreateAttempts,
+        messagingConversationCreateWindowSeconds,
+        messagingConversationCreateMaxAttempts);
+  }
+
+  public long getMessagingConversationCreateRetryAfterSeconds(Long userId) {
+    if (userId == null) return 0;
+    return getRetryAfter(
+        "mc:" + userId, messagingConversationCreateAttempts, messagingConversationCreateWindowSeconds);
+  }
+
   // UPLOAD BLOCK (FileSecurityValidator blocked attempts)
   // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
@@ -313,6 +365,9 @@ public class RateLimiterService {
         cleanup(passwordResetRequestEmailAttempts, passwordResetRequestEmailWindowSeconds, now);
     removed += cleanup(passwordResetConfirmIpAttempts, passwordResetConfirmIpWindowSeconds, now);
     removed += cleanup(stepUpUserAttempts, stepUpUserWindowSeconds, now);
+    removed += cleanup(messagingSendAttempts, messagingSendWindowSeconds, now);
+    removed +=
+        cleanup(messagingConversationCreateAttempts, messagingConversationCreateWindowSeconds, now);
 
     if (removed > 0) {
       log.info("Rate limiter cleanup: removed {} stale entries", removed);
@@ -320,14 +375,18 @@ public class RateLimiterService {
   }
 
   private int cleanup(Map<String, AttemptRecord> store, long windowSeconds, Instant now) {
-    return store
-            .entrySet()
-            .removeIf( // TODO [STYLE-AGENT]: fix structural violation
-                entry -> entry.getValue().windowStart.plusSeconds(windowSeconds).isBefore(now))
-        ? store.size()
-        : 0;
+    int[] removed = {0};
+    store.entrySet()
+        .removeIf(
+            entry -> {
+              if (entry.getValue().windowStart.plusSeconds(windowSeconds).isBefore(now)) {
+                removed[0]++;
+                return true;
+              }
+              return false;
+            });
+    return removed[0];
   }
 
-    // TODO [STYLE-AGENT]: fix structural violation
   private record AttemptRecord(Instant windowStart, int count) {}
 }

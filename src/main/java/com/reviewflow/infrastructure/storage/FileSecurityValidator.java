@@ -3,6 +3,7 @@ package com.reviewflow.infrastructure.storage;
 import com.lowagie.text.pdf.PdfReader;
 import com.reviewflow.infrastructure.config.ValidationConfig;
 import com.reviewflow.infrastructure.storage.FileSecurityProperties;
+import com.reviewflow.shared.exception.BusinessRuleException;
 import com.reviewflow.submission.exception.ArchiveTooLargeException;
 import com.reviewflow.user.exception.AvatarInvalidTypeException;
 import com.reviewflow.user.exception.AvatarTooLargeException;
@@ -287,6 +288,33 @@ public class FileSecurityValidator {
     String detectedMime = tika.detect(file.getInputStream(), filename);
     if (!config.allowedMimeTypes().contains(detectedMime)) {
       throw new AvatarInvalidTypeException("Avatar MIME type " + detectedMime + " is not allowed");
+    }
+  }
+
+  /** PRD-18: message attachment allowlist + MIME (no structural PDF/ZIP gates). */
+  public void validateMessageAttachment(MultipartFile file, ValidationConfig config)
+      throws IOException {
+    String filename = file.getOriginalFilename();
+    if (filename == null || filename.isBlank()) {
+      throw new InvalidFileTypeException("File name is required", "UNSUPPORTED_FILE_TYPE");
+    }
+    if (file.getSize() > config.maxFileSizeBytes()) {
+      throw new BusinessRuleException(
+          "File exceeds maximum size of " + config.maxFileSizeBytes() + " bytes", "FILE_TOO_LARGE");
+    }
+    filename = extractFilenameFromPath(filename);
+    filename = normalizeFilename(filename);
+    String extension = extractExtension(filename);
+    if (!config.allowedExtensions().contains(extension)) {
+      throw new InvalidFileTypeException(
+          "Extension ." + extension + " is not allowed for message attachments",
+          "UNSUPPORTED_FILE_TYPE");
+    }
+    String detectedMime = tika.detect(file.getInputStream(), filename);
+    if (!config.allowedMimeTypes().contains(detectedMime)) {
+      throw new InvalidFileTypeException(
+          "MIME type " + detectedMime + " is not allowed for message attachments",
+          "UNSUPPORTED_FILE_TYPE");
     }
   }
 

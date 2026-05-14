@@ -76,7 +76,8 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
         return null;
       }
 
-      var userDetails = new ReviewFlowUserDetails(user);
+      // PRD-18: STOMP user destination uses Principal#getName() — must be raw user id string.
+      var userDetails = new WebSocketPrincipalDetails(user);
       var auth =
           new UsernamePasswordAuthenticationToken(
               userDetails, null, userDetails.getAuthorities());
@@ -101,5 +102,17 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
       return b.get(0).trim();
     }
     return null;
+  }
+
+  /** Same as {@link ReviewFlowUserDetails} but {@link #getUsername()} returns numeric user id for STOMP. */
+  private static final class WebSocketPrincipalDetails extends ReviewFlowUserDetails {
+    WebSocketPrincipalDetails(User user) {
+      super(user);
+    }
+
+    @Override
+    public String getUsername() {
+      return String.valueOf(getUserId());
+    }
   }
 }

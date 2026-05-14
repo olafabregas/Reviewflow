@@ -1,10 +1,12 @@
 package com.reviewflow.security;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.reviewflow.auth.exception.TokenVersionMismatchException;
+import com.reviewflow.auth.service.SessionPolicyResolver;
 import com.reviewflow.auth.service.TokenVersionService;
 import com.reviewflow.auth.service.UserDetailsCacheService;
 import com.reviewflow.infrastructure.monitoring.SecurityMetrics;
@@ -27,7 +29,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.userdetails.UserDetails;
 
 @ExtendWith(MockitoExtension.class)
 class JwtAuthenticationFilterTest {
@@ -39,6 +40,7 @@ class JwtAuthenticationFilterTest {
   @Mock private SecurityMetrics securityMetrics;
   @Mock private HashidService hashidService;
   @Mock private TokenVersionService tokenVersionService;
+  @Mock private SessionPolicyResolver sessionPolicyResolver;
   @Mock private HttpErrorJsonWriter httpErrorJsonWriter;
   @Mock private HttpServletRequest request;
   @Mock private HttpServletResponse response;
@@ -54,6 +56,9 @@ class JwtAuthenticationFilterTest {
     lenient().when(userDetails.getRole()).thenReturn(UserRole.STUDENT);
     lenient().when(userDetails.getUserId()).thenReturn(1L);
     lenient().when(hashidService.encode(1L)).thenReturn("U1");
+    lenient()
+        .when(sessionPolicyResolver.resolveFor(any(UserRole.class)))
+        .thenReturn(new SessionPolicyResolver.SessionPolicy(1, 24, 900_000L, 3_600_000L, false));
   }
 
   @Test

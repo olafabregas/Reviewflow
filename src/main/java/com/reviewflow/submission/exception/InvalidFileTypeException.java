@@ -8,6 +8,11 @@ public class InvalidFileTypeException extends RuntimeException {
     this.code = "INVALID_FILE_TYPE";
   }
 
+  public InvalidFileTypeException(String message, String code) {
+    super(message);
+    this.code = code;
+  }
+
   public String getCode() {
     return code;
   }

@@ -15,6 +15,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -29,6 +31,8 @@ public class RefreshTokenFamily {
 
   @Id
   @GeneratedValue(strategy = GenerationType.AUTO)
+  @JdbcTypeCode(SqlTypes.CHAR)
+  @Column(length = 36, nullable = false)
   private UUID id;
 
   @ManyToOne(fetch = FetchType.LAZY)

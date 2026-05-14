@@ -2,6 +2,7 @@ package com.reviewflow.infrastructure.storage;
 
 import com.reviewflow.shared.exception.StorageException;
 import com.reviewflow.shared.exception.StorageNotFoundException;
+import java.io.InputStream;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +45,20 @@ public class S3Service {
       s3Client.putObject(
           PutObjectRequest.builder().bucket(bucket).key(key).contentType(contentType).build(),
           RequestBody.fromBytes(data));
+      log.debug("S3 upload successful: {}", key);
+      return buildUrl(key);
+    } catch (S3Exception e) {
+      log.error("S3 upload failed for key {}: {}", key, e.getMessage());
+      throw new StorageException("File upload failed. Please try again.", e);
+    }
+  }
+
+  /** Streams to S3 without loading the full object into heap (preferred for large uploads). */
+  public String putObject(String key, InputStream inputStream, long contentLength, String contentType) {
+    try {
+      s3Client.putObject(
+          PutObjectRequest.builder().bucket(bucket).key(key).contentType(contentType).build(),
+          RequestBody.fromInputStream(inputStream, contentLength));
       log.debug("S3 upload successful: {}", key);
       return buildUrl(key);
     } catch (S3Exception e) {

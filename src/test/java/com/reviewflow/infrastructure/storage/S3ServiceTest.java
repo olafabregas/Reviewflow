@@ -9,7 +9,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
-import com.reviewflow.infrastructure.storage.S3Service;
 
 import com.reviewflow.shared.exception.StorageException;
 import com.reviewflow.shared.exception.StorageNotFoundException;
@@ -38,7 +37,6 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
-import com.reviewflow.infrastructure.storage.S3Service;
 
 @ExtendWith(MockitoExtension.class)
 class S3ServiceTest {
@@ -83,6 +81,22 @@ class S3ServiceTest {
     assertThrows(
         StorageException.class,
         () -> s3Service.putObject("x", "abc".getBytes(), "application/pdf"));
+  }
+
+  @Test
+  void putObject_fromInputStream_success_returnsObjectUrl() throws Exception {
+    when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+        .thenReturn(PutObjectResponse.builder().build());
+
+    String result =
+        s3Service.putObject(
+            "messages/c1/m1/file.pdf",
+            new java.io.ByteArrayInputStream("abc".getBytes()),
+            3,
+            "application/pdf");
+
+    assertEquals(
+        "https://test-bucket.s3.ca-central-1.amazonaws.com/messages/c1/m1/file.pdf", result);
   }
 
   @Test

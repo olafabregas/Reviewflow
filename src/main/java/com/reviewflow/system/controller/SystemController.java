@@ -7,7 +7,9 @@ import com.reviewflow.shared.dto.ForceLogoutResponse;
 import com.reviewflow.shared.dto.ReopenEvaluationResponse;
 import com.reviewflow.shared.dto.SecurityEventDto;
 import com.reviewflow.shared.dto.UnlockTeamResponse;
+import com.reviewflow.shared.util.HashidService;
 import com.reviewflow.system.service.SystemService;
+import jakarta.servlet.http.HttpServletRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -38,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SystemController {
 
   private final SystemService systemService;
+  private final HashidService hashidService;
 
   /** PRD-09 Flow B: Get cache statistics */
   @GetMapping("/cache/stats")
@@ -124,6 +127,36 @@ public class SystemController {
   public ResponseEntity<Map<String, String>> getSafeConfig() {
     Map<String, String> config = systemService.getSafeConfig();
     return ResponseEntity.ok(config);
+  }
+
+  /** PRD-18: moderation — list all conversations in a course. */
+  @GetMapping("/courses/{courseId}/conversations")
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @Operation(summary = "List course conversations (moderation)")
+  public ResponseEntity<Map<String, Object>> moderationListCourseConversations(
+      @PathVariable String courseId,
+      Authentication authentication,
+      HttpServletRequest request) {
+    Long courseIdLong = hashidService.decodeOrThrow(courseId);
+    Long actorId = extractUserIdFromAuthentication(authentication);
+    return ResponseEntity.ok(
+        systemService.moderationListCourseConversations(
+            courseIdLong, actorId, clientIp(request)));
+  }
+
+  /** PRD-18: moderation — full message history for a conversation. */
+  @GetMapping("/conversations/{conversationId}/messages")
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @Operation(summary = "List conversation messages (moderation)")
+  public ResponseEntity<Map<String, Object>> moderationListConversationMessages(
+      @PathVariable String conversationId,
+      Authentication authentication,
+      HttpServletRequest request) {
+    Long convId = hashidService.decodeOrThrow(conversationId);
+    Long actorId = extractUserIdFromAuthentication(authentication);
+    return ResponseEntity.ok(
+        systemService.moderationListConversationMessages(
+            convId, actorId, clientIp(request)));
   }
 
   /** PRD-09 Flow D: Get security events */
@@ -276,6 +309,14 @@ public class SystemController {
       return details.getUserId();
     }
     return null;
+  }
+
+  private static String clientIp(HttpServletRequest request) {
+    String xff = request.getHeader("X-Forwarded-For");
+    if (xff != null && !xff.isBlank()) {
+      return xff.split(",")[0].trim();
+    }
+    return request.getRemoteAddr();
   }
 
   // Request DTOs

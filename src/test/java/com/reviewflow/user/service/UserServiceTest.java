@@ -67,7 +67,7 @@ class UserServiceTest {
     assertFalse(user.getIsActive());
     verify(refreshTokenRepository).revokeAllForUser(targetId);
     verify(userRepository).incrementTokenVersion(targetId);
-    verify(tokenVersionService).evict(targetId);
+    verify(tokenVersionService).invalidate(targetId);
     verify(auditService).log(eq(adminId), eq("USER_DEACTIVATED"), eq("User"), eq(targetId), argThat((Map<String, Object> map) -> 
         map.get("refreshTokensRevoked").equals(3) && map.get("tokenVersionBumped").equals(true)
     ), isNull());

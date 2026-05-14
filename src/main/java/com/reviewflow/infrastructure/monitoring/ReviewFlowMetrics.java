@@ -335,4 +335,9 @@ public class ReviewFlowMetrics {
   public void recordAssignmentGroupMoved() {
     assignmentGroupMovedCounter.increment();
   }
+
+  /** WebSocket push delivery failures (e.g. STOMP principal mismatch, broker issues). */
+  public void recordWebSocketPushFailed(String type) {
+    meterRegistry.counter("reviewflow.websocket.push.failed", "type", type).increment();
+  }
 }

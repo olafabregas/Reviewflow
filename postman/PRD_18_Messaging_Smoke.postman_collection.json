@@ -1,0 +1,61 @@
+{
+  "info": {
+    "name": "PRD-18 Messaging — Smoke",
+    "description": "Minimal smoke requests for course messaging (PRD-18). Set collection variables after login: accessToken, courseHashId, recipientHashId.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8081/api/v1" },
+    { "key": "accessToken", "value": "" },
+    { "key": "courseHashId", "value": "" },
+    { "key": "recipientHashId", "value": "" },
+    { "key": "conversationHashId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "List course conversations",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": "{{baseUrl}}/courses/{{courseHashId}}/conversations"
+      }
+    },
+    {
+      "name": "Create or open direct conversation",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"recipientId\": \"{{recipientHashId}}\"\n}"
+        },
+        "url": "{{baseUrl}}/courses/{{courseHashId}}/conversations"
+      }
+    },
+    {
+      "name": "Unread count (global)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": "{{baseUrl}}/conversations/unread-count"
+      }
+    },
+    {
+      "name": "List messages (cursor optional)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": "{{baseUrl}}/conversations/{{conversationHashId}}/messages"
+      }
+    }
+  ]
+}

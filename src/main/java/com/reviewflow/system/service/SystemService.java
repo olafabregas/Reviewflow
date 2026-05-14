@@ -81,6 +81,8 @@ public class SystemService {
 
   @Autowired private HashidService hashidService;
 
+  @Autowired private com.reviewflow.messaging.service.MessagingService messagingService;
+
   @Autowired private Environment environment;
   @Autowired private TokenVersionService tokenVersionService;
 
@@ -456,6 +458,36 @@ public class SystemService {
     } catch (Exception e) {
       log.error("Error collecting and pushing system metrics", e);
     }
+  }
+
+  /** PRD-18: SYSTEM_ADMIN moderation — list conversations in a course. */
+  @Transactional(readOnly = true)
+  public java.util.Map<String, Object> moderationListCourseConversations(
+      Long courseId, Long actorId, String ip) {
+    var list = messagingService.listConversationsForModeration(courseId);
+    auditService.log(
+        actorId,
+        "CONVERSATION_LIST_VIEWED",
+        "COURSE",
+        courseId,
+        java.util.Map.of("courseId", courseId),
+        ip);
+    return java.util.Map.of("conversations", list);
+  }
+
+  /** PRD-18: SYSTEM_ADMIN moderation — full message history including soft-deleted. */
+  @Transactional(readOnly = true)
+  public java.util.Map<String, Object> moderationListConversationMessages(
+      Long conversationId, Long actorId, String ip) {
+    var messages = messagingService.listMessagesForModeration(conversationId);
+    auditService.log(
+        actorId,
+        "CONVERSATION_VIEWED",
+        "CONVERSATION",
+        conversationId,
+        java.util.Map.of("conversationId", conversationId),
+        ip);
+    return java.util.Map.of("messages", messages);
   }
 
   /** Build a JSON snapshot of evaluation scores for audit trail */

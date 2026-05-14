@@ -261,7 +261,7 @@ class SystemServiceTest {
     assertEquals(3, result.getRevokedTokenCount(), "Should return actual revoked count");
     verify(refreshTokenRepository, times(1)).revokeAllForUser(targetUserId);
     verify(userRepository, times(1)).incrementTokenVersion(targetUserId);
-    verify(tokenVersionService, times(1)).evict(targetUserId);
+    verify(tokenVersionService, times(1)).invalidate(targetUserId);
     verify(auditService, times(1))
         .log(eq(actorId), eq("FORCE_LOGOUT"), eq("USER"), eq(targetUserId), argThat((Map<String, Object> map) -> 
             map.get("revokedTokenCount").equals(3) && 

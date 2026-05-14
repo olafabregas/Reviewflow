@@ -27,6 +27,13 @@ public final class S3KeyBuilder {
     return String.format("avatars/%s/avatar.%s", hashedUserId, ext.toLowerCase(Locale.ROOT));
   }
 
+  public static String messageAttachmentKey(
+      String hashedConversationId, String hashedMessageId, String originalFilename) {
+    String sanitized = sanitizeFilename(originalFilename);
+    return String.format(
+        "messages/%s/%s/%s", hashedConversationId, hashedMessageId, sanitized);
+  }
+
   public static String sanitizeFilename(String filename) {
     String safe = filename == null || filename.isBlank() ? "upload" : filename;
     safe = safe.replaceAll("[^a-zA-Z0-9.\\-_]", "_").toLowerCase(Locale.ROOT);

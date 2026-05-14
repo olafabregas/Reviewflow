@@ -2,10 +2,9 @@ package com.reviewflow.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import com.reviewflow.infrastructure.storage.S3KeyBuilder;
 
-import org.junit.jupiter.api.Test;
 import com.reviewflow.infrastructure.storage.S3KeyBuilder;
+import org.junit.jupiter.api.Test;
 
 class S3KeyBuilderTest {
 
@@ -13,6 +12,13 @@ class S3KeyBuilderTest {
   void submissionKey_buildsExpectedPath() {
     String key = S3KeyBuilder.submissionKey("A1B2", "T9Z8", 3, "Project Report.zip");
     assertEquals("submissions/A1B2/T9Z8/v3/project_report.zip", key);
+  }
+
+  @Test
+  void messageAttachmentKey_buildsExpectedPath() {
+    String key =
+        S3KeyBuilder.messageAttachmentKey("CNV1", "MSG2", "Diagram Final#v2.pdf");
+    assertEquals("messages/CNV1/MSG2/diagram_final_v2.pdf", key);
   }
 
   @Test

@@ -16,6 +16,7 @@ import com.reviewflow.extension.exception.AlreadyRespondedException;
 import com.reviewflow.extension.exception.ExtensionCutoffPassedException;
 import com.reviewflow.extension.exception.ExtensionRequestExistsException;
 import com.reviewflow.extension.exception.InvalidRequestedDateException;
+import com.reviewflow.messaging.exception.MessagingClientException;
 import com.reviewflow.grading.exception.GradeOverviewUnavailableException;
 import com.reviewflow.grading.exception.ScoreNotPublishedException;
 import com.reviewflow.grading.exception.ScoresExistException;
@@ -478,6 +479,20 @@ public class GlobalExceptionHandler {
             .timestamp(Instant.now())
             .build();
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+  }
+
+  @ExceptionHandler(MessagingClientException.class)
+  public ResponseEntity<ErrorResponse> handleMessagingClient(MessagingClientException ex) {
+    ErrorResponse body =
+        ErrorResponse.builder()
+            .error(
+                ErrorResponse.ErrorDetail.builder()
+                    .code(ex.getCode())
+                    .message(ex.getMessage())
+                    .build())
+            .timestamp(Instant.now())
+            .build();
+    return ResponseEntity.status(ex.getHttpStatus()).body(body);
   }
 
   @ExceptionHandler(com.reviewflow.shared.exception.AccessDeniedException.class)

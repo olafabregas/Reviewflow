@@ -3,12 +3,14 @@ package com.reviewflow.team.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.reviewflow.team.event.TeamInviteEvent;
+import com.reviewflow.messaging.service.MessagingService;
 import com.reviewflow.shared.exception.AccessDeniedException;
 import com.reviewflow.shared.exception.BusinessRuleException;
 import com.reviewflow.shared.exception.DuplicateResourceException;
@@ -51,6 +53,7 @@ class TeamServiceTest {
   @Mock private UserRepository userRepository;
   @Mock private ApplicationEventPublisher eventPublisher;
   @Mock private AdminStatsService adminStatsService;
+  @Mock private MessagingService messagingService;
 
   @InjectMocks private TeamService teamService;
 
@@ -194,6 +197,7 @@ class TeamServiceTest {
     assertEquals(TeamMemberStatus.ACCEPTED, memberCaptor.getValue().getStatus());
     assertEquals(creatorId, memberCaptor.getValue().getUser().getId());
     verify(adminStatsService, times(1)).evictStats();
+    verify(messagingService).ensureTeamChatForNewTeam(any(Team.class), eq(creatorId));
   }
 
   @Test

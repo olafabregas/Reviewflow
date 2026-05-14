@@ -1,5 +1,6 @@
 package com.reviewflow.team.service;
 
+import com.reviewflow.messaging.service.MessagingService;
 import com.reviewflow.team.event.TeamInviteEvent;
 import com.reviewflow.team.event.TeamLockedEvent;
 import com.reviewflow.shared.exception.AccessDeniedException;
@@ -41,6 +42,7 @@ public class TeamService {
   private final UserRepository userRepository;
   private final ApplicationEventPublisher eventPublisher;
   private final AdminStatsService adminStatsService;
+  private final MessagingService messagingService;
 
   @Transactional
   public Team createTeam(Long assignmentId, String teamName, Long creatorId) {
@@ -105,6 +107,7 @@ public class TeamService {
             .status(TeamMemberStatus.ACCEPTED)
             .build();
     teamMemberRepository.save(member);
+    messagingService.ensureTeamChatForNewTeam(team, creatorId);
     adminStatsService.evictStats();
     return team;
   }
@@ -322,7 +325,20 @@ public class TeamService {
     } else {
       member.setStatus(TeamMemberStatus.DECLINED);
     }
-    return teamMemberRepository.save(member);
+    TeamMember saved = teamMemberRepository.save(member);
+    if (accept) {
+      User u = saved.getUser();
+      String joinerName =
+          ((u.getFirstName() != null ? u.getFirstName() : "")
+                  + " "
+                  + (u.getLastName() != null ? u.getLastName() : ""))
+              .trim();
+      if (joinerName.isEmpty()) {
+        joinerName = u.getEmail();
+      }
+      messagingService.addTeamMemberToTeamChat(saved.getTeam().getId(), userId, joinerName);
+    }
+    return saved;
   }
 
   @Transactional
