@@ -1,6 +1,7 @@
 package com.reviewflow.shared.domain;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -61,6 +62,13 @@ public class Notification {
   // Used for action URL rewriting with hashed IDs: "/teams/{id}" becomes "/teams/Xm2pNqR4"
   @Column(name = "target_id")
   private Long targetId;
+
+  /** When set with DISCUSSION_REMINDER, participates in uk_notification_dedup (see V34). */
+  @Column(name = "date_bucket")
+  private LocalDate dateBucket;
+
+  @Column(name = "dedup_key", insertable = false, updatable = false, length = 255)
+  private String dedupKey;
 
   @CreationTimestamp
   @Column(name = "created_at", updatable = false)

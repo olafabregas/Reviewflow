@@ -1,9 +1,13 @@
 package com.reviewflow.notification.service;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.Optional;
 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -40,6 +44,35 @@ public class NotificationService {
             .isRead(false)
             .build();
     return notificationRepository.save(n);
+  }
+
+  /**
+   * PRD-17: idempotent per (user, discussion, UTC calendar day) via {@code uk_notification_dedup}.
+   *
+   * @return the saved row if inserted; empty if duplicate (already reminded today).
+   */
+  @Transactional
+  @CacheEvict(value = CacheNames.CACHE_UNREAD_COUNT, key = "#userId")
+  public Optional<Notification> tryCreateDedupedDiscussionReminder(
+      Long userId, Long discussionId, String title, String message, String actionUrl) {
+    Notification n =
+        Notification.builder()
+            .userId(userId)
+            .type(NotificationType.DISCUSSION_REMINDER)
+            .title(title)
+            .message(message)
+            .actionUrl(actionUrl)
+            .targetId(discussionId)
+            .dateBucket(LocalDate.now(ZoneOffset.UTC))
+            .isRead(false)
+            .build();
+    try {
+      Notification saved = notificationRepository.save(n);
+      notificationRepository.flush();
+      return Optional.of(saved);
+    } catch (DataIntegrityViolationException ex) {
+      return Optional.empty();
+    }
   }
 
   @CacheEvict(value = CacheNames.CACHE_UNREAD_COUNT, key = "#userId")

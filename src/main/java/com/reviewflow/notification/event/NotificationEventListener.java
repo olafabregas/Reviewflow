@@ -1,5 +1,8 @@
 package com.reviewflow.notification.event;
 
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.List;
 
 import org.springframework.cache.CacheManager;
@@ -10,6 +13,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import com.reviewflow.announcement.event.AnnouncementPublishedEvent;
+import com.reviewflow.discussion.event.DiscussionPublishedEvent;
+import com.reviewflow.discussion.event.DiscussionReminderBatchEvent;
+import com.reviewflow.discussion.event.DiscussionReplyEvent;
 import com.reviewflow.evaluation.event.EvaluationPublishedEvent;
 import com.reviewflow.evaluation.event.EvaluationReopenedEvent;
 import com.reviewflow.extension.event.ExtensionDecidedEvent;
@@ -31,9 +37,11 @@ import com.reviewflow.infrastructure.email.event.TeamInviteReceivedEmailEvent;
 import com.reviewflow.infrastructure.email.event.TeamUnlockedEmailEvent;
 import com.reviewflow.notification.dto.response.NotificationDto;
 import com.reviewflow.notification.repository.NotificationRepository;
+import com.reviewflow.notification.service.NotificationService;
 import com.reviewflow.course.repository.CourseEnrollmentRepository;
 import com.reviewflow.user.repository.UserRepository;
 import com.reviewflow.shared.constant.CacheNames;
+import com.reviewflow.shared.domain.CourseEnrollment;
 import com.reviewflow.shared.domain.Notification;
 import com.reviewflow.shared.domain.NotificationType;
 import com.reviewflow.shared.domain.SubmissionType;
@@ -57,6 +65,7 @@ public class NotificationEventListener {
   private final HashidService hashidService;
   private final UserRepository userRepository;
   private final CourseEnrollmentRepository courseEnrollmentRepository;
+  private final NotificationService notificationService;
   private final ApplicationEventPublisher eventPublisher;
 
   // -- ANNOUNCEMENT PUBLISHED ------------------------------------
@@ -99,6 +108,77 @@ public class NotificationEventListener {
                           event.getBody(),
                           event.getCreatedByName(),
                           "")));
+    }
+  }
+
+  // -- DISCUSSION (PRD-17) ----------------------------------------
+  @Async("notificationExecutor")
+  @EventListener
+  public void onDiscussionPublished(DiscussionPublishedEvent event) {
+    String actionUrl = "/discussions/{id}";
+    String title = "New discussion";
+    String message = event.title();
+    for (CourseEnrollment e : courseEnrollmentRepository.findWithUserByCourseId(event.courseId())) {
+      if (e.getUser().getRole() != UserRole.STUDENT) {
+        continue;
+      }
+      saveAndPush(
+          e.getUser().getId(),
+          NotificationType.DISCUSSION_PUBLISHED,
+          title,
+          message,
+          actionUrl,
+          event.discussionId());
+    }
+    log.debug(
+        "Discussion published in-app notifications for discussion {} course {}",
+        event.discussionId(),
+        event.courseId());
+  }
+
+  @Async("notificationExecutor")
+  @EventListener
+  public void onDiscussionReply(DiscussionReplyEvent event) {
+    if (event.originalAuthorId() == null
+        || event.originalAuthorId().equals(event.replierUserId())) {
+      return;
+    }
+    saveAndPush(
+        event.originalAuthorId(),
+        NotificationType.DISCUSSION_REPLY,
+        "New reply",
+        event.replierName() + " replied to your post.",
+        "/discussions/{id}",
+        event.discussionId());
+  }
+
+  @Async("notificationExecutor")
+  @EventListener
+  public void onDiscussionReminderBatch(DiscussionReminderBatchEvent event) {
+    String actionUrl = "/discussions/{id}";
+    String title = "Discussion due soon";
+    DateTimeFormatter dueFmt =
+        DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withZone(ZoneOffset.UTC);
+    String dueStr = dueFmt.format(event.dueAt());
+    for (DiscussionReminderBatchEvent.ReminderRecipient r : event.recipients()) {
+      String message =
+          String.format(
+              "\"%s\" is due %s. Post your response before the deadline.",
+              event.discussionTitle(), dueStr);
+      notificationService
+          .tryCreateDedupedDiscussionReminder(
+              r.studentId(), event.discussionId(), title, message, actionUrl)
+          .ifPresent(
+              n -> {
+                try {
+                  messagingTemplate.convertAndSendToUser(
+                      r.studentId().toString(),
+                      "/queue/notifications",
+                      NotificationDto.from(n, hashidService));
+                } catch (Exception ex) {
+                  log.debug("User {} offline - reminder saved only", r.studentId());
+                }
+              });
     }
   }
 

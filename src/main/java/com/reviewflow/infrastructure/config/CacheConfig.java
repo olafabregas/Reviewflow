@@ -44,6 +44,18 @@ public class CacheConfig {
   @Value("${cache.csv-imports.max-size:50}")
   private int csvImportsMaxSize;
 
+  @Value("${cache.discussion-participation.ttl-seconds:1800}")
+  private int discussionParticipationTtlSeconds;
+
+  @Value("${cache.discussion-participation.max-size:50000}")
+  private int discussionParticipationMaxSize;
+
+  @Value("${cache.course-discussions.ttl-seconds:300}")
+  private int courseDiscussionsTtlSeconds;
+
+  @Value("${cache.course-discussions.max-size:500}")
+  private int courseDiscussionsMaxSize;
+
   @Bean
   public CacheManager cacheManager() {
     SimpleCacheManager cacheManager = new SimpleCacheManager();
@@ -57,7 +69,9 @@ public class CacheConfig {
             buildCache(CACHE_COURSE_MODULES, 300, 200),
             buildCache(CACHE_GRADE_OVERVIEW, gradeOverviewTtlSeconds, gradeOverviewMaxSize),
             buildCache(CACHE_CLASS_STATISTICS, classStatisticsTtlSeconds, classStatisticsMaxSize),
-            buildCache(CACHE_CSV_IMPORTS, csvImportsTtlSeconds, csvImportsMaxSize)));
+            buildCache(CACHE_CSV_IMPORTS, csvImportsTtlSeconds, csvImportsMaxSize),
+            buildCache(CacheNames.CACHE_DISCUSSION_PARTICIPATION, discussionParticipationTtlSeconds, discussionParticipationMaxSize),
+            buildCache(CacheNames.CACHE_COURSE_DISCUSSIONS, courseDiscussionsTtlSeconds, courseDiscussionsMaxSize)));
     return cacheManager;
   }
 

@@ -18,5 +18,10 @@ public enum NotificationType {
 
   // ── DEADLINES ─────────────────────────────────────────────────
   DEADLINE_WARNING_48H, // Assignment due in 48 hours — student has not submitted
-  DEADLINE_WARNING_24H // Assignment due in 24 hours — student has not submitted
+  DEADLINE_WARNING_24H, // Assignment due in 24 hours — student has not submitted
+
+  // ── DISCUSSIONS (PRD-17) ───────────────────────────────────────
+  DISCUSSION_PUBLISHED,
+  DISCUSSION_REPLY,
+  DISCUSSION_REMINDER
 }

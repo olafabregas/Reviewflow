@@ -29,6 +29,16 @@ public class ApiResponse<T> {
         .build();
   }
 
+  /** PRD-17: error envelope with structured {@code data} (e.g. POST_REQUIRED_BEFORE_READING). */
+  public static <T> ApiResponse<T> errorWithData(String code, String message, T data) {
+    return ApiResponse.<T>builder()
+        .success(false)
+        .data(data)
+        .error(new ErrorDetail(code, message))
+        .timestamp(Instant.now())
+        .build();
+  }
+
   // Inner class for error details
   @Value
   public static class ErrorDetail {

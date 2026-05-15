@@ -1,5 +1,6 @@
 package com.reviewflow.shared.exception;
 
+import com.reviewflow.discussion.exception.DiscussionException;
 import com.reviewflow.announcement.exception.AnnouncementNotFoundException;
 import com.reviewflow.auth.exception.SessionExpiredException;
 import com.reviewflow.auth.exception.StepUpRequiredException;
@@ -879,6 +880,15 @@ public class GlobalExceptionHandler {
             .timestamp(Instant.now())
             .build();
     return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+  }
+
+  @ExceptionHandler(DiscussionException.class)
+  public ResponseEntity<ApiResponse<Object>> handleDiscussion(DiscussionException ex) {
+    ApiResponse<Object> body =
+        ex.getData() != null
+            ? ApiResponse.errorWithData(ex.getErrorCode(), ex.getMessage(), ex.getData())
+            : ApiResponse.error(ex.getErrorCode(), ex.getMessage());
+    return ResponseEntity.status(ex.getStatus()).body(body);
   }
 
   @ExceptionHandler(Exception.class)
