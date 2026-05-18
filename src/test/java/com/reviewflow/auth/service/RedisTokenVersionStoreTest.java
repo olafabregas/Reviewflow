@@ -38,20 +38,32 @@ class RedisTokenVersionStoreTest {
 
   @Test
   void getCurrentVersion_readsRedisThenCachesLocally() {
-    when(valueOps.get("rf:tv:7")).thenReturn("4");
+    when(valueOps.get("reviewflow:token:version:7")).thenReturn("4");
 
     int first = store.getCurrentVersion(7L);
     int second = store.getCurrentVersion(7L);
 
     assertThat(first).isEqualTo(4);
     assertThat(second).isEqualTo(4);
-    verify(valueOps, times(1)).get("rf:tv:7");
+    verify(valueOps, times(1)).get("reviewflow:token:version:7");
     verify(userRepository, never()).findTokenVersionById(any());
   }
 
   @Test
+  void getCurrentVersion_usesReviewflowTokenVersionKeyPrefix() {
+    when(valueOps.get("reviewflow:token:version:99")).thenReturn(null);
+    when(userRepository.findTokenVersionById(99L)).thenReturn(Optional.of(5));
+
+    int version = store.getCurrentVersion(99L);
+
+    assertThat(version).isEqualTo(5);
+    verify(valueOps).get("reviewflow:token:version:99");
+    verify(valueOps).set(eq("reviewflow:token:version:99"), eq("5"), eq(Duration.ofSeconds(300)));
+  }
+
+  @Test
   void invalidate_setsRedisValueAndPublishesInvalidationEvent() {
-    when(valueOps.get("rf:tv:11")).thenReturn("2");
+    when(valueOps.get("reviewflow:token:version:11")).thenReturn("2");
     when(userRepository.findTokenVersionById(11L)).thenReturn(Optional.of(3));
 
     store.getCurrentVersion(11L);
@@ -63,8 +75,8 @@ class RedisTokenVersionStoreTest {
         null);
     store.getCurrentVersion(11L);
 
-    verify(valueOps).set(eq("rf:tv:11"), eq("3"), eq(Duration.ofSeconds(300)));
+    verify(valueOps).set(eq("reviewflow:token:version:11"), eq("3"), eq(Duration.ofSeconds(300)));
     verify(redis).convertAndSend("tv-invalidations", "11");
-    verify(valueOps, times(2)).get("rf:tv:11");
+    verify(valueOps, times(2)).get("reviewflow:token:version:11");
   }
 }

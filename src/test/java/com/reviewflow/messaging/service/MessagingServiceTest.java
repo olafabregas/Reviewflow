@@ -37,6 +37,7 @@ import com.reviewflow.shared.exception.BusinessRuleException;
 import com.reviewflow.shared.exception.ResourceNotFoundException;
 import com.reviewflow.shared.util.HashidService;
 import com.reviewflow.user.repository.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
@@ -76,6 +77,7 @@ class MessagingServiceTest {
   @Mock private SimpMessagingTemplate messagingTemplate;
   @Mock private RateLimiterService rateLimiterService;
   @Mock private ReviewFlowMetrics reviewFlowMetrics;
+  @Mock private ObjectMapper objectMapper;
 
   @InjectMocks private MessagingService messagingService;
 

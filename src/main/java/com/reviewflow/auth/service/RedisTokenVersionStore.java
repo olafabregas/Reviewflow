@@ -19,7 +19,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 @Slf4j
 public class RedisTokenVersionStore implements TokenVersionStore, MessageListener {
 
-  private static final String KEY_PREFIX = "rf:tv:";
+  private static final String KEY_PREFIX = "reviewflow:token:version:";
 
   private final StringRedisTemplate redis;
   private final UserRepository userRepository;

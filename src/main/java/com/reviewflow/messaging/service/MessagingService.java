@@ -1,6 +1,8 @@
 package com.reviewflow.messaging.service;
 
 import com.reviewflow.admin.service.AuditService;
+import com.reviewflow.config.MessagingRedisConfig;
+import com.reviewflow.messaging.RedisMessagePayload;
 import com.reviewflow.course.repository.CourseEnrollmentRepository;
 import com.reviewflow.course.repository.CourseInstructorRepository;
 import com.reviewflow.course.repository.CourseRepository;
@@ -49,10 +51,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,6 +82,13 @@ public class MessagingService {
   private final SimpMessagingTemplate messagingTemplate;
   private final RateLimiterService rateLimiterService;
   private final ReviewFlowMetrics reviewFlowMetrics;
+  private final ObjectMapper objectMapper;
+
+  @Autowired(required = false)
+  private StringRedisTemplate redisTemplate;
+
+  @Value("${redis.messaging.pubsub.enabled:false}")
+  private boolean pubSubEnabled;
 
   @Value("${message.edit-window-hours:1}")
   private int editWindowHours;
@@ -132,7 +144,7 @@ public class MessagingService {
     payload.put("conversationId", hashidService.encode(conv.getId()));
     payload.put("userName", joinerDisplayName);
     for (ConversationParticipant p : others) {
-      pushToUserQueue(conv.getId(), p.getUserId(), payload);
+      pushToRecipient(String.valueOf(p.getUserId()), payload);
     }
   }
 
@@ -188,7 +200,7 @@ public class MessagingService {
     payload.put("type", "NEW_CONVERSATION");
     payload.put("conversationId", hashidService.encode(conv.getId()));
     payload.put("initiatorName", displayName(initiator));
-    pushToUserQueue(conv.getId(), recipientId, payload);
+    pushToRecipient(String.valueOf(recipientId), payload);
     rateLimiterService.recordMessagingConversationCreated(initiatorId);
     return toCreateDirectResponse(conv, false);
   }
@@ -286,7 +298,7 @@ public class MessagingService {
     ws.put("sentAt", msg.getSentAt().toString());
     for (ConversationParticipant p : participantRepository.findByConversationId(conv.getId())) {
       if (!p.getUserId().equals(senderId)) {
-        pushToUserQueue(conv.getId(), p.getUserId(), ws);
+        pushToRecipient(String.valueOf(p.getUserId()), ws);
       }
     }
     return SendMessageResponse.builder()
@@ -343,7 +355,7 @@ public class MessagingService {
     ws.put("newContent", msg.getContent());
     ws.put("editedAt", msg.getEditedAt().toString());
     for (ConversationParticipant p : participantRepository.findByConversationId(conv.getId())) {
-      pushToUserQueue(conv.getId(), p.getUserId(), ws);
+      pushToRecipient(String.valueOf(p.getUserId()), ws);
     }
     return EditMessageResponse.builder()
         .messageId(hashidService.encode(msg.getId()))
@@ -442,7 +454,7 @@ public class MessagingService {
     ws.put("type", "MESSAGE_DELETED");
     ws.put("messageId", hashidService.encode(msg.getId()));
     for (ConversationParticipant p : participantRepository.findByConversationId(conv.getId())) {
-      pushToUserQueue(conv.getId(), p.getUserId(), ws);
+      pushToRecipient(String.valueOf(p.getUserId()), ws);
     }
   }
 
@@ -621,17 +633,23 @@ public class MessagingService {
     return t.length() <= previewMaxChars ? t : t.substring(0, previewMaxChars);
   }
 
-  private void pushToUserQueue(Long conversationId, Long userId, Map<String, Object> payload) {
-    try {
-      messagingTemplate.convertAndSendToUser(
-          String.valueOf(userId), "/queue/messages", payload);
-    } catch (Exception e) {
-      log.warn(
-          "WebSocket push failed for userId={} conversationId={}: {}",
-          userId,
-          conversationId,
-          e.getMessage());
-      reviewFlowMetrics.recordWebSocketPushFailed("messaging");
+  private void pushToRecipient(String rawUserId, Object payload) {
+    if (pubSubEnabled && redisTemplate != null) {
+      try {
+        redisTemplate.convertAndSend(
+            MessagingRedisConfig.MESSAGING_CHANNEL,
+            objectMapper.writeValueAsString(new RedisMessagePayload(rawUserId, payload)));
+      } catch (Exception e) {
+        log.warn("Redis pub/sub push failed userId={}: {}", rawUserId, e.getMessage());
+        reviewFlowMetrics.recordWebSocketPushFailed("messaging-redis");
+      }
+    } else {
+      try {
+        messagingTemplate.convertAndSendToUser(rawUserId, "/queue/messages", payload);
+      } catch (Exception e) {
+        log.warn("WebSocket push failed userId={}: {}", rawUserId, e.getMessage());
+        reviewFlowMetrics.recordWebSocketPushFailed("messaging");
+      }
     }
   }
 }
