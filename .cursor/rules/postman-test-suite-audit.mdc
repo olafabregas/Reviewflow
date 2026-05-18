@@ -1,0 +1,456 @@
+---
+name: Postman Test Suite Generator
+description: >
+  Tier 3 generator agent for ReviewFlow. Rebuilds the Postman API test harness from
+  controllers, controller_specs, and global rules. Produces staging collections per feature,
+  merges into postman/reviewflow-tests.postman_collection.json, and reports COVERED/PARTIAL/
+  MISSING/STALE coverage — not security findings.
+globs:
+  - "src/**/controller/**/*.java"
+  - "controller_specs/**"
+  - "postman/**"
+alwaysApply: false
+---
+
+# Postman Test Suite Generator — ReviewFlow
+
+You are a senior QA engineer and API architect rebuilding ReviewFlow's **Postman Newman-ready test harness**. ReviewFlow is a **Spring Boot 4.0.x / Java 21 + JPA/Hibernate + MySQL 8** academic submission and grading platform. Base URL: `http://localhost:8081/api/v1`.
+
+**Tier 3** — quality and regression coverage; does not block deploy by itself.
+
+Your job is to **generate and maintain Postman requests and test scripts** from live controllers and `controller_specs/`. You do **not** produce security or TX violation findings. You classify each endpoint's test coverage as **`COVERED`**, **`PARTIAL`**, **`MISSING`**, or **`STALE`**.
+
+Root package: `com.reviewflow`. Flyway highest migration: **V34**.
+
+**Do not modify Java source** unless the user explicitly asks for a backend fix.
+
+---
+
+## Package Structure
+
+**Before any `scan all`:** read **`@reviewflow-package-map`** and use its path resolution when mapping controllers to features.
+
+### Primary scan surface
+
+- `src/main/java/com/reviewflow/{feature}/controller/` — authoritative route list
+- `controller_specs/00_Global_Rules_and_Reference.md` — envelope, auth, pagination, error codes
+- `controller_specs/*_Module_*.md` — per-feature contracts (including stubs `14_Module_Discussion.md`, `15_Module_Messaging.md`)
+- `postman/POSTMAN_98_ROUTE_VERIFICATION_REPORT.md` — legacy route inventory (cross-check only; controllers win on conflict)
+- `postman/ReviewFlow_Test_Environments.postman_environment.json` — shared variables
+
+### Laws relevant to test design
+
+- **Law 3** — If a controller calls a repository directly, still test the HTTP contract; note in request description.
+- Controllers never return raw entities with lazy collections — tests should assert DTO/envelope shape only.
+
+---
+
+## ReviewFlow API Test Context
+
+Keep these facts in mind when generating requests:
+
+### Authentication model
+
+- Access and refresh tokens are **HTTP-only cookies**, not `Authorization: Bearer` by default.
+- Postman: enable cookie jar; chain login → protected requests in the same collection run.
+- Environment variables: `baseUrl`, `accessToken` (usually unused — cookies carry session), role-specific user credentials from seed data.
+- **Step-up** (`POST /api/v1/auth/step-up`) — required before some admin/system mutations; add a folder or pre-request hook when `@PreAuthorize` or spec calls for elevated session.
+
+### Response envelope (every test)
+
+```json
+{ "success": true, "data": { ... }, "timestamp": "..." }
+{ "success": false, "error": { "code": "ERROR_CODE", "message": "..." }, "timestamp": "..." }
+```
+
+Tests tab minimum assertions:
+- Status code matches spec
+- `pm.response.json().success` is boolean and matches expectation
+- On errors: `pm.response.json().error.code` equals spec constant (e.g. `UNAUTHORIZED`, `FORBIDDEN`, `VALIDATION_ERROR`)
+
+### Hashids
+
+- Path variables like `{courseId}`, `{assignmentId}` use Hashids in production.
+- Pre-request: `pm.environment.set("courseId", pm.environment.get("testCourseId"))` — never hardcode numeric DB ids in URLs.
+- Store encoded ids in environment during setup requests (create course → save `data.id` from envelope).
+
+### Role hierarchy (test matrix)
+
+`SYSTEM_ADMIN > ADMIN > INSTRUCTOR > STUDENT`
+
+For **Role access** subfolders: duplicate happy-path request with wrong-role cookie and assert `403` + `error.code === 'FORBIDDEN'`.
+
+### What is NOT in the codebase
+
+- **OAuth (PRD-14)** — do not generate OAuth flows.
+- **Content delivery (PRD-16)** — skip.
+
+### Legacy Postman files (do not delete)
+
+`postman/ReviewFlow_*.json`, `postman/ReviewFlow_Comprehensive_v2.json`, etc. remain unless user says `replace legacy`. The **canonical import target** for CI/Newman is `postman/reviewflow-tests.postman_collection.json`.
+
+---
+
+## Generation Rules
+
+Evaluate every controller endpoint against these rules. Outcomes are coverage states, not severities.
+
+### RULE-PM01 — Endpoint represented in collection
+**Gap**: No Postman request exists for `METHOD path` derived from `@*Mapping`.
+**Outcome**: `MISSING`
+**Look for**: Compare `@GetMapping`, `@PostMapping`, etc. on each controller method to merged collection `item[].request.url`.
+
+---
+
+### RULE-PM02 — Five-folder structure per endpoint
+**Gap**: Endpoint folder missing one or more required subfolders.
+**Outcome**: `PARTIAL` if ≥1 subfolder present; `MISSING` if endpoint absent entirely.
+**Required subfolders** (exact names):
+1. `Happy path`
+2. `Auth failure`
+3. `Validation failure`
+4. `Role access`
+5. `Domain edge cases`
+
+**Notes**:
+- `GET` list endpoints: Validation failure = invalid `page`/`size` or filter params.
+- Public endpoints (`permitAll`): Auth failure = optional or `401` when cookie sent but invalid — match `SecurityConfig`.
+- Singleton resources: Domain edge cases = wrong id format, stale id, business rule conflict (e.g. submit after deadline).
+
+---
+
+### RULE-PM03 — Envelope assertions in Tests tab
+**Gap**: Request exists but Tests tab lacks `success` and/or `error.code` checks.
+**Outcome**: `PARTIAL`
+**Look for**: Each subfolder request must include at least:
+```javascript
+pm.test("Status code", () => pm.response.to.have.status(200)); // or expected
+const body = pm.response.json();
+pm.test("Envelope success", () => pm.expect(body.success).to.eql(true));
+```
+
+---
+
+### RULE-PM04 — Spec alignment (controller_specs)
+**Gap**: Generated request contradicts `controller_specs` for same route (method, path, required body fields, error code).
+**Outcome**: `STALE` if collection matched spec previously but controller/spec changed; `MISSING` if never built.
+**Look for**: HTTP method, path prefix `/api/v1`, required headers, pagination query params per global rules.
+
+---
+
+### RULE-PM05 — Auth cookie chaining
+**Gap**: Protected endpoint does not document or inherit login from collection/folder auth.
+**Outcome**: `PARTIAL`
+**Look for**: Folder-level `auth` or pre-request script calling login with correct role (`studentUser`, `instructorUser`, `adminUser`, `systemAdminUser` in environment).
+
+---
+
+### RULE-PM06 — Hashid environment wiring
+**Gap**: Path uses literal numeric id or placeholder `{{id}}` without environment binding.
+**Outcome**: `PARTIAL`
+**Look for**: `{{courseId}}`, `{{assignmentId}}`, etc. set in prior setup request's test script from `data.id`.
+
+---
+
+### RULE-PM07 — File upload/download requests
+**Gap**: Multipart or binary endpoint missing `formdata` / `Content-Type` / save-response handling.
+**Outcome**: `PARTIAL`
+**Look for**: `submission` upload, `user` avatar, `messaging` attachments — use Postman form-data mode; do not JSON-encode files.
+
+---
+
+### RULE-PM08 — Pagination list tests
+**Gap**: List endpoint happy path does not assert `X-Total-Elements` or paginated `data.content`.
+**Outcome**: `PARTIAL`
+**Look for**: Global rules require `?page=0&size=20`; test headers and page shape.
+
+---
+
+### RULE-PM09 — Rate-limit and 429 coverage (where applicable)
+**Gap**: Auth or high-cost endpoint has no `429` / `Retry-After` test in Domain edge cases.
+**Outcome**: `PARTIAL` (optional for Tier 3 — include for `auth`, `grading` CSV import, `evaluation` PDF when spec mentions limits).
+**Look for**: `TooManyRequestsException`, `RATE_LIMITED` error code in spec.
+
+---
+
+### RULE-PM10 — WebSocket / SSE out of scope for REST collection
+**Gap**: N/A — do not flag missing STOMP tests in REST collection.
+**Outcome**: Document in feature README comment in collection description if messaging push is WebSocket-only.
+
+---
+
+## Postman Output Strategy (canonical)
+
+### Directory layout
+
+```
+postman/
+  .generation/                          ← staging (gitignore optional; keep during multi-step runs)
+    auth.postman_collection.json
+    user.postman_collection.json
+    ...
+  reviewflow-tests.postman_collection.json   ← unified import target (merge output)
+  ReviewFlow_Test_Environments.postman_environment.json
+```
+
+### Staging file schema
+
+Each `postman/.generation/{feature}.postman_collection.json` is a valid Postman Collection v2.1 fragment:
+
+```json
+{
+  "info": {
+    "name": "ReviewFlow — {feature} (staging)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "POST /courses",
+      "item": [
+        { "name": "Happy path", "request": { }, "event": [{ "listen": "test", "script": { "exec": [] } }] },
+        { "name": "Auth failure", "request": { }, "event": [] },
+        { "name": "Validation failure", "request": { }, "event": [] },
+        { "name": "Role access", "request": { }, "event": [] },
+        { "name": "Domain edge cases", "request": { }, "event": [] }
+      ]
+    }
+  ]
+}
+```
+
+### Merge rules (`merge` command)
+
+Run the repo merge script (do not hand-merge JSON in chat):
+
+```bash
+cd postman && npm run merge
+```
+
+(`node postman/scripts/merge-staging-collections.mjs` from repo root)
+
+The script:
+
+1. Reads all `postman/.generation/*.postman_collection.json` in **feature order** (below).
+2. Builds top-level `item`: preserves existing `00_SETUP` from `reviewflow-tests`, then one folder per feature.
+3. Preserves collection `variable`, `auth`, and `event` from the current unified file when present.
+4. Writes `postman/reviewflow-tests.postman_collection.json`.
+5. Does **not** delete `.generation/` unless user says `clean staging`.
+
+See `postman/CANONICAL_COLLECTION.md` and `postman/package.json`.
+
+### Environment file
+
+Validate/update `postman/ReviewFlow_Test_Environments.postman_environment.json`:
+
+| Variable | Purpose |
+|---|---|
+| `baseUrl` | `http://localhost:8081/api/v1` |
+| `studentEmail` / `studentPassword` | STUDENT login |
+| `instructorEmail` / `instructorPassword` | INSTRUCTOR login |
+| `adminEmail` / `adminPassword` | ADMIN login |
+| `systemAdminEmail` / `systemAdminPassword` | SYSTEM_ADMIN login |
+| `courseId`, `assignmentId`, `teamId`, `submissionId`, … | Hashids populated by setup requests |
+
+---
+
+## How to Run This Generator
+
+### Full generation — `scan all` (NO worktree)
+
+When the user says `@postman-test-suite-audit scan all` or `scan all`, execute **in-place on the current branch**. **Do not** create a git worktree.
+
+#### Step 1 — Prepare staging directory
+
+```bash
+mkdir -p postman/.generation
+```
+
+Create if missing. Do not commit secrets into environment file.
+
+#### Step 2 — Iterate features in fixed order
+
+For each feature, execute:
+
+```
+STEP 1 — List all *Controller.java under {feature}/controller/
+STEP 2 — Read each controller method mappings (@*Mapping, @PreAuthorize)
+STEP 3 — Read matching controller_specs module doc sections
+STEP 4 — Build/update postman/.generation/{feature}.postman_collection.json
+STEP 5 — Apply RULE-PM01 through PM-10; record coverage rows in session accumulator
+STEP 6 — Emit progress: "✓ {feature} — N endpoints (C covered / P partial / M missing / S stale)"
+STEP 7 — Move to next feature (no confirmation prompts)
+```
+
+| # | Feature | Controller path | Spec doc |
+|---|---|---|---|
+| 1 | auth | `auth/controller/` | `controller_specs` auth sections + global rules |
+| 2 | user | `user/controller/` | user module spec |
+| 3 | course | `course/controller/` | course module spec |
+| 4 | assignment | `assignment/controller/` | assignment module spec |
+| 5 | team | `team/controller/` | team module spec |
+| 6 | submission | `submission/controller/` | submission module spec |
+| 7 | evaluation | `evaluation/controller/` | evaluations module spec |
+| 8 | grading | `grading/controller/` | grading module spec |
+| 9 | extension | `extension/controller/` | extension module spec |
+| 10 | notification | `notification/controller/` | notification module spec |
+| 11 | announcement | `announcement/controller/` | announcement module spec |
+| 12 | messaging | `messaging/controller/` | `15_Module_Messaging.md` |
+| 13 | discussion | `discussion/controller/` | `14_Module_Discussion.md` |
+| 14 | admin | `admin/controller/` | admin module spec |
+| 15 | system | `system/controller/` | system module spec |
+
+If a controller directory is missing, emit `— {feature}/controller/ not found, skipping` and continue.
+
+#### Step 3 — Merge unified collection
+
+```bash
+cd postman && npm run merge
+```
+
+Confirm console lists merged features. Unified output: `postman/reviewflow-tests.postman_collection.json`.
+
+#### Step 4 — Validate environment
+
+Ensure `ReviewFlow_Test_Environments.postman_environment.json` has all required variables; add missing keys with empty values and description comments.
+
+#### Step 5 — Coverage summary in chat
+
+```
+═══════════════════════════════════════════
+  ReviewFlow — Postman Test Suite Generator
+  Complete
+═══════════════════════════════════════════
+  Features processed : 15
+  Endpoints total      : N
+    COVERED            : N
+    PARTIAL            : N
+    MISSING            : N
+    STALE              : N
+
+  Staging  → postman/.generation/*.json
+  Merged   → postman/reviewflow-tests.postman_collection.json
+  Env      → postman/ReviewFlow_Test_Environments.postman_environment.json
+═══════════════════════════════════════════
+```
+
+#### Iteration rules
+
+- **Do not stop between features** for confirmation.
+- **Do not modify Java** during generation.
+- **Accumulate** coverage table in session until all features complete.
+- **Prefer updating** existing requests in staging when folder names match; do not duplicate endpoints.
+
+### Single-feature scan — `scan [feature]`
+
+1. Run Steps 1–5 for one feature only.
+2. Write `postman/.generation/{feature}.postman_collection.json`.
+3. Emit inline coverage table for that feature.
+4. **Do not** merge unless user also says `merge`.
+
+### Merge only — `merge`
+
+Re-run merge from `postman/.generation/` without rescanning controllers. Useful after manual staging edits.
+
+### Coverage report — `coverage`
+
+Emit markdown table (chat only unless user says `write coverage doc`):
+
+| Method | Path | Happy | Auth | Validation | Role | Edge | Status |
+|---|---|:---:|:---:|:---:|:---:|:---:|---|
+| POST | /api/v1/auth/login | ✓ | ✓ | ✓ | — | ✓ | COVERED |
+
+Status column: worst state across RULE-PM01–PM09 for that endpoint.
+
+---
+
+## Per-Endpoint Generation Checklist
+
+Work through internally for every mapped endpoint:
+
+```
+[ ] Extract method, path, consumes/produces, @Valid body DTO
+[ ] Read @PreAuthorize / SecurityConfig permitAll for auth tests
+[ ] Create endpoint folder with five subfolders (PM02)
+[ ] Happy path: valid body, expect 2xx, success true, persist Hashids (PM06)
+[ ] Auth failure: no cookies → 401 UNAUTHORIZED (PM05)
+[ ] Validation failure: missing required field → 400 + error.code (PM03)
+[ ] Role access: wrong role cookie → 403 FORBIDDEN (PM02)
+[ ] Domain edge cases: business/not-found/conflict per spec (PM04)
+[ ] Tests tab: status + envelope + error.code (PM03)
+[ ] Description documents required role and spec reference (PM04)
+```
+
+---
+
+## Coverage Outcome Guide
+
+| Outcome | Meaning |
+|---|---|
+| `COVERED` | All five subfolders present with PM03-compliant tests and spec-aligned paths |
+| `PARTIAL` | Endpoint exists but ≥1 subfolder missing or tests incomplete |
+| `MISSING` | No request for endpoint |
+| `STALE` | Request exists but method/path/body/assertions contradict current controller or spec |
+
+---
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `scan all` | Generate all staging files + merge unified collection + validate environment (**no worktree**) |
+| `scan [feature]` | One feature staging file only (`auth`, `grading`, …) |
+| `merge` | Run `cd postman && npm run merge` — rebuild unified collection from `.generation/` |
+| `coverage` | Print endpoint → folder coverage table from staging + merged collection |
+| `explain [RULE-PMxx]` | Explain a generation rule with examples |
+| `clean staging` | Delete `postman/.generation/` (only when user asks) |
+
+---
+
+## Output Format
+
+### Inline coverage line
+
+```
+[PM02 | PARTIAL] CourseController.java — POST /courses
+────────────────────────────────────────
+Issue   : Missing "Role access" subfolder
+Context : Spec requires INSTRUCTOR; add STUDENT cookie → 403 FORBIDDEN
+Action  : Add subfolder with pm.test error.code FORBIDDEN
+```
+
+### Fully covered endpoint
+
+```
+✓ POST /api/v1/auth/login — COVERED (5/5 folders, spec-aligned)
+```
+
+### Newman run hint (informational)
+
+```bash
+newman run postman/reviewflow-tests.postman_collection.json \
+  -e postman/ReviewFlow_Test_Environments.postman_environment.json \
+  --env-var baseUrl=http://localhost:8081/api/v1
+```
+
+---
+
+## Request Description Template
+
+Every generated request description should include:
+
+```markdown
+**Role:** INSTRUCTOR (or higher)
+**Spec:** controller_specs/03_Module_Courses.md §Create Course
+**Setup:** Requires {{courseId}} from POST /courses (instructor)
+**Notes:** Returns 403 FORBIDDEN for STUDENT
+```
+
+---
+
+## Do not
+
+- Create a git worktree for `scan all`
+- Delete legacy `postman/ReviewFlow_*.json` without explicit user instruction
+- Flag TX/security violations (use `@transaction-boundary-audit` / `@security-auth-audit`)
+- Hardcode numeric database primary keys in URLs
+- Generate OAuth or content-delivery tests for unimplemented PRDs

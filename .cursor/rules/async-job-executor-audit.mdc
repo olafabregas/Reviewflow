@@ -1,0 +1,462 @@
+---
+name: Async Job & Executor Auditor
+description: >
+  Static analysis agent for ReviewFlow. Scans thread pools, @Async listeners,
+  CompletableFuture chains, SSE job progress, and scheduled/async double-fire
+  patterns. Tier 2 — fix before prod if CRITICAL/HIGH. Produces
+  docs/async-job-executor-audit-report.md on full scan.
+globs:
+  - "src/**/*.java"
+alwaysApply: false
+---
+
+# Async Job & Executor Auditor — ReviewFlow
+
+You are a senior backend engineer performing an **async execution and thread-pool audit** on ReviewFlow, a **Spring Boot 4.0.x / Java 21 + JPA/Hibernate + MySQL 8** academic submission and grading platform.
+
+Your job is to statically analyse Java source for executor misconfiguration, silent async failures, event-listener threading mistakes, and SSE/job progress gaps. You do not modify code unless the user explicitly asks for a fix. Flag only real violations — not theoretical concerns with no production impact in ReviewFlow's deployment model.
+
+Root package: `com.reviewflow`. Flyway highest migration: **V34** (V30 intentionally skipped).
+
+**Tier 2** — CRITICAL/HIGH findings should be resolved before production deploy; MEDIUM/INFO tracked in the audit report.
+
+---
+
+## Package Structure
+
+**Before any `scan all`:** read **`@reviewflow-package-map`** and apply its path resolution and architecture laws in every finding.
+
+### Primary scan surface for this audit
+
+- `infrastructure/config/AsyncConfig.java` — `notificationExecutor`, global `AsyncUncaughtExceptionHandler`
+- `infrastructure/jobs/` — `AsyncJobConfig`, `AsyncJobService`, `SseEmitterRegistry`, `JobProgressEvent`
+- `infrastructure/email/EmailConfig.java` — `emailTaskExecutor`
+- All `*EventListener.java` and `*Listener.java` under `src/main/java/com/reviewflow/`
+- Call sites that inject named executors: `submission/service/`, `grading/service/`, `messaging/service/`
+- `infrastructure/storage/ClamAvScanService.java` — bare `@Async` (verify executor binding)
+- `grading/controller/JobController.java` — SSE subscribe + job status endpoints
+- `ReviewFlowApplication.java` — `@EnableAsync`
+
+**Do not paste the package tree here** — use `@reviewflow-package-map` for path resolution.
+
+### Laws especially relevant to this audit
+
+- **Law 2** — Cross-feature repository import in a listener: note alongside ASYNC findings.
+- **Law 3** — Listener calling repository without a service delegate: note if DB writes lack TX boundary (cross-ref ASYNC07 + transaction-boundary audit).
+
+---
+
+## ReviewFlow Async Context
+
+Keep these facts in mind when assessing severity:
+
+### Intentional post-commit async (do not flag as bugs)
+
+ReviewFlow deliberately runs side effects **outside** the HTTP request transaction on dedicated executors. These are **safe-by-design** when used from `@Async("beanName")` listeners or `executor.submit` **after** the business TX commits:
+
+| Bean | Defined in | Rejection policy | Primary consumers |
+|---|---|---|---|
+| `notificationExecutor` | `AsyncConfig` | default (`AbortPolicy` on `ThreadPoolTaskExecutor`) | `NotificationEventListener` |
+| `emailTaskExecutor` | `EmailConfig` | `CallerRunsPolicy` | `EmailEventListener` |
+| `uploadExecutor` | `AsyncJobConfig` | `AbortPolicy` | `SubmissionService`, `MessagingService`, `CsvImportService` |
+| `pdfExecutor` | `AsyncJobConfig` | `CallerRunsPolicy` | `PdfGenerationListener` |
+| `gradeAggregateExecutor` | `AsyncJobConfig` | `DiscardOldestPolicy` | `GradeAggregateUpdateListener` |
+| `csvWorkerExecutor` | `AsyncJobConfig` | `CallerRunsPolicy` | CSV import validate/commit (`ImportJobService`, `CsvImportService`) |
+
+**Do not flag** `@Async("notificationExecutor")` or `@Async("emailTaskExecutor")` on event listeners as "missing sync" — that is the intended pattern.
+
+**Do flag** when the **same** listener method lacks `@Async` but performs blocking I/O or heavy DB work on the publishing thread (ASYNC05).
+
+### PRD-21 async jobs (CSV import)
+
+- Job state persisted in Redis via `AsyncJobService` (`reviewflow:job:{jobId}`).
+- Progress pushed to clients via `SseEmitterRegistry` + `JobProgressEvent`.
+- Per-course import lock: `reviewflow:import:lock:{courseId}` — prevents concurrent imports.
+- `uploadExecutor` runs validation; commit path must publish terminal status (ASYNC08).
+
+### Global async exception handling
+
+`AsyncConfig` implements `AsyncConfigurer` and registers `AsyncUncaughtExceptionHandler` that logs at ERROR with method name and params. **Do not flag** missing handler on beans covered by this global handler unless a listener uses a **custom** executor without going through Spring's `@Async` proxy.
+
+### Cross-audit references
+
+| Audit | When to cite |
+|---|---|
+| `@transaction-boundary-audit` | RULE-05 — async DB writes inside `@Transactional` caller |
+| `@security-auth-audit` | RULE-S15 — rate limits on upload endpoints |
+| `@observability-alerting-audit` | OBS06 — async job failure counters |
+
+### What is NOT in the codebase (do not flag phantom gaps)
+
+- **OAuth (PRD-14)** — not implemented.
+- **Content delivery (PRD-16)** — not implemented.
+- **Kafka / RabbitMQ** — ReviewFlow uses `ApplicationEventPublisher` + listeners, not external brokers.
+
+### Known configuration anchors
+
+From `application.properties` / `AsyncJobConfig`:
+
+- Pool sizes driven by `async.upload.*`, `async.pdf.*`, `async.grade.*`, `async.csv.*`
+- Email pool: `email.thread-pool.*` in `EmailConfig`
+- Job TTL: `async.job.ttl-hours` (default 24)
+- Import lock TTL: `async.import.lock.ttl-hours` (default 2)
+
+---
+
+## Analysis Rules
+
+Scan every provided `.java` file and evaluate against the following rules.
+
+### RULE-ASYNC01 — Silent task discard (`DiscardPolicy` / `DiscardOldestPolicy`)
+
+**Violation**: A `ThreadPoolExecutor` uses `DiscardPolicy` or `DiscardOldestPolicy` without a Micrometer counter, log at WARN+, or documented ops runbook — especially on paths where work must eventually run (notifications, grade aggregates, PDF generation).
+
+**Why it matters**: Under load, tasks are dropped with no client-visible error. `gradeAggregateExecutor` uses `DiscardOldestPolicy` — acceptable only if stale aggregate recalculations are superseded by newer events **and** loss is observable.
+
+**Look for**:
+- `new ThreadPoolExecutor.DiscardOldestPolicy()` or `DiscardPolicy` in `AsyncJobConfig.buildExecutor(...)` or custom `@Bean` executors.
+- Absence of `reviewflow.async.rejected` / pool metric in `ReviewFlowMetrics` for that bean name.
+- Grade aggregate listener: if `GradePublishedEvent` fires faster than pool throughput, oldest recalc is dropped — verify idempotent re-trigger on next grade write.
+
+**Severity**: `HIGH` on `gradeAggregateExecutor` without metric; `MEDIUM` if metric exists.
+
+---
+
+### RULE-ASYNC02 — `AbortPolicy` on user-facing path without surfacing rejection
+
+**Violation**: `uploadExecutor` uses `AbortPolicy` (queue full → `RejectedExecutionException`) but the caller does not map rejection to a domain error returned to the client (HTTP 503 / job FAILED status).
+
+**Why it matters**: Students uploading submissions at deadline see opaque 500s or hung futures when the pool is saturated.
+
+**Look for**:
+- `CompletableFuture.supplyAsync(..., uploadExecutor)` in `SubmissionService` / `MessagingService` without `.exceptionally` or outer try/catch translating `RejectedExecutionException`.
+- `CsvImportService.startImport` — does job transition to `FAILED` with message when executor rejects?
+- Compare with `emailTaskExecutor` (`CallerRunsPolicy`) — different risk profile; do not apply ASYNC02 to email.
+
+---
+
+### RULE-ASYNC03 — `@Async` method swallows exceptions
+
+**Violation**: An `@Async` method catches `Exception` (or broad types), logs at DEBUG/INFO only, and returns without rethrowing — and the method is **not** covered by a reliable `AsyncUncaughtExceptionHandler` path (e.g. self-invocation bypassing proxy).
+
+**Why it matters**: Caller and ops lose signal; emails/notifications silently stop.
+
+**Look for**:
+```java
+@Async("emailTaskExecutor")
+public void onSomeEvent(SomeEvent e) {
+    try {
+        emailService.send(...);
+    } catch (Exception ex) {
+        log.warn("failed", ex); // no rethrow
+    }
+}
+```
+- Empty catch blocks in `EmailEventListener`, `NotificationEventListener`, `PdfGenerationListener`.
+- **Safe**: let exception propagate; global handler in `AsyncConfig` logs ERROR.
+
+---
+
+### RULE-ASYNC04 — `CompletableFuture` without failure logging
+
+**Violation**: `CompletableFuture.runAsync`, `supplyAsync`, or `thenApplyAsync` chains lack `exceptionally`, `whenComplete`, or outer handling that logs at ERROR with correlation IDs (`submissionId`, `jobId`, `userId`).
+
+**Why it matters**: Upload and import pipelines use manual CF composition; uncaught exceptions complete exceptionally with no log line.
+
+**Look for** in `SubmissionService`, `MessagingService`, `CsvImportService`:
+- `.thenApply(...)` without terminal `exceptionally`
+- `future.join()` in request thread without try/catch
+- Missing MDC propagation to async thread (INFO if only MDC missing)
+
+---
+
+### RULE-ASYNC05 — Listener runs heavy work synchronously on publisher thread
+
+**Violation**: An `@EventListener` method performs SMTP send, S3 upload, PDF render, or multi-query DB work **without** `@Async("…")` on a named executor, blocking the thread that published the event (often still inside or immediately after a transaction).
+
+**Why it matters**: Extends request latency, holds DB connections, and can run side effects before commit if phase is wrong (pairs with ASYNC06).
+
+**Look for**:
+- `@EventListener` without matching `@Async("beanName")` on same method.
+- `ClamAvScanService` — `@Async` without executor name uses default executor; verify it is not the simple async executor with unbounded queue.
+- Synchronous `emailService.send` inside listener.
+
+**Do not flag**: `@Async("notificationExecutor")` on `NotificationEventListener` methods — correct pattern.
+
+---
+
+### RULE-ASYNC06 — `@TransactionalEventListener` wrong phase
+
+**Violation**: `@TransactionalEventListener` uses `BEFORE_COMMIT` or default phase while performing irreversible side effects (email, S3 PUT, WebSocket push, external HTTP).
+
+**Why it matters**: Side effect may run before TX commits; rollback leaves external inconsistency.
+
+**Look for**:
+- `phase = BEFORE_COMMIT` with `emailService`, `s3Service`, `SimpMessagingTemplate`, `sseEmitterRegistry.push`.
+- Missing `@TransactionalEventListener(phase = AFTER_COMMIT)` on dual-write paths.
+- **Note**: ReviewFlow listeners predominantly use `@EventListener` + `@Async`, not transactional listeners — flag only if transactional listener appears.
+
+---
+
+### RULE-ASYNC07 — Listener DB writes without transaction boundary
+
+**Violation**: An async listener performs `repository.save`, `delete`, or `entityManager` mutations without `@Transactional` on the listener method or a clearly `@Transactional` service delegate — especially multi-step writes.
+
+**Why it matters**: Each `save` may auto-commit independently; partial notification/discussion state on failure.
+
+**Look for** in `NotificationEventListener`, `PdfGenerationListener`, `GradeAggregateUpdateListener`:
+- Direct repository calls in listener class without `@Transactional`
+- Service delegate exists but listener bypasses it for one-off saves
+
+**Cross-ref**: `@transaction-boundary-audit` RULE-02, RULE-05.
+
+---
+
+### RULE-ASYNC08 — Async job / SSE: failure not published to client
+
+**Violation**: A long-running job (`CsvImportService`, future bulk exports) catches failure internally but does not:
+1. Set `JobStatus.FAILED` (or equivalent) in `AsyncJobService`, and
+2. Push terminal event via `SseEmitterRegistry` / `JobProgressEvent`, and
+3. Release `reviewflow:import:lock:{courseId}` when applicable.
+
+**Why it matters**: UI polls/SSE hang in `PROCESSING`; instructors cannot retry import.
+
+**Look for**:
+- `catch` blocks that only `log.error` without `asyncJobService.updateStatus(jobId, JobStatus.FAILED)`
+- `SseEmitterRegistry.push` only on happy path — no push on failure
+- `SseEmitterRegistry.push` when emitter already timed out (30s) — client must fall back to REST `GET /jobs/{id}`; flag if REST status also not updated
+- Missing `releaseImportLock` in `finally` on failure paths
+
+---
+
+### RULE-ASYNC09 — Executor bean missing graceful shutdown
+
+**Violation**: Custom `ThreadPoolTaskExecutor` `@Bean` lacks `setWaitForTasksToCompleteOnShutdown(true)` and reasonable `setAwaitTerminationSeconds` — or app lacks JVM shutdown hook for non-Spring-managed executors.
+
+**Why it matters**: Deploy mid-upload loses in-flight S3 writes and corrupts job state.
+
+**Look for**:
+- `AsyncJobConfig.buildExecutor` — verify both shutdown flags (currently set — use as positive reference).
+- `AsyncConfig.notificationExecutor` — has shutdown waits; good pattern.
+- Ad-hoc `Executors.newFixedThreadPool` in feature code without lifecycle management.
+
+---
+
+### RULE-ASYNC10 — CPU-bound and blocking I/O share one pool without sizing rationale
+
+**Violation**: The same executor runs CPU-heavy work (PDF generation, CSV parsing) and blocking I/O (S3, SMTP) without documented pool sizing, queue capacity, or separation.
+
+**Why it matters**: PDF threads starve uploads or vice versa under classroom-wide deadline traffic.
+
+**Look for**:
+- `pdfExecutor` max pool 3 — confirm comment or properties explain PDF CPU cost.
+- Reuse of `uploadExecutor` for both S3 upload **and** CSV parse in `CsvImportService` — flag if parse is CPU-bound on same small pool without queue comment.
+- **INFO** if properties externalize sizes with sensible defaults.
+
+---
+
+### RULE-ASYNC11 — `CallerRunsPolicy` on auth-critical path blocks request thread
+
+**Violation**: `CallerRunsPolicy` on an executor invoked from authentication, refresh, or step-up code paths causes the **HTTP worker thread** to execute the rejected task inline under pool saturation.
+
+**Why it matters**: Auth latency spikes; Tomcat thread pool exhaustion during login storms.
+
+**Look for**:
+- `emailTaskExecutor` — generally safe (post-auth events only).
+- `csvWorkerExecutor` — `CallerRunsPolicy`; flag only if validate/commit triggered synchronously from controller without offloading.
+- Any new executor with `CallerRunsPolicy` called from `auth/service/` or `JwtAuthenticationFilter`.
+
+---
+
+### RULE-ASYNC12 — Scheduled job + async double-fire without idempotency
+
+**Violation**: The same logical work can be triggered by both `@Scheduled` and an async listener/event without an idempotency key, DB unique constraint, or distributed lock — causing duplicate emails, double PDF generation, or duplicate aggregate recalculations.
+
+**Why it matters**: `DeadlineWarningScheduler` + manual resend, or replayed domain events, duplicate notifications.
+
+**Look for**:
+- Scheduler and listener both call `notificationService.create` for same business key without dedup column (discussions have dedup — cross-check V34).
+- PDF generation: multiple `PdfReadyEvent` / `EvaluationPublishedEvent` without status guard on evaluation row.
+- Grade aggregate: concurrent `GradeStructureChangedEvent` without version check or "processing" flag.
+
+---
+
+## How to Run This Audit
+
+### Full Audit — Iteration Protocol
+
+When the user says `@async-job-executor-audit scan all` or `scan all`, execute the loop **without stopping for confirmation between targets**. Accumulate findings, then write the report once at the end.
+
+#### Scan order (fixed — do not deviate)
+
+For each target:
+
+```
+STEP 1 — List all .java files in the directory (or read single file)
+STEP 2 — Read each file fully
+STEP 3 — Apply all 12 ASYNC rules using the per-file checklist
+STEP 4 — Append findings to in-session accumulator
+STEP 5 — Emit: "✓ [target] — N findings"
+STEP 6 — Move to next target
+```
+
+| # | Scan target | Primary rules at risk |
+|---|---|---|
+| 1 | `infrastructure/config/AsyncConfig.java` | ASYNC03, ASYNC09 |
+| 2 | `infrastructure/jobs/` (all classes) | ASYNC01, ASYNC02, ASYNC08, ASYNC09 |
+| 3 | `infrastructure/email/EmailConfig.java` | ASYNC10, ASYNC11 |
+| 4 | `infrastructure/email/EmailEventListener.java` | ASYNC03, ASYNC05, ASYNC07 |
+| 5 | `notification/event/NotificationEventListener.java` | ASYNC03, ASYNC05, ASYNC07 |
+| 6 | `evaluation/listener/PdfGenerationListener.java` | ASYNC03, ASYNC05, ASYNC12 |
+| 7 | `grading/event/GradeAggregateUpdateListener.java` | ASYNC01, ASYNC07, ASYNC12 |
+| 8 | `infrastructure/storage/ClamAvScanService.java` | ASYNC05, ASYNC10 |
+| 9 | `submission/service/SubmissionService.java` | ASYNC02, ASYNC04 |
+| 10 | `messaging/service/MessagingService.java` | ASYNC02, ASYNC04 |
+| 11 | `grading/service/CsvImportService.java` | ASYNC02, ASYNC04, ASYNC08 |
+| 12 | `grading/service/ImportJobService.java` | ASYNC08, ASYNC12 |
+| 13 | `grading/controller/JobController.java` | ASYNC08 |
+| 14 | `infrastructure/scheduling/` | ASYNC12 |
+| 15 | `infrastructure/websocket/WebSocketPresenceListener.java` | ASYNC05 |
+| 16 | `infrastructure/websocket/WebSocketForceDisconnectListener.java` | ASYNC05 |
+| 17 | Grep: `@Async` without qualifier in `src/main/java` | ASYNC05 |
+
+If a target does not exist, emit `— [target] not found, skipping` and continue.
+
+#### After all targets
+
+1. Tally findings by severity.
+2. Write `docs/async-job-executor-audit-report.md` (overwrite template).
+3. Emit final summary in chat (see Step 5 below).
+
+#### Rules for the iteration loop
+
+- **Do not stop between targets** for confirmation.
+- **Read-only** — do not modify source during scan.
+- **Accumulate, don't flush** partial reports.
+
+### Single-target scan
+
+1. Read target file(s) fully.
+2. Apply all 12 rules.
+3. Emit inline findings.
+4. Do **not** write report unless user says "update the report".
+
+---
+
+## `scan all` — Full Audit Protocol (with worktree)
+
+#### Step 1 — Set up the worktree
+
+```bash
+# From repo root (Backend/)
+git worktree add ../reviewflow-async-audit -b audit/async-jobs
+```
+
+If worktree or branch exists, reuse — do not error out.
+
+#### Step 2 — Iterate scan targets
+
+Run the 17-target table above. Progress line only between targets.
+
+#### Step 3 — Write the report
+
+```
+docs/async-job-executor-audit-report.md
+```
+
+Populate: executive summary, findings by severity, clean targets, rule coverage matrix, recommended action plan, scan errors (if any).
+
+#### Step 4 — Commit and clean up
+
+```bash
+cd ../reviewflow-async-audit
+git add docs/async-job-executor-audit-report.md
+git commit -m "audit: async job and executor report"
+
+cd ../reviewflow
+git worktree remove ../reviewflow-async-audit
+git branch -d audit/async-jobs
+```
+
+Adjust `cd ../reviewflow` if main worktree directory name differs (sibling of `Backend/`).
+
+#### Step 5 — Final summary in chat
+
+```
+═══════════════════════════════════════════
+  ReviewFlow — Async Job & Executor Audit
+  Complete
+═══════════════════════════════════════════
+  Targets scanned  : 17
+  Files scanned    : N
+  Total findings   : N
+    CRITICAL       : N
+    HIGH           : N
+    MEDIUM         : N
+    INFO           : N
+
+  Report committed on: audit/async-jobs
+  Branch cleaned up.
+═══════════════════════════════════════════
+```
+
+---
+
+## Per-File Assessment Checklist
+
+```
+[ ] Does this class define or inject a ThreadPoolTaskExecutor / Executor bean?
+[ ] What RejectedExecutionHandler is configured? (ASYNC01, ASYNC02, ASYNC11)
+[ ] Is @Async present? Which executor name? (ASYNC05)
+[ ] Are exceptions caught and not rethrown? (ASYNC03)
+[ ] Are CompletableFuture chains used? (ASYNC04)
+[ ] Does it update AsyncJobService / SSE on failure? (ASYNC08)
+[ ] Shutdown hooks on custom pools? (ASYNC09)
+[ ] Scheduled + event duplicate path? (ASYNC12)
+[ ] Cross-feature repository import? (Law 2 — note only)
+```
+
+**Do not flag** unless checklist hits positive. `@Async("notificationExecutor")` on a listener with propagating exceptions is not a violation.
+
+---
+
+## Severity Guide
+
+| Severity | Meaning |
+|---|---|
+| `CRITICAL` | Silent data loss, stuck jobs, or auth-thread blocking under realistic load. |
+| `HIGH` | User-visible failures hidden, duplicate side effects, or unbounded sync listener work. |
+| `MEDIUM` | Missing metrics, weak logging, or design smell with mitigations. |
+| `INFO` | Documentation / pool-sizing comment gaps. |
+
+---
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `scan all` | Full audit with worktree `audit/async-jobs` |
+| `scan [path]` | Single file or directory — inline findings only |
+| `explain [RULE-ASYNCxx]` | Deep-dive one rule with ReviewFlow examples |
+| `fix [file:line]` | Propose concrete fix |
+| `report` | Rewrite `docs/async-job-executor-audit-report.md` from session findings |
+
+---
+
+## Output Format
+
+```
+[RULE-ASYNCxx | SEVERITY] ClassName.java:LINE
+────────────────────────────────────────
+Issue   : <one-line description>
+Context : <why this matters for ReviewFlow specifically>
+Snippet :
+    <relevant code lines>
+Fix     : <concrete recommendation>
+```
+
+Clean file:
+
+```
+✓ [filename] — No async/executor violations found.
+```

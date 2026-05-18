@@ -1,0 +1,436 @@
+---
+name: Audit Rule Factory
+description: >
+  Meta-agent that generates ReviewFlow production-audit Cursor rules (.mdc) in
+  .cursor/rules/. Run once to scaffold the full audit suite from embedded specs.
+globs:
+  - ".cursor/rules/**"
+alwaysApply: false
+---
+
+# Audit Rule Factory — ReviewFlow
+
+You are a **Cursor rule author** for the ReviewFlow backend. Your job is to **write `.mdc` audit agent rules** under `.cursor/rules/` — not to run production audits yourself unless the user explicitly asks you to execute a generated rule.
+
+**Prerequisite:** `reviewflow-package-map.mdc` must exist (shared package map). Every generated audit rule references it instead of duplicating the package tree.
+
+**Already shipped (do not regenerate unless user says `regenerate existing`):**
+- `transaction-boundary-audit.mdc`
+- `security-auth-audit.mdc`
+
+---
+
+## Commands
+
+| Command | Action |
+|---|---|
+| `list` | Print the audit catalog (id, tier, filename, status) |
+| `generate [id]` | Write one `.mdc` from the catalog spec below |
+| `generate all` | Write all 8 pending audit `.mdc` files in tier order |
+| `validate [filename]` | Check an existing `.mdc` has required sections |
+| `template` | Print the canonical skeleton (for debugging) |
+
+On `generate all`: emit one progress line per file (`✓ wrote database-integrity-audit.mdc`) then a summary table. **Do not** run `scan all` on generated rules unless asked.
+
+---
+
+## Canonical rule skeleton
+
+Every generated audit `.mdc` MUST follow this structure (rich frontmatter — match `transaction-boundary-audit.mdc`):
+
+```markdown
+---
+name: <Human Name>
+description: >
+  <One paragraph: what it catches, output artifact, tier>
+globs:
+  - "<primary glob>"
+alwaysApply: false
+---
+
+# <Title> — ReviewFlow
+
+<Role paragraph — senior engineer persona, Spring Boot 4 / Java 21 / MySQL 8>
+
+Root package: `com.reviewflow`. Flyway: **V34**.
+
+---
+
+## Package Structure
+
+**Before any `scan all`:** read `@reviewflow-package-map` and use its path resolution + architecture laws in all findings.
+
+<Audit-specific package focus — bullet list of directories only, NOT the full tree>
+
+---
+
+## <Domain / Audit Context>
+
+<Facts, safe patterns, executor map if relevant, "do not flag" exclusions>
+
+---
+
+## Analysis Rules
+
+### RULE-<PREFIX>01 — ...
+**Violation**: ...
+**Why it matters**: ...
+**Look for**: ...
+
+(repeat for each rule in catalog spec)
+
+---
+
+## How to Run This Audit
+
+### Full Audit — Iteration Protocol
+
+When the user says `scan all`, execute without confirmation between targets.
+
+<If report audit: worktree steps. If generator (Postman): in-place steps, no worktree.>
+
+#### Scan targets
+
+| # | Scan target | Primary rules |
+|---|---|---|
+| ... | ... | ... |
+
+#### Report / artifact output
+
+<path + commit instructions if worktree>
+
+---
+
+## Per-Target / Per-File Checklist
+
+```
+[ ] ...
+```
+
+---
+
+## Severity Guide
+
+| Severity | Meaning |
+|---|---|
+| `CRITICAL` | <audit-specific> |
+| `HIGH` | ... |
+| `MEDIUM` | ... |
+| `INFO` | ... |
+
+---
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `scan all` | ... |
+| `scan [path]` | ... |
+| `explain [RULE-XX]` | ... |
+| `fix [file:line]` | ... |
+| `report` | ... |
+
+---
+
+## Output Format
+
+<inline finding template>
+```
+
+### Frontmatter rules
+
+- `alwaysApply: false` always
+- `globs` must match the audit's primary scan surface
+- `name` must be unique and human-readable (appears in rule picker)
+
+### Shared content rules
+
+- **Never** paste the full package tree — reference `@reviewflow-package-map`
+- Include tier in the role paragraph: `Tier 1 — block prod deploy` / `Tier 2` / `Tier 3`
+- Rule IDs use the catalog **prefix** (e.g. `RULE-DB03`, `RULE-API07`)
+- Cite `controller_specs/00_Global_Rules_and_Reference.md` for API-contract and Postman agents
+- Reference `orchestration/MASTER_PROJECT_SUMMARY.md` §7 for known stub metrics
+
+### Worktree policy
+
+| Audit type | Worktree on `scan all`? |
+|---|---|
+| Report audits (#3–7, #9–10) | **Yes** — branch `audit/<slug>`, write `docs/<slug>-report.md`, commit, remove worktree |
+| Postman generator (#8) | **No** — write artifacts in-place on current branch |
+
+---
+
+## Audit catalog — generate these 8 files
+
+### 3 — `database-integrity-audit.mdc`
+
+| Field | Value |
+|---|---|
+| Tier | 1 — block prod deploy |
+| Prefix | `DB` |
+| Globs | `src/**/*.java`, `src/main/resources/db/migration/*.sql` |
+| Report | `docs/database-integrity-audit-report.md` |
+| Worktree branch | `audit/database-integrity` |
+
+**Persona:** DBA + performance engineer — indexes, JPA fetch graphs, optimistic locking.
+
+**Package focus:** `shared/domain/`, all `*/repository/`, all `*/service/`, `db/migration/`.
+
+**Rules (minimum 12):**
+- **DB01** — FK column without index (check migrations + `@JoinColumn` / `@ManyToOne` without matching index in Flyway)
+- **DB02** — N+1: loop over collection calling repository or lazy association in service layer
+- **DB03** — Missing `@Version` on high-contention entities (Submission, Evaluation, InstructorScore, RefreshToken family entities, grade aggregates)
+- **DB04** — High-frequency WHERE column without index (status, course_id, assignment_id, user_id filters on list endpoints)
+- **DB05** — `@OneToMany` default fetch EAGER on entity
+- **DB06** — `findAll()` or unpaginated query in list API service path
+- **DB07** — Missing `@Transactional(readOnly = true)` on heavy read aggregations (cross-ref TX audit — flag only if missing AND no readOnly anywhere on call chain)
+- **DB08** — Native query without index hint / full table scan pattern on large tables
+- **DB09** — CascadeType.ALL on large collections causing accidental mass deletes
+- **DB10** — Entity missing `created_at` / `updated_at` where siblings have them (consistency)
+- **DB11** — Flyway migration adds column used in WHERE without index in same or follow-up migration
+- **DB12** — `@Formula` or `@SecondaryTable` on hot path entity
+
+**Scan targets (17):** all feature `repository/` dirs in feature order, then `shared/domain/`, then `db/migration/` (last 10 versions minimum).
+
+---
+
+### 4 — `api-contract-audit.mdc`
+
+| Field | Value |
+|---|---|
+| Tier | 1 |
+| Prefix | `API` |
+| Globs | `src/**/controller/**/*.java`, `src/main/java/com/reviewflow/shared/exception/**` |
+| Report | `docs/api-contract-audit-report.md` |
+| Worktree branch | `audit/api-contract` |
+
+**Persona:** API architect — envelope, validation, HTTP semantics, auth annotations.
+
+**Rules (minimum 14):**
+- **API01** — Response not wrapped in `ApiResponse` / standard envelope
+- **API02** — Stack trace or internal exception message leaked (`printStackTrace`, raw `e.getMessage()` in body)
+- **API03** — Missing `@Valid` on `@RequestBody` DTO
+- **API04** — Wrong HTTP status (e.g. 200 on create, 500 for business rule, 404 vs 400 confusion)
+- **API05** — Missing `@PreAuthorize` / security annotation on mutating endpoint
+- **API06** — `SecurityConfig` permitAll on path that should be authenticated (cross-check)
+- **API07** — Hashid path variable without decode error handling → 400 not 500
+- **API08** — List endpoint missing pagination params support per global rules
+- **API09** — Inconsistent error `code` string vs `controller_specs`
+- **API10** — `GlobalExceptionHandler` missing handler for domain exception used in feature
+- **API11** — Controller calls repository directly (Law 3)
+- **API12** — Returns entity with lazy associations (OSIV risk) — cite field
+- **API13** — Missing `produces`/`consumes` on file upload/download endpoints
+- **API14** — DELETE/PUT without idempotency or wrong 404 semantics
+
+**Scan targets:** every `*/controller/` package alphabetically by feature, then `GlobalExceptionHandler.java`, then spot-check `SecurityConfig` HTTP authorize block.
+
+---
+
+### 5 — `async-job-executor-audit.mdc`
+
+| Field | Value |
+|---|---|
+| Tier | 2 |
+| Prefix | `ASYNC` |
+| Globs | `src/**/*.java` |
+| Report | `docs/async-job-executor-audit-report.md` |
+| Worktree branch | `audit/async-jobs` |
+
+**Package focus:** `infrastructure/config/AsyncConfig.java`, `infrastructure/jobs/`, `infrastructure/email/EmailConfig.java`, all `*EventListener.java`, `*Listener.java`.
+
+**Known executors (safe-by-design context — do not flag intentional post-TX async):**
+`notificationExecutor`, `emailTaskExecutor`, `uploadExecutor`, `pdfExecutor`, `gradeAggregateExecutor`, `csvWorkerExecutor`.
+
+**Rules (minimum 12):**
+- **ASYNC01** — `ThreadPoolExecutor.DiscardPolicy` or `DiscardOldestPolicy` without monitoring/metric (grade aggregate uses DiscardOldest — flag if no metric)
+- **ASYNC02** — `AbortPolicy` on user-facing path without surfacing rejection to caller
+- **ASYNC03** — `@Async` method catches Exception and does not rethrow/log at ERROR
+- **ASYNC04** — `CompletableFuture` without `exceptionally` / `whenComplete` logging
+- **ASYNC05** — Event listener performs DB writes synchronously on caller thread without `@Async` where spec requires async
+- **ASYNC06** — `@TransactionalEventListener` wrong phase (BEFORE_COMMIT doing side effects)
+- **ASYNC07** — Listener missing `@Transactional` on DB write block
+- **ASYNC08** — `AsyncJobService` / SSE job: failure not published to client
+- **ASYNC09** — Shutdown hook / `destroyMethod` missing on custom executor beans
+- **ASYNC10** — Same executor bean used for CPU-bound and blocking I/O without pool sizing comment
+- **ASYNC11** — `CallerRunsPolicy` on auth path causing request-thread blocking
+- **ASYNC12** — Scheduled job + async double-fire without idempotency key
+
+**Scan targets:** AsyncConfig, AsyncJobConfig, EmailConfig, jobs package, then every `*Listener.java` under `src/main/java`.
+
+---
+
+### 6 — `file-handling-audit.mdc`
+
+| Field | Value |
+|---|---|
+| Tier | 2 |
+| Prefix | `FILE` |
+| Globs | `src/main/java/com/reviewflow/submission/**`, `src/main/java/com/reviewflow/infrastructure/storage/**`, `src/main/resources/application*.properties` |
+| Report | `docs/file-handling-audit-report.md` |
+| Worktree branch | `audit/file-handling` |
+
+**Rules (minimum 12):**
+- **FILE01** — `clamav.enabled` not forced true in prod profile
+- **FILE02** — Upload size cap missing or inconsistent (properties vs validator)
+- **FILE03** — MIME trust extension only without magic-byte check
+- **FILE04** — S3 key predictable / missing entropy (S3KeyBuilder bypass)
+- **FILE05** — Pre-signed URL expiry too long for sensitive preview
+- **FILE06** — Pre-signed URL allows PUT when only GET needed
+- **FILE07** — Local storage path traversal (`../` in filename)
+- **FILE08** — PDF upload without structural validation where required
+- **FILE09** — Virus scan async gap: file reachable before scan completes
+- **FILE10** — Missing content-disposition on download
+- **FILE11** — Duplicate upload same key overwrite without version id
+- **FILE12** — `FileUploadTimeoutException` not mapped in GlobalExceptionHandler
+
+**Scan targets:** submission service+controller, infrastructure/storage, application.properties + application-prod.properties.
+
+---
+
+### 7 — `websocket-realtime-audit.mdc`
+
+| Field | Value |
+|---|---|
+| Tier | 2 |
+| Prefix | `WS` |
+| Globs | `src/main/java/com/reviewflow/infrastructure/security/WebSocket*.java`, `src/**/*Messaging*.java`, `src/**/*Push*.java` |
+| Report | `docs/websocket-realtime-audit-report.md` |
+| Worktree branch | `audit/websocket` |
+
+**Rules (minimum 10):**
+- **WS01** — STOMP CONNECT without JWT / ws-ticket validation
+- **WS02** — User can subscribe to another user's `/user/queue` destination
+- **WS03** — Broadcast destination used where user-specific queue required
+- **WS04** — CORS / allowed origins `*` on WebSocket endpoint
+- **WS05** — No rate limit on inbound STOMP messages (cross-ref ratelimit audit)
+- **WS06** — Session not invalidated on disconnect / expired token
+- **WS07** — System messages impersonate user sender without audit flag
+- **WS08** — Message size limit not configured on broker
+- **WS09** — Principal not propagated to `@MessageMapping` handler
+- **WS10** — SockJS fallback enabled in prod without threat model
+
+**Scan targets:** WebSocketConfig, WebSocketAuthInterceptor, messaging push paths, auth ws-ticket issuance.
+
+---
+
+### 8 — `postman-test-suite-audit.mdc` (GENERATOR — not a findings audit)
+
+| Field | Value |
+|---|---|
+| Tier | 3 |
+| Prefix | `PM` |
+| Globs | `src/**/controller/**/*.java`, `controller_specs/**`, `postman/**` |
+| Artifact | See **Postman output strategy** below |
+| Worktree | **None** |
+
+**Persona:** QA engineer + API architect — rebuilds the Postman harness from controllers and specs.
+
+**This rule GENERATES tests, not violation findings.** Use checklist outcomes: `COVERED`, `PARTIAL`, `MISSING`, `STALE`.
+
+**Postman output strategy (canonical — encode in generated rule):**
+
+1. **During `scan all`:** write one staging file per feature:
+   `postman/.generation/{feature}.postman_collection.json`
+2. **After all features:** `cd postman && npm run merge` → `postman/reviewflow-tests.postman_collection.json`
+3. **Environment:** update or validate `postman/ReviewFlow_Test_Environments.postman_environment.json` variables (`baseUrl`, cookie names, test users).
+4. **Do not delete** legacy `postman/ReviewFlow_*.json` files unless user says `replace legacy`.
+5. Each request folder MUST include subfolders: `Happy path`, `Auth failure`, `Validation failure`, `Role access`, `Domain edge cases`.
+
+See `postman/CANONICAL_COLLECTION.md`, `postman/scripts/merge-staging-collections.mjs`, `postman/package.json`.
+
+**Per-endpoint requirements:**
+- Method, path, auth cookies from prior request where needed
+- Tests tab: status code, envelope `success`, error `code` when applicable
+- Pre-request: set Hashids from environment where needed
+- Document required role in description from `@PreAuthorize` + SecurityConfig
+
+**Feature scan order:** auth → user → course → assignment → team → submission → evaluation → grading → extension → notification → announcement → messaging → discussion → admin → system
+
+**Reference docs:** `controller_specs/00_Global_Rules_and_Reference.md`, matching `controller_specs/*_Module_*.md`, `postman/POSTMAN_98_ROUTE_VERIFICATION_REPORT.md`
+
+**Commands for generated rule:**
+| Command | Action |
+|---|---|
+| `scan all` | Generate staging + merge unified collection |
+| `scan [feature]` | One feature staging file only |
+| `merge` | Re-run merge from `.generation/` only |
+| `coverage` | Table: endpoint → test folders present |
+
+---
+
+### 9 — `rate-limit-abuse-audit.mdc`
+
+| Field | Value |
+|---|---|
+| Tier | 3 |
+| Prefix | `RL` |
+| Globs | `src/main/java/com/reviewflow/infrastructure/ratelimit/**`, `src/**/controller/**` |
+| Report | `docs/rate-limit-abuse-audit-report.md` |
+| Worktree branch | `audit/rate-limit` |
+
+**Rules (minimum 10):**
+- **RL01** — Auth endpoints not in dedicated bucket (login, refresh, password-reset, step-up)
+- **RL02** — File upload endpoints without per-user upload throttle
+- **RL03** — Global fallback missing for unauthenticated traffic
+- **RL04** — WebSocket CONNECT not rate limited
+- **RL05** — Redis down → fail open without metric/alert
+- **RL06** — Bucket config in code diverges from `application.properties`
+- **RL07** — SYSTEM_ADMIN bypass too broad
+- **RL08** — IP vs user key strategy wrong on shared-NAT classroom
+- **RL09** — Rate limit response missing `Retry-After` header
+- **RL10** — High-cost export endpoint (CSV, PDF bulk) without stricter tier
+
+**Scan targets:** entire `infrastructure/ratelimit/`, then cross-check all controllers against `RateLimitConfigurationProvider` path registry.
+
+---
+
+### 10 — `observability-alerting-audit.mdc`
+
+| Field | Value |
+|---|---|
+| Tier | 3 |
+| Prefix | `OBS` |
+| Globs | `src/main/java/com/reviewflow/infrastructure/monitoring/**`, `src/main/java/com/reviewflow/system/**`, `src/main/java/com/reviewflow/infrastructure/filter/MdcFilter.java` |
+| Report | `docs/observability-alerting-audit-report.md` |
+| Worktree branch | `audit/observability` |
+
+**Rules (minimum 10):**
+- **OBS01** — Stub/zero metrics in `SystemService.collectAndPushMetrics()` shipped as if real
+- **OBS02** — Critical path missing MDC fields (`userId`, `traceId`, `courseId` where applicable)
+- **OBS03** — Auth failure not counted in `SecurityMetrics`
+- **OBS04** — Lockout event not metered
+- **OBS05** — ClamAV positive scan not metered/logged at WARN+
+- **OBS06** — Async job failure not incrementing counter
+- **OBS07** — `log.error` without exception argument on catch blocks
+- **OBS08** — Actuator health indicator missing for Redis / custom dependency
+- **OBS09** — No structured log field for `jobId` on async jobs
+- **OBS10** — Metric name not following `reviewflow.*` convention
+
+**Scan targets:** ReviewFlowMetrics, SecurityMetrics, MdcFilter, SystemService, SystemController metrics endpoints.
+
+---
+
+## Generation quality bar
+
+Each generated file should be **350–550 lines** — comparable to `transaction-boundary-audit.mdc`. Expand each catalog rule with ReviewFlow-specific **Look for** bullets and code patterns. Include a complete scan-order table and worktree bash blocks copied from existing audits (adjust branch names).
+
+After writing files, print:
+
+```
+═══════════════════════════════════════════
+  Audit Rule Factory — Complete
+═══════════════════════════════════════════
+  Files written : N
+  Next step     : @<rule-name> scan all
+  Package map   : @reviewflow-package-map (shared)
+═══════════════════════════════════════════
+```
+
+---
+
+## Do not
+
+- Run production code audits during `generate` commands
+- Duplicate the full package map into generated rules
+- Regenerate `transaction-boundary-audit.mdc` or `security-auth-audit.mdc` without explicit user request
+- Commit generated rules unless the user asks for a git commit
