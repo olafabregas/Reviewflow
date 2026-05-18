@@ -5,7 +5,9 @@ import com.reviewflow.auth.dto.response.StepUpResponse;
 import com.reviewflow.auth.service.AuthCookieIssuer;
 import com.reviewflow.auth.service.SessionPolicyResolver;
 import com.reviewflow.auth.service.StepUpService;
-import com.reviewflow.infrastructure.security.RateLimiterService;
+import com.reviewflow.infrastructure.ratelimit.RateLimitResult;
+import com.reviewflow.infrastructure.ratelimit.RateLimitService;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.AUTH_STEP_UP;
 import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
 import com.reviewflow.shared.exception.ApiResponse;
 import com.reviewflow.shared.exception.TooManyRequestsException;
@@ -30,7 +32,7 @@ public class StepUpController {
   private final StepUpService stepUpService;
   private final AuthCookieIssuer authCookieIssuer;
   private final SessionPolicyResolver sessionPolicyResolver;
-  private final RateLimiterService rateLimiterService;
+  private final RateLimitService rateLimitService;
 
   @PostMapping("/step-up")
   public ResponseEntity<ApiResponse<StepUpResponse>> stepUp(
@@ -43,10 +45,11 @@ public class StepUpController {
           .body(ApiResponse.error("UNAUTHORIZED", "Not authenticated"));
     }
 
-    if (rateLimiterService.isStepUpRateLimited(user.getUserId())) {
+    String userIdKey = String.valueOf(user.getUserId());
+    RateLimitResult stepUpProbe = rateLimitService.probe(userIdKey, AUTH_STEP_UP, user.getRole());
+    if (!stepUpProbe.allowed()) {
       throw new TooManyRequestsException(
-          "Too many step-up attempts. Please try again later.",
-          rateLimiterService.getStepUpRetryAfterSeconds(user.getUserId()));
+          "Too many step-up attempts. Please try again later.", stepUpProbe.retryAfterSeconds());
     }
 
     String ip = clientIp(request);
@@ -56,12 +59,12 @@ public class StepUpController {
           stepUpService.completeStepUp(user.getUserId(), body.getPassword(), ip, userAgent);
       long accessTtlMs = sessionPolicyResolver.resolveFor(user.getRole()).accessTtlMs();
       authCookieIssuer.writeAccess(response, accessToken, accessTtlMs / 1000);
-      rateLimiterService.clearStepUpAttempts(user.getUserId());
+      rateLimitService.reset(userIdKey, AUTH_STEP_UP);
       long stepUpValidUntil = Instant.now().getEpochSecond() + 300;
       return ResponseEntity.ok(
           ApiResponse.ok(StepUpResponse.builder().stepUpValidUntil(stepUpValidUntil).build()));
     } catch (BadCredentialsException e) {
-      rateLimiterService.recordStepUpAttempt(user.getUserId());
+      rateLimitService.consumeOnFailure(userIdKey, AUTH_STEP_UP, user.getRole());
       throw e;
     }
   }

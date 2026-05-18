@@ -1,0 +1,11 @@
+{
+  "name": "reviewflow-postman",
+  "private": true,
+  "description": "Postman merge and Newman run scripts for ReviewFlow API tests",
+  "scripts": {
+    "generate": "node scripts/generate-staging-collections.mjs",
+    "merge": "node scripts/merge-staging-collections.mjs",
+    "test": "newman run reviewflow-tests.postman_collection.json -e ReviewFlow_Test_Environments.postman_environment.json --env-var baseUrl=http://localhost:8081/api/v1",
+    "test:legacy": "newman run ReviewFlow_Comprehensive_v2.json -e ReviewFlow_Test_Environments.postman_environment.json --env-var baseUrl=http://localhost:8081/api/v1"
+  }
+}

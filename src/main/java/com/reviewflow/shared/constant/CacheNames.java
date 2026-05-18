@@ -17,7 +17,6 @@ public final class CacheNames {
   public static final String CACHE_COURSE_MODULES = "courseModules";
   public static final String CACHE_GRADE_OVERVIEW = "gradeOverview";
   public static final String CACHE_CLASS_STATISTICS = "classStatistics";
-  public static final String CACHE_CSV_IMPORTS = "csvImports";
 
   /** PRD-17: hasStudentPosted gate (discussionId:userId). */
   public static final String CACHE_DISCUSSION_PARTICIPATION = "discussionParticipation";

@@ -19,6 +19,11 @@ import com.reviewflow.extension.exception.ExtensionRequestExistsException;
 import com.reviewflow.extension.exception.InvalidRequestedDateException;
 import com.reviewflow.messaging.exception.MessagingClientException;
 import com.reviewflow.grading.exception.GradeOverviewUnavailableException;
+import com.reviewflow.grading.exception.ImportInProgressException;
+import com.reviewflow.grading.exception.JobNotFoundException;
+import com.reviewflow.grading.exception.JobNotReadyForCommitException;
+import com.reviewflow.grading.exception.NoErrorsToDownloadException;
+import com.reviewflow.shared.exception.FileUploadTimeoutException;
 import com.reviewflow.grading.exception.ScoreNotPublishedException;
 import com.reviewflow.grading.exception.ScoresExistException;
 import com.reviewflow.grading.exception.SubmissionNotRequiredException;
@@ -468,6 +473,26 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
   }
 
+  @ExceptionHandler(JobNotFoundException.class)
+  public ResponseEntity<ErrorResponse> handleJobNotFound(JobNotFoundException ex) {
+    return errorResponse(ex.getCode(), ex.getMessage(), HttpStatus.NOT_FOUND);
+  }
+
+  @ExceptionHandler(ImportInProgressException.class)
+  public ResponseEntity<ErrorResponse> handleImportInProgress(ImportInProgressException ex) {
+    return errorResponse(ex.getCode(), ex.getMessage(), HttpStatus.CONFLICT);
+  }
+
+  @ExceptionHandler({JobNotReadyForCommitException.class, NoErrorsToDownloadException.class})
+  public ResponseEntity<ErrorResponse> handleJobConflict(BusinessRuleException ex) {
+    return errorResponse(ex.getCode(), ex.getMessage(), HttpStatus.CONFLICT);
+  }
+
+  @ExceptionHandler(FileUploadTimeoutException.class)
+  public ResponseEntity<ErrorResponse> handleFileUploadTimeout(FileUploadTimeoutException ex) {
+    return errorResponse(ex.getCode(), ex.getMessage(), HttpStatus.REQUEST_TIMEOUT);
+  }
+
   @ExceptionHandler(BusinessRuleException.class)
   public ResponseEntity<ErrorResponse> handleBusinessRule(BusinessRuleException ex) {
     ErrorResponse body =
@@ -903,5 +928,15 @@ public class GlobalExceptionHandler {
             .timestamp(Instant.now())
             .build();
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+  }
+
+  private static ResponseEntity<ErrorResponse> errorResponse(
+      String code, String message, HttpStatus status) {
+    ErrorResponse body =
+        ErrorResponse.builder()
+            .error(ErrorResponse.ErrorDetail.builder().code(code).message(message).build())
+            .timestamp(Instant.now())
+            .build();
+    return ResponseEntity.status(status).body(body);
   }
 }

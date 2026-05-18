@@ -1,0 +1,18 @@
+package com.reviewflow.infrastructure.ratelimit;
+
+public enum RateLimitStrategy {
+  AUTH_LOGIN,
+  AUTH_REFRESH_IP,
+  AUTH_REFRESH_USER,
+  AUTH_PASSWORD_RESET_REQUEST_IP,
+  AUTH_PASSWORD_RESET_EMAIL,
+  AUTH_PASSWORD_RESET_CONFIRM_IP,
+  AUTH_STEP_UP,
+  AUTH_JWT_FAILURE,
+  MSG_SEND,
+  MSG_CREATE,
+  API_PUBLIC,
+  API_READ,
+  API_WRITE,
+  API_EXPORT
+}

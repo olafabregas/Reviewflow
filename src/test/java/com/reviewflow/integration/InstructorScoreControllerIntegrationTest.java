@@ -6,8 +6,8 @@ import static org.mockito.Mockito.when;
 
 import com.reviewflow.grading.controller.InstructorScoreController;
 import com.reviewflow.grading.dto.request.CreateInstructorScoreRequest;
-import com.reviewflow.grading.dto.request.InstructorScoreImportCommitRequest;
-import com.reviewflow.grading.dto.response.InstructorScoreImportCommitResponse;
+import com.reviewflow.grading.dto.response.ImportJobStartResponse;
+import com.reviewflow.grading.job.JobStatus;
 import com.reviewflow.grading.dto.response.InstructorScoreResponse;
 import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.domain.UserRole;
@@ -76,24 +76,24 @@ class InstructorScoreControllerIntegrationTest {
   }
 
   @Test
-  void commitImport_validRequest_returnsOk() {
+  void startImport_validRequest_returnsAccepted() {
     when(hashidService.decodeOrThrow("asgHash")).thenReturn(10L);
 
-    InstructorScoreImportCommitResponse response =
-        InstructorScoreImportCommitResponse.builder()
-            .created(2)
-            .updated(1)
-            .message("3 scores saved as drafts")
-            .build();
+    ImportJobStartResponse response =
+        ImportJobStartResponse.builder().jobId("job-uuid").status(JobStatus.UPLOADED).build();
 
-    when(csvImportService.commit(10L, 77L, "imp-1")).thenReturn(response);
+    when(csvImportService.startImport(eq(10L), eq(77L), org.mockito.ArgumentMatchers.any()))
+        .thenReturn(response);
 
-    InstructorScoreImportCommitRequest request = new InstructorScoreImportCommitRequest();
-    request.setImportId("imp-1");
-
-    var entity = controller().commitImport("asgHash", request, instructorPrincipal());
-    assertEquals(200, entity.getStatusCode().value());
-    assertEquals(2, entity.getBody().getData().getCreated());
-    assertEquals(1, entity.getBody().getData().getUpdated());
+    var entity =
+        controller()
+            .startImport(
+                "asgHash",
+                new org.springframework.mock.web.MockMultipartFile(
+                    "file", "scores.csv", "text/csv", "student_email,score\na@b.com,90".getBytes()),
+                instructorPrincipal());
+    assertEquals(202, entity.getStatusCode().value());
+    assertEquals("job-uuid", entity.getBody().getData().getJobId());
+    assertEquals(JobStatus.UPLOADED, entity.getBody().getData().getStatus());
   }
 }

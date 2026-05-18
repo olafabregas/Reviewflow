@@ -2,6 +2,7 @@ package com.reviewflow.messaging.repository;
 
 import com.reviewflow.shared.domain.ConversationParticipant;
 import com.reviewflow.shared.domain.ConversationParticipantKey;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,6 +17,12 @@ public interface ConversationParticipantRepository
       Long conversationId, Long userId);
 
   List<ConversationParticipant> findByConversationId(Long conversationId);
+
+  @Query(
+      "SELECT p FROM ConversationParticipant p JOIN FETCH p.user "
+          + "WHERE p.conversationId IN :conversationIds")
+  List<ConversationParticipant> findByConversationIdInWithUser(
+      @Param("conversationIds") Collection<Long> conversationIds);
 
   @Modifying(clearAutomatically = true)
   @Query(

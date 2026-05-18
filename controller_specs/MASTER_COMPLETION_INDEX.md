@@ -1,5 +1,7 @@
 # REVIEWFLOW TEST SPECIFICATION SUITE - MASTER COMPLETION INDEX
 
+> **Baseline counts in this file are historical** (93/98 endpoint campaigns). For current routes, `grep @RestController` and `@*Mapping` under `src/main/java/com/reviewflow/`, or see stub specs [14_Module_Discussion.md](./14_Module_Discussion.md) and [15_Module_Messaging.md](./15_Module_Messaging.md). Ship state: [orchestration/MASTER_PROJECT_SUMMARY.md](../orchestration/MASTER_PROJECT_SUMMARY.md).
+
 ## PROJECT COMPLETION STATUS: ✅ 100% COMPLETE
 
 **Date**: Phase 2 Final Delivery  

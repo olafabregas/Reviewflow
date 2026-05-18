@@ -89,6 +89,13 @@ public class S3Service {
     }
   }
 
+  public void deleteObjectSilently(String key) {
+    if (key == null || key.isBlank()) {
+      return;
+    }
+    deleteObject(key);
+  }
+
   public boolean objectExists(String key) {
     try {
       s3Client.headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build());

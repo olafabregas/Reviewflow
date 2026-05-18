@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <body
+    th:replace="~{email/base :: layout(~{::section}, 'New Discussion', true, ${preferencesUrl})}"
+  >
+    <section>
+      <p>Hi <strong th:text="${recipientName}">there</strong>,</p>
+      <p>
+        A new discussion
+        <strong th:text="${discussionTitle}">Discussion</strong> was published in
+        <strong th:text="${courseCode}">COURSE</strong>.
+      </p>
+      <p>Due at: <strong th:text="${dueAt}">2026-01-01T00:00:00Z</strong></p>
+      <p>
+        <a
+          th:href="${appBaseUrl + '/discussions/' + discussionHashId}"
+          style="color: #2563eb; text-decoration: none"
+          >Open discussion</a
+        >
+      </p>
+    </section>
+  </body>
+</html>

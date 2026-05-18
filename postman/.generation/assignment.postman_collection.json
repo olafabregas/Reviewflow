@@ -1,0 +1,4409 @@
+{
+  "info": {
+    "name": "ReviewFlow — assignment (staging)",
+    "description": "Staging fragment for assignment. Merged by: cd postman && npm run merge",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "DELETE /assignment-groups/{id}",
+      "description": "Generated from controller — DELETE /assignment-groups/{id}",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignment-groups/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignment-groups",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/assignment-groups/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignment-groups/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignment-groups",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/assignment-groups/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignment-groups/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignment-groups",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/assignment-groups/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignment-groups/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignment-groups",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/assignment-groups/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignment-groups/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignment-groups",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/assignment-groups/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "PUT /assignment-groups/{id}",
+      "description": "Generated from controller — PUT /assignment-groups/{id}",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assignment-groups/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignment-groups",
+                "{{resourceId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/assignment-groups/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignment-groups/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignment-groups",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/assignment-groups/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assignment-groups/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignment-groups",
+                "{{resourceId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/assignment-groups/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignment-groups/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignment-groups",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/assignment-groups/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignment-groups/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignment-groups",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/assignment-groups/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GET /assignments",
+      "description": "Generated from controller — GET /assignments",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/assignments\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/assignments\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 401 without session cookie."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/assignments\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/assignments\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/assignments\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "DELETE /assignments/{id}",
+      "description": "Generated from controller — DELETE /assignments/{id}",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/assignments/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/assignments/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/assignments/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/assignments/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/assignments/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GET /assignments/{id}",
+      "description": "Generated from controller — GET /assignments/{id}",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/assignments/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/assignments/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 401 without session cookie."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/assignments/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/assignments/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/assignments/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "PUT /assignments/{id}",
+      "description": "Generated from controller — PUT /assignments/{id}",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/assignments/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/assignments/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/assignments/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/assignments/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/assignments/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GET /assignments/{id}/gradebook",
+      "description": "Generated from controller — GET /assignments/{id}/gradebook",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/gradebook?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "gradebook"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/assignments/{id}/gradebook\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/gradebook?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "gradebook"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/assignments/{id}/gradebook\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 401 without session cookie."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/gradebook?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "gradebook"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/assignments/{id}/gradebook\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/gradebook?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "gradebook"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/assignments/{id}/gradebook\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/gradebook?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "gradebook"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/assignments/{id}/gradebook\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "PATCH /assignments/{id}/group",
+      "description": "Generated from controller — PATCH /assignments/{id}/group",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/group",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "group"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/assignments/{id}/group\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/group",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "group"
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/assignments/{id}/group\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/group",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "group"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/assignments/{id}/group\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/group",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "group"
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/assignments/{id}/group\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/group",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "group"
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/assignments/{id}/group\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "PATCH /assignments/{id}/module",
+      "description": "Generated from controller — PATCH /assignments/{id}/module",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/module",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "module"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/assignments/{id}/module\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/module",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "module"
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/assignments/{id}/module\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/module",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "module"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/assignments/{id}/module\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/module",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "module"
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/assignments/{id}/module\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/module",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "module"
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/assignments/{id}/module\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "PATCH /assignments/{id}/publish",
+      "description": "Generated from controller — PATCH /assignments/{id}/publish",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/publish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "publish"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/assignments/{id}/publish\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/publish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "publish"
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/assignments/{id}/publish\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/publish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "publish"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/assignments/{id}/publish\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/publish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "publish"
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/assignments/{id}/publish\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/publish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "publish"
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/assignments/{id}/publish\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "POST /assignments/{id}/rubric",
+      "description": "Generated from controller — POST /assignments/{id}/rubric",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/rubric",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "rubric"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/assignments/{id}/rubric\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/rubric",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "rubric"
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/assignments/{id}/rubric\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/rubric",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "rubric"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/assignments/{id}/rubric\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/rubric",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "rubric"
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/assignments/{id}/rubric\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/rubric",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "rubric"
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/assignments/{id}/rubric\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "DELETE /assignments/{id}/rubric/{criterionId}",
+      "description": "Generated from controller — DELETE /assignments/{id}/rubric/{criterionId}",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/rubric/{{criterionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "rubric",
+                "{{criterionId}}"
+              ]
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/assignments/{id}/rubric/{criterionId}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/rubric/{{criterionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "rubric",
+                "{{criterionId}}"
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/assignments/{id}/rubric/{criterionId}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/rubric/{{criterionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "rubric",
+                "{{criterionId}}"
+              ]
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/assignments/{id}/rubric/{criterionId}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/rubric/{{criterionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "rubric",
+                "{{criterionId}}"
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/assignments/{id}/rubric/{criterionId}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/rubric/{{criterionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "rubric",
+                "{{criterionId}}"
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/assignments/{id}/rubric/{criterionId}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "PUT /assignments/{id}/rubric/{criterionId}",
+      "description": "Generated from controller — PUT /assignments/{id}/rubric/{criterionId}",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/rubric/{{criterionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "rubric",
+                "{{criterionId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/assignments/{id}/rubric/{criterionId}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/rubric/{{criterionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "rubric",
+                "{{criterionId}}"
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/assignments/{id}/rubric/{criterionId}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/rubric/{{criterionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "rubric",
+                "{{criterionId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/assignments/{id}/rubric/{criterionId}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/rubric/{{criterionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "rubric",
+                "{{criterionId}}"
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/assignments/{id}/rubric/{criterionId}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/rubric/{{criterionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "rubric",
+                "{{criterionId}}"
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/assignments/{id}/rubric/{criterionId}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GET /assignments/{id}/submissions",
+      "description": "Generated from controller — GET /assignments/{id}/submissions",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/submissions?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/assignments/{id}/submissions\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/submissions?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/assignments/{id}/submissions\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 401 without session cookie."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/submissions?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/assignments/{id}/submissions\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/submissions?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/assignments/{id}/submissions\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/{{resourceId}}/submissions?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assignments",
+                "{{resourceId}}",
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/assignments/{id}/submissions\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GET /courses/{courseId}/assignment-groups",
+      "description": "Generated from controller — GET /courses/{courseId}/assignment-groups",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignment-groups?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignment-groups"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/courses/{courseId}/assignment-groups\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignment-groups?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignment-groups"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/courses/{courseId}/assignment-groups\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 401 without session cookie."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignment-groups?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignment-groups"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/courses/{courseId}/assignment-groups\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignment-groups?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignment-groups"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/courses/{courseId}/assignment-groups\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignment-groups?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignment-groups"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/courses/{courseId}/assignment-groups\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "POST /courses/{courseId}/assignment-groups",
+      "description": "Generated from controller — POST /courses/{courseId}/assignment-groups",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignment-groups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignment-groups"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/courses/{courseId}/assignment-groups\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignment-groups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignment-groups"
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/courses/{courseId}/assignment-groups\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignment-groups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignment-groups"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/courses/{courseId}/assignment-groups\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignment-groups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignment-groups"
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/courses/{courseId}/assignment-groups\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignment-groups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignment-groups"
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/courses/{courseId}/assignment-groups\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GET /courses/{courseId}/assignments",
+      "description": "Generated from controller — GET /courses/{courseId}/assignments",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignments?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignments"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/courses/{courseId}/assignments\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignments?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignments"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/courses/{courseId}/assignments\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 401 without session cookie."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignments?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignments"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/courses/{courseId}/assignments\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignments?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignments"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/courses/{courseId}/assignments\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignments?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignments"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/courses/{courseId}/assignments\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "POST /courses/{courseId}/assignments",
+      "description": "Generated from controller — POST /courses/{courseId}/assignments",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/courses/{courseId}/assignments\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignments"
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/courses/{courseId}/assignments\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/courses/{courseId}/assignments\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignments"
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/courses/{courseId}/assignments\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assignments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "assignments"
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/courses/{courseId}/assignments\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GET /courses/{courseId}/modules",
+      "description": "Generated from controller — GET /courses/{courseId}/modules",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/modules?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "modules"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/courses/{courseId}/modules\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/modules?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "modules"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/courses/{courseId}/modules\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 401 without session cookie."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/modules?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "modules"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/courses/{courseId}/modules\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/modules?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "modules"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/courses/{courseId}/modules\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/modules?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "modules"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/courses/{courseId}/modules\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "POST /courses/{courseId}/modules",
+      "description": "Generated from controller — POST /courses/{courseId}/modules",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/modules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "modules"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/courses/{courseId}/modules\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/modules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "modules"
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/courses/{courseId}/modules\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/modules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "modules"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/courses/{courseId}/modules\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/modules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "modules"
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/courses/{courseId}/modules\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/modules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "modules"
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/courses/{courseId}/modules\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "PATCH /courses/{courseId}/modules/reorder",
+      "description": "Generated from controller — PATCH /courses/{courseId}/modules/reorder",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/modules/reorder",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "modules",
+                "reorder"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/courses/{courseId}/modules/reorder\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/modules/reorder",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "modules",
+                "reorder"
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/courses/{courseId}/modules/reorder\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/modules/reorder",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "modules",
+                "reorder"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/courses/{courseId}/modules/reorder\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/modules/reorder",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "modules",
+                "reorder"
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/courses/{courseId}/modules/reorder\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}/modules/reorder",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}",
+                "modules",
+                "reorder"
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/courses/{courseId}/modules/reorder\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "DELETE /modules/{id}",
+      "description": "Generated from controller — DELETE /modules/{id}",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/modules/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "modules",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/modules/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/modules/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "modules",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/modules/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/modules/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "modules",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/modules/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/modules/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "modules",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/modules/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/modules/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "modules",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/modules/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "PUT /modules/{id}",
+      "description": "Generated from controller — PUT /modules/{id}",
+      "item": [
+        {
+          "name": "Happy path",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/modules/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "modules",
+                "{{resourceId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** happy\n**Path:** /api/v1/modules/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth failure",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/modules/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "modules",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** auth\n**Path:** /api/v1/modules/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation failure",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/modules/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "modules",
+                "{{resourceId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "**Variant:** validation\n**Path:** /api/v1/modules/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role access",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/modules/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "modules",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** role\n**Path:** /api/v1/modules/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment.\n**Expect:** 403 FORBIDDEN with wrong-role session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('Error code', () => pm.expect(body.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Domain edge cases",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/modules/{{resourceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "modules",
+                "{{resourceId}}"
+              ]
+            },
+            "description": "**Variant:** edge\n**Path:** /api/v1/modules/{id}\n**Setup:** Use 00_SETUP login cookies; Hashids via environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 4xx', () => pm.expect(pm.response.code).to.be.oneOf([400, 404, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envelope failure', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

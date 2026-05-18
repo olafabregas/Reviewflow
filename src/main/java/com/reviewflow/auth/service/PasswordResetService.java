@@ -7,7 +7,11 @@ import com.reviewflow.infrastructure.email.event.PasswordResetCompletedEmailEven
 import com.reviewflow.infrastructure.email.event.PasswordResetRequestedEmailEvent;
 import com.reviewflow.shared.domain.PasswordResetToken;
 import com.reviewflow.shared.domain.User;
-import com.reviewflow.infrastructure.security.RateLimiterService;
+import com.reviewflow.infrastructure.ratelimit.RateLimitResult;
+import com.reviewflow.infrastructure.ratelimit.RateLimitService;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.AUTH_PASSWORD_RESET_CONFIRM_IP;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.AUTH_PASSWORD_RESET_EMAIL;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.AUTH_PASSWORD_RESET_REQUEST_IP;
 import com.reviewflow.shared.exception.TooManyRequestsException;
 import com.reviewflow.shared.exception.ValidationException;
 import com.reviewflow.user.repository.UserRepository;
@@ -43,7 +47,7 @@ public class PasswordResetService {
   private final UserDetailsCacheService userDetailsCacheService;
   private final AuditService auditService;
   private final ApplicationEventPublisher eventPublisher;
-  private final RateLimiterService rateLimiterService;
+  private final RateLimitService rateLimitService;
 
   @Value("${app.base-url:http://localhost:5173}")
   private String appBaseUrl;
@@ -53,22 +57,20 @@ public class PasswordResetService {
 
   @Transactional
   public void requestReset(String email, String ip) {
-    if (rateLimiterService.isPasswordResetRequestIpRateLimited(ip)) {
+    RateLimitResult requestIp = rateLimitService.tryConsume(ip, AUTH_PASSWORD_RESET_REQUEST_IP, null);
+    if (!requestIp.allowed()) {
       throw new TooManyRequestsException(
-          "Too many password reset requests. Please try again later.",
-          rateLimiterService.getPasswordResetRequestIpRetryAfterSeconds(ip));
+          "Too many password reset requests. Please try again later.", requestIp.retryAfterSeconds());
     }
     String normalized = email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
-    if (!normalized.isEmpty()
-        && rateLimiterService.isPasswordResetRequestEmailRateLimited(normalized)) {
-      throw new TooManyRequestsException(
-          "Too many password reset requests. Please try again later.",
-          rateLimiterService.getPasswordResetRequestEmailRetryAfterSeconds(normalized));
-    }
-
-    rateLimiterService.recordPasswordResetRequestIp(ip);
     if (!normalized.isEmpty()) {
-      rateLimiterService.recordPasswordResetRequestEmail(normalized);
+      RateLimitResult requestEmail =
+          rateLimitService.tryConsume(normalized, AUTH_PASSWORD_RESET_EMAIL, null);
+      if (!requestEmail.allowed()) {
+        throw new TooManyRequestsException(
+            "Too many password reset requests. Please try again later.",
+            requestEmail.retryAfterSeconds());
+      }
     }
 
     Optional<User> userOpt = userRepository.findByEmail(normalized);
@@ -118,12 +120,11 @@ public class PasswordResetService {
 
   @Transactional
   public void confirm(String plainToken, String newPassword, String ip) {
-    if (rateLimiterService.isPasswordResetConfirmIpRateLimited(ip)) {
+    RateLimitResult confirmIp = rateLimitService.tryConsume(ip, AUTH_PASSWORD_RESET_CONFIRM_IP, null);
+    if (!confirmIp.allowed()) {
       throw new TooManyRequestsException(
-          "Too many attempts. Please try again later.",
-          rateLimiterService.getPasswordResetConfirmIpRetryAfterSeconds(ip));
+          "Too many attempts. Please try again later.", confirmIp.retryAfterSeconds());
     }
-    rateLimiterService.recordPasswordResetConfirmIp(ip);
 
     passwordPolicyService.validateLoginInputBounds(newPassword);
 

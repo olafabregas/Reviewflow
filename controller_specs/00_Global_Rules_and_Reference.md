@@ -1,7 +1,8 @@
 # ReviewFlow — Global Rules & Reference
 
-> Version 2.0 | Spring Boot 3 | Base URL: `http://localhost:8081/api/v1`  
-> Last Updated: 2026-03-30 | Consolidates PRDs 1-9 + S3 | Cross-ref: [DECISIONS.md](DECISIONS.md) | [ARCHITECTURE.md](ARCHITECTURE.md)
+> Version 2.1 | Spring Boot **4** | Base URL: `http://localhost:8081/api/v1`  
+> Last Updated: 2026-05-18 | Package layout: [orchestration/REFACTOR_STRATEGY.md](../orchestration/REFACTOR_STRATEGY.md) · Ship state: [orchestration/MASTER_PROJECT_SUMMARY.md](../orchestration/MASTER_PROJECT_SUMMARY.md)  
+> Cross-ref: [DECISIONS.md](../DECISIONS.md) | [ARCHITECTURE.md](../ARCHITECTURE.md) | New modules: [14_Module_Discussion.md](./14_Module_Discussion.md), [15_Module_Messaging.md](./15_Module_Messaging.md)
 
 ---
 

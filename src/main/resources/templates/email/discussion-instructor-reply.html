@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <body
+    th:replace="~{email/base :: layout(~{::section}, 'Discussion Reply', true, ${preferencesUrl})}"
+  >
+    <section>
+      <p>Hi <strong th:text="${recipientName}">there</strong>,</p>
+      <p>
+        <strong th:text="${replierName}">Instructor</strong> replied to your post in
+        <strong th:text="${discussionTitle}">Discussion</strong>.
+      </p>
+      <p th:if="${replySnippet != null}" style="color: #4b5563; font-style: italic">
+        “<span th:text="${replySnippet}">Reply preview</span>”
+      </p>
+      <p>
+        <a
+          th:href="${appBaseUrl + '/discussions/' + discussionHashId}"
+          style="color: #2563eb; text-decoration: none"
+          >View discussion</a
+        >
+      </p>
+    </section>
+  </body>
+</html>

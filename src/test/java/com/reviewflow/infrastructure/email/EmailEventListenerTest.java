@@ -13,6 +13,9 @@ import com.reviewflow.infrastructure.email.event.AccountReactivatedEmailEvent;
 import com.reviewflow.infrastructure.email.event.AnnouncementPostedEmailEvent;
 import com.reviewflow.infrastructure.email.event.AssignmentDueSoonEmailEvent;
 import com.reviewflow.infrastructure.email.event.EvaluationPublishedEmailEvent;
+import com.reviewflow.infrastructure.email.event.DiscussionInstructorReplyEmailEvent;
+import com.reviewflow.infrastructure.email.event.DiscussionPublishedEmailEvent;
+import com.reviewflow.infrastructure.email.event.DiscussionReminderEmailEvent;
 import com.reviewflow.infrastructure.email.event.ExtensionDecisionEmailEvent;
 import com.reviewflow.infrastructure.email.event.ExtensionRequestReceivedEmailEvent;
 import com.reviewflow.infrastructure.email.event.SubmissionReceivedEmailEvent;
@@ -286,6 +289,90 @@ class EmailEventListenerTest {
     verify(emailService)
         .send("student@test.local", "Extension decision: Project 5", "<p>html</p>", "text");
     verify(userRepository, never()).findEmailPreferenceByEmail("student@test.local");
+  }
+
+  @Test
+  void handleDiscussionPublished_emailEnabled_sendsRenderedEmail() {
+    DiscussionPublishedEmailEvent event =
+        new DiscussionPublishedEmailEvent(
+            "student@test.local",
+            "Student",
+            "Week 3 Reflection",
+            Instant.parse("2026-04-10T12:00:00Z"),
+            "CSC301",
+            "D123");
+    when(userRepository.findEmailPreferenceByEmail("student@test.local"))
+        .thenReturn(Optional.of(true));
+    when(templateService.renderHtml(eq("discussion-published"), anyMap())).thenReturn("<p>html</p>");
+    when(templateService.renderText(eq("discussion-published"), anyMap())).thenReturn("text");
+
+    listener.handleDiscussionPublished(event);
+
+    verify(emailService)
+        .send("student@test.local", "New discussion: Week 3 Reflection", "<p>html</p>", "text");
+  }
+
+  @Test
+  void handleDiscussionPublished_emailDisabled_skipsSend() {
+    DiscussionPublishedEmailEvent event =
+        new DiscussionPublishedEmailEvent(
+            "student@test.local",
+            "Student",
+            "Week 3 Reflection",
+            Instant.parse("2026-04-10T12:00:00Z"),
+            "CSC301",
+            "D123");
+    when(userRepository.findEmailPreferenceByEmail("student@test.local"))
+        .thenReturn(Optional.of(false));
+
+    listener.handleDiscussionPublished(event);
+
+    verify(templateService, never()).renderHtml(eq("discussion-published"), anyMap());
+    verify(emailService, never()).send(anyString(), anyString(), anyString(), anyString());
+  }
+
+  @Test
+  void handleDiscussionInstructorReply_emailEnabled_sendsRenderedEmail() {
+    DiscussionInstructorReplyEmailEvent event =
+        new DiscussionInstructorReplyEmailEvent(
+            "student@test.local",
+            "Student",
+            "Prof. Smith",
+            "Week 3 Reflection",
+            "Great point.",
+            "D123");
+    when(userRepository.findEmailPreferenceByEmail("student@test.local"))
+        .thenReturn(Optional.of(true));
+    when(templateService.renderHtml(eq("discussion-instructor-reply"), anyMap()))
+        .thenReturn("<p>html</p>");
+    when(templateService.renderText(eq("discussion-instructor-reply"), anyMap())).thenReturn("text");
+
+    listener.handleDiscussionInstructorReply(event);
+
+    verify(emailService)
+        .send(
+            "student@test.local",
+            "Prof. Smith replied in Week 3 Reflection",
+            "<p>html</p>",
+            "text");
+  }
+
+  @Test
+  void handleDiscussionReminder_emailDisabled_skipsSend() {
+    DiscussionReminderEmailEvent event =
+        new DiscussionReminderEmailEvent(
+            "student@test.local",
+            "Ada",
+            "Week 3 Reflection",
+            Instant.parse("2026-04-10T12:00:00Z"),
+            "D123");
+    when(userRepository.findEmailPreferenceByEmail("student@test.local"))
+        .thenReturn(Optional.of(false));
+
+    listener.handleDiscussionReminder(event);
+
+    verify(templateService, never()).renderHtml(eq("discussion-reminder"), anyMap());
+    verify(emailService, never()).send(anyString(), anyString(), anyString(), anyString());
   }
 
   @Test

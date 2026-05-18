@@ -5,7 +5,14 @@ import java.io.InputStream;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import com.reviewflow.shared.exception.FileUploadTimeoutException;
+import com.reviewflow.shared.exception.StorageException;
 import com.reviewflow.infrastructure.storage.S3Service;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -53,7 +60,6 @@ import com.reviewflow.admin.service.AdminStatsService;
 import com.reviewflow.admin.service.AuditService;
 import com.reviewflow.infrastructure.storage.ClamAvScanService;
 import com.reviewflow.infrastructure.storage.FileSecurityValidator;
-import com.reviewflow.infrastructure.security.RateLimiterService;
 import com.reviewflow.shared.domain.ExtensionRequestStatus;
 import com.reviewflow.shared.domain.TeamMemberStatus;
 import com.reviewflow.infrastructure.storage.StorageService;
@@ -90,7 +96,6 @@ public class SubmissionService {
   private final FileSecurityValidator fileSecurityValidator;
   private final AdminStatsService adminStatsService;
   private final ClamAvScanService clamAvScanService;
-  private final RateLimiterService rateLimiterService;
   private final SecurityMetrics securityMetrics;
   private final AuditService auditService;
   private final HashidService hashidService;
@@ -99,18 +104,15 @@ public class SubmissionService {
   @Value("${file.validation.submission.max-size-bytes:104857600}")
   private long submissionMaxFileSizeBytes;
 
+  @Value("${async.upload.timeout-seconds:60}")
+  private int uploadTimeoutSeconds;
+
+  @jakarta.annotation.Resource(name = "uploadExecutor")
+  private Executor uploadExecutor;
+
   @Transactional
   public Submission upload(
       Long teamId, Long assignmentId, String changeNote, MultipartFile file, Long uploaderId) {
-    // Check upload block rate limiting
-    String uploadKey = "user_" + uploaderId;
-    if (rateLimiterService.isUploadBlockRateLimited(uploadKey)) {
-      securityMetrics.recordUploadBlockRateLimited();
-      long retryAfter = rateLimiterService.getUploadBlockRetryAfterSeconds(uploadKey);
-      throw new RateLimitException(
-          "Too many blocked upload attempts. Try again in " + retryAfter + " seconds");
-    }
-
     // Validate file is present
     if (file == null || file.isEmpty()) {
       throw new ValidationException("File is required", "VALIDATION_ERROR");
@@ -158,7 +160,6 @@ public class SubmissionService {
           e.getMessage(),
           e);
       securityMetrics.recordFileBlocked();
-      rateLimiterService.recordBlockedUpload(uploadKey);
       try {
         java.nio.file.Files.deleteIfExists(tempFile);
       } catch (IOException ex) {
@@ -168,7 +169,6 @@ public class SubmissionService {
           "Failed to validate file: " + e.getMessage(), "FILE_VALIDATION_ERROR");
     } catch (MalwareDetectedException e) {
       securityMetrics.recordFileBlocked();
-      rateLimiterService.recordBlockedUpload(uploadKey);
       try {
         java.nio.file.Files.deleteIfExists(tempFile);
       } catch (IOException ex) {
@@ -180,7 +180,6 @@ public class SubmissionService {
       // Catch BlockedFileTypeException, InvalidMimeTypeException, InvalidFileStructureException,
       // etc.
       securityMetrics.recordFileBlocked();
-      rateLimiterService.recordBlockedUpload(uploadKey);
       try {
         java.nio.file.Files.deleteIfExists(tempFile);
       } catch (IOException ex) {
@@ -295,13 +294,7 @@ public class SubmissionService {
               : hashidService.encode(teamId);
       String relativePath =
           S3KeyBuilder.submissionKey(hashedAssignmentId, hashedOwnerId, nextVersion, originalName);
-      String storedPath;
-      try (InputStream is = java.nio.file.Files.newInputStream(tempFile)) {
-        storedPath = storageService.store(relativePath, is, file.getSize(), file.getContentType());
-      } catch (IOException e) {
-        log.error("Failed to store file: {}", e.getMessage(), e);
-        throw new ValidationException("Failed to store file", "FILE_STORAGE_ERROR");
-      }
+      String storedPath = uploadToStorage(relativePath, tempFile, file);
 
       Submission submission =
           Submission.builder()
@@ -545,8 +538,38 @@ public class SubmissionService {
     return PreviewResponseDto.builder()
         .previewUrl(previewUrl)
         .contentType(mimeType)
-        .expiresInSeconds(15 * 60L) // 15 minutes
+        .expiresInSeconds(15 * 60L)
         .filename(submission.getFileName())
         .build();
+  }
+
+  private String uploadToStorage(
+      String relativePath, java.nio.file.Path tempFile, MultipartFile file) {
+    try {
+      CompletableFuture<String> uploadFuture =
+          CompletableFuture.supplyAsync(
+              () -> {
+                try (InputStream is = java.nio.file.Files.newInputStream(tempFile)) {
+                  return storageService.store(
+                      relativePath, is, file.getSize(), file.getContentType());
+                } catch (IOException e) {
+                  throw new StorageException("Failed to store file", e);
+                }
+              },
+              uploadExecutor);
+      return uploadFuture.get(uploadTimeoutSeconds, TimeUnit.SECONDS);
+    } catch (TimeoutException e) {
+      s3Service.deleteObjectSilently(relativePath);
+      throw new FileUploadTimeoutException(uploadTimeoutSeconds);
+    } catch (ExecutionException e) {
+      Throwable cause = e.getCause() != null ? e.getCause() : e;
+      if (cause instanceof RuntimeException re) {
+        throw re;
+      }
+      throw new StorageException("Upload failed", cause);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new StorageException("Upload interrupted", e);
+    }
   }
 }

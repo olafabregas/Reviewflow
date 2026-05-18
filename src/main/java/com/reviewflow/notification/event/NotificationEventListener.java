@@ -18,6 +18,7 @@ import com.reviewflow.discussion.event.DiscussionReminderBatchEvent;
 import com.reviewflow.discussion.event.DiscussionReplyEvent;
 import com.reviewflow.evaluation.event.EvaluationPublishedEvent;
 import com.reviewflow.evaluation.event.EvaluationReopenedEvent;
+import com.reviewflow.evaluation.event.PdfReadyEvent;
 import com.reviewflow.extension.event.ExtensionDecidedEvent;
 import com.reviewflow.extension.event.ExtensionRequestedEvent;
 import com.reviewflow.submission.event.SubmissionUploadedEvent;
@@ -26,6 +27,9 @@ import com.reviewflow.team.event.TeamLockedEvent;
 import com.reviewflow.team.event.TeamUnlockedBySystemEvent;
 import com.reviewflow.infrastructure.email.event.AnnouncementPostedEmailEvent;
 import com.reviewflow.infrastructure.email.event.AssignmentDueSoonEmailEvent;
+import com.reviewflow.infrastructure.email.event.DiscussionInstructorReplyEmailEvent;
+import com.reviewflow.infrastructure.email.event.DiscussionPublishedEmailEvent;
+import com.reviewflow.infrastructure.email.event.DiscussionReminderEmailEvent;
 import com.reviewflow.infrastructure.email.event.EvaluationPublishedEmailEvent;
 import com.reviewflow.infrastructure.email.event.EvaluationReopenedInstructorEmailEvent;
 import com.reviewflow.infrastructure.email.event.EvaluationReopenedTeamEmailEvent;
@@ -118,6 +122,7 @@ public class NotificationEventListener {
     String actionUrl = "/discussions/{id}";
     String title = "New discussion";
     String message = event.title();
+    String discussionHashId = hashidService.encode(event.discussionId());
     for (CourseEnrollment e : courseEnrollmentRepository.findWithUserByCourseId(event.courseId())) {
       if (e.getUser().getRole() != UserRole.STUDENT) {
         continue;
@@ -129,6 +134,14 @@ public class NotificationEventListener {
           message,
           actionUrl,
           event.discussionId());
+      eventPublisher.publishEvent(
+          new DiscussionPublishedEmailEvent(
+              e.getUser().getEmail(),
+              e.getUser().getFullNameOrEmail(),
+              event.title(),
+              event.dueAt(),
+              event.courseCode(),
+              discussionHashId));
     }
     log.debug(
         "Discussion published in-app notifications for discussion {} course {}",
@@ -150,6 +163,20 @@ public class NotificationEventListener {
         event.replierName() + " replied to your post.",
         "/discussions/{id}",
         event.discussionId());
+    if (event.originalAuthorRole() == UserRole.STUDENT && isStaffRole(event.replierRole())) {
+      userRepository
+          .findById(event.originalAuthorId())
+          .ifPresent(
+              original ->
+                  eventPublisher.publishEvent(
+                      new DiscussionInstructorReplyEmailEvent(
+                          original.getEmail(),
+                          original.getFullNameOrEmail(),
+                          event.replierName(),
+                          event.discussionTitle(),
+                          event.replySnippet(),
+                          hashidService.encode(event.discussionId()))));
+    }
   }
 
   @Async("notificationExecutor")
@@ -178,6 +205,13 @@ public class NotificationEventListener {
                 } catch (Exception ex) {
                   log.debug("User {} offline - reminder saved only", r.studentId());
                 }
+                eventPublisher.publishEvent(
+                    new DiscussionReminderEmailEvent(
+                        r.email(),
+                        reminderRecipientDisplayName(r),
+                        event.discussionTitle(),
+                        event.dueAt(),
+                        hashidService.encode(event.discussionId())));
               });
     }
   }
@@ -302,6 +336,21 @@ public class NotificationEventListener {
     }
   }
 
+  // -- PDF READY (PRD-21, in-app only) ----------------------------
+  @Async("notificationExecutor")
+  @EventListener
+  public void onPdfReady(PdfReadyEvent event) {
+    String message =
+        "Your evaluation report for " + event.assignmentTitle() + " is ready to download.";
+    String actionUrl = "/evaluations/" + hashidService.encode(event.evaluationId()) + "/pdf";
+    saveAndPushMany(
+        event.recipientUserIds(),
+        NotificationType.FEEDBACK_PUBLISHED,
+        "Evaluation Report Ready",
+        message,
+        actionUrl);
+  }
+
   // -- TEAM LOCKED -----------------------------------------------
   @Async("notificationExecutor")
   @EventListener
@@ -414,6 +463,19 @@ public class NotificationEventListener {
   }
 
   // -- HELPERS ----------------------------------------------------
+  private static boolean isStaffRole(UserRole role) {
+    return role == UserRole.INSTRUCTOR
+        || role == UserRole.ADMIN
+        || role == UserRole.SYSTEM_ADMIN;
+  }
+
+  private static String reminderRecipientDisplayName(DiscussionReminderBatchEvent.ReminderRecipient r) {
+    if (r.firstName() != null && !r.firstName().isBlank()) {
+      return r.firstName().strip();
+    }
+    return "there";
+  }
+
   private void saveAndPush(
       Long userId, NotificationType type, String title, String message, String actionUrl) {
     saveAndPush(userId, type, title, message, actionUrl, null);

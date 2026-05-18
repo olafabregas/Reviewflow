@@ -1,26 +1,26 @@
 package com.reviewflow.evaluation.service;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.reviewflow.shared.domain.Assignment;
-import com.reviewflow.shared.domain.Evaluation;
-import com.reviewflow.shared.domain.RubricCriterion;
-import com.reviewflow.shared.domain.RubricScore;
-import com.reviewflow.shared.domain.Submission;
-import com.reviewflow.shared.domain.Team;
-import com.reviewflow.shared.domain.User;
-import com.reviewflow.evaluation.service.PdfGenerationService;
+import com.reviewflow.evaluation.dto.EvaluationPdfContext;
+import com.reviewflow.evaluation.dto.EvaluationPdfRubricRow;
 import com.reviewflow.infrastructure.storage.StorageService;
 import com.reviewflow.shared.util.HashidService;
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -35,87 +35,125 @@ class PdfGenerationServiceTest {
   @InjectMocks private PdfGenerationService pdfGenerationService;
 
   @Test
-  void generateEvaluationPdf_buildsStandardizedKeyAndStoresPdf() {
-    Evaluation evaluation =
-        buildEvaluation(21L, "Software Design", "Team Alpha", "Ada", "Lovelace", true, true);
-    RubricScore score =
-        RubricScore.builder()
-            .criterion(RubricCriterion.builder().name("Correctness").maxScore(10).build())
-            .score(BigDecimal.valueOf(8))
-            .comment("Good")
-            .build();
+  void generateEvaluationPdf_teamSubmitter_buildsKeyAndStoresValidPdf() throws IOException {
+    EvaluationPdfContext context = teamContext(21L, true, true);
 
     when(hashidService.encode(21L)).thenReturn("EVALHASH");
     when(storageService.store(
             eq("pdfs/EVALHASH/report.pdf"), any(), any(Long.class), eq("application/pdf")))
         .thenReturn("pdfs/EVALHASH/report.pdf");
 
-    String path = pdfGenerationService.generateEvaluationPdf(evaluation, List.of(score));
+    String path = pdfGenerationService.generateEvaluationPdf(context);
 
     assertEquals("pdfs/EVALHASH/report.pdf", path);
-    verify(storageService)
-        .store(eq("pdfs/EVALHASH/report.pdf"), any(), any(Long.class), eq("application/pdf"));
+    assertStoredPdfStartsWithPercentPdf();
+  }
+
+  @Test
+  void generateEvaluationPdf_individualSubmitter_buildsKeyAndStoresValidPdf() throws IOException {
+    EvaluationPdfContext context = individualContext(31L, false, false);
+
+    when(hashidService.encode(31L)).thenReturn("E31");
+    when(storageService.store(
+            eq("pdfs/E31/report.pdf"), any(), any(Long.class), eq("application/pdf")))
+        .thenReturn("pdfs/E31/report.pdf");
+
+    String path = pdfGenerationService.generateEvaluationPdf(context);
+
+    assertEquals("pdfs/E31/report.pdf", path);
+    assertStoredPdfStartsWithPercentPdf();
   }
 
   @Test
   void generateEvaluationPdf_handlesMissingOptionalFields() {
-    Evaluation evaluation =
-        buildEvaluation(22L, "Databases", "Team Beta", "Grace", "Hopper", false, false);
+    EvaluationPdfContext context = teamContext(22L, false, false);
     when(hashidService.encode(22L)).thenReturn("E22");
     when(storageService.store(
             eq("pdfs/E22/report.pdf"), any(), any(Long.class), eq("application/pdf")))
         .thenReturn("pdfs/E22/report.pdf");
 
-    String path = pdfGenerationService.generateEvaluationPdf(evaluation, List.of());
+    String path = pdfGenerationService.generateEvaluationPdf(context);
 
     assertEquals("pdfs/E22/report.pdf", path);
   }
 
   @Test
   void generateEvaluationPdf_handlesNullScoreAndCommentCells() {
-    Evaluation evaluation =
-        buildEvaluation(23L, "Networks", "Team Gamma", "Linus", "Torvalds", true, false);
-    RubricScore score =
-        RubricScore.builder()
-            .criterion(RubricCriterion.builder().name("Design").maxScore(5).build())
-            .score(null)
-            .comment(null)
-            .build();
+    EvaluationPdfContext context =
+        new EvaluationPdfContext(
+            23L,
+            "Networks",
+            1,
+            "Team: Team Gamma",
+            "Linus Torvalds",
+            null,
+            List.of(new EvaluationPdfRubricRow("Design", null, 5, null)),
+            BigDecimal.ZERO,
+            null);
 
     when(hashidService.encode(23L)).thenReturn("E23");
     when(storageService.store(
             eq("pdfs/E23/report.pdf"), any(), any(Long.class), eq("application/pdf")))
         .thenReturn("pdfs/E23/report.pdf");
 
-    String path = pdfGenerationService.generateEvaluationPdf(evaluation, List.of(score));
+    String path = pdfGenerationService.generateEvaluationPdf(context);
 
     assertEquals("pdfs/E23/report.pdf", path);
   }
 
-  private Evaluation buildEvaluation(
-      Long id,
-      String assignmentTitle,
-      String teamName,
-      String firstName,
-      String lastName,
-      boolean withPublishedAt,
-      boolean withOverallComment) {
-    Submission submission =
-        Submission.builder()
-            .assignment(Assignment.builder().title(assignmentTitle).build())
-            .team(Team.builder().name(teamName).build())
-            .versionNumber(2)
-            .build();
+  @Test
+  void render_individualContext_producesNonEmptyPdfDocument() {
+    byte[] pdfBytes = pdfGenerationService.render(individualContext(40L, true, true));
 
-    User instructor = User.builder().firstName(firstName).lastName(lastName).build();
+    assertTrue(pdfBytes.length > 200);
+    assertArrayEquals("%PDF-".getBytes(StandardCharsets.US_ASCII), java.util.Arrays.copyOf(pdfBytes, 5));
+  }
 
-    return Evaluation.builder()
-        .id(id)
-        .submission(submission)
-        .instructor(instructor)
-        .publishedAt(withPublishedAt ? Instant.now() : null)
-        .overallComment(withOverallComment ? "Overall good work" : null)
-        .totalScore(BigDecimal.valueOf(8.5))
-        .build();
+  @Test
+  void render_teamContext_producesNonEmptyPdfDocument() {
+    byte[] pdfBytes = pdfGenerationService.render(teamContext(41L, true, true));
+
+    assertTrue(pdfBytes.length > 200);
+    assertArrayEquals("%PDF-".getBytes(StandardCharsets.US_ASCII), java.util.Arrays.copyOf(pdfBytes, 5));
+  }
+
+  private void assertStoredPdfStartsWithPercentPdf() throws IOException {
+    ArgumentCaptor<InputStream> streamCaptor = ArgumentCaptor.forClass(InputStream.class);
+    verify(storageService)
+        .store(any(String.class), streamCaptor.capture(), any(Long.class), eq("application/pdf"));
+    try (InputStream stored = streamCaptor.getValue()) {
+      byte[] header = stored.readNBytes(5);
+      assertArrayEquals("%PDF-".getBytes(StandardCharsets.US_ASCII), header);
+    }
+  }
+
+  private static EvaluationPdfContext teamContext(
+      Long evaluationId, boolean withPublishedAt, boolean withOverallComment) {
+    return new EvaluationPdfContext(
+        evaluationId,
+        "Software Design",
+        2,
+        "Team: Team Alpha",
+        "Ada Lovelace",
+        withPublishedAt ? Instant.now() : null,
+        List.of(
+            new EvaluationPdfRubricRow(
+                "Correctness", BigDecimal.valueOf(8), 10, "Good")),
+        BigDecimal.valueOf(8.5),
+        withOverallComment ? "Overall good work" : null);
+  }
+
+  private static EvaluationPdfContext individualContext(
+      Long evaluationId, boolean withPublishedAt, boolean withOverallComment) {
+    return new EvaluationPdfContext(
+        evaluationId,
+        "Algorithms",
+        1,
+        "Student: Ada Lovelace (ada@example.com)",
+        "Grace Hopper",
+        withPublishedAt ? Instant.now() : null,
+        List.of(),
+        BigDecimal.valueOf(9),
+        withOverallComment ? "Well done" : null);
   }
 }

@@ -18,7 +18,9 @@ import com.reviewflow.auth.dto.response.StepUpResponse;
 import com.reviewflow.auth.service.AuthCookieIssuer;
 import com.reviewflow.auth.service.SessionPolicyResolver;
 import com.reviewflow.auth.service.StepUpService;
-import com.reviewflow.infrastructure.security.RateLimiterService;
+import com.reviewflow.infrastructure.ratelimit.RateLimitService;
+import com.reviewflow.infrastructure.ratelimit.RateLimitTestFixtures;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.AUTH_STEP_UP;
 import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
 import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.domain.UserRole;
@@ -33,7 +35,7 @@ class StepUpControllerTest {
   @Mock private StepUpService stepUpService;
   @Mock private AuthCookieIssuer authCookieIssuer;
   @Mock private SessionPolicyResolver sessionPolicyResolver;
-  @Mock private RateLimiterService rateLimiterService;
+  @Mock private RateLimitService rateLimitService;
   @Mock private HttpServletRequest request;
   @Mock private HttpServletResponse response;
 
@@ -54,7 +56,8 @@ class StepUpControllerTest {
     ReviewFlowUserDetails principal = new ReviewFlowUserDetails(user);
     StepUpRequest body = new StepUpRequest("secret");
 
-    when(rateLimiterService.isStepUpRateLimited(42L)).thenReturn(false);
+    when(rateLimitService.probe("42", AUTH_STEP_UP, UserRole.ADMIN))
+        .thenReturn(RateLimitTestFixtures.allowed(AUTH_STEP_UP));
     when(stepUpService.completeStepUp(anyLong(), anyString(), anyString(), anyString()))
         .thenReturn("new-access-token");
     when(sessionPolicyResolver.resolveFor(UserRole.ADMIN))
@@ -74,6 +77,6 @@ class StepUpControllerTest {
     assertThat(payload.getData().getStepUpValidUntil()).isBetween(before + 300, after + 300);
 
     verify(authCookieIssuer).writeAccess(response, "new-access-token", 900);
-    verify(rateLimiterService).clearStepUpAttempts(42L);
+    verify(rateLimitService).reset("42", AUTH_STEP_UP);
   }
 }

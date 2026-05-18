@@ -12,6 +12,10 @@ public class ClassRosterDto {
   String courseCode;
   ClassStatsDto classStats;
   List<StudentStandingDto> students;
+  Integer page;
+  Integer size;
+  Integer totalElements;
+  Integer totalPages;
 
   @Value
   @Builder

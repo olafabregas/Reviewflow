@@ -1,0 +1,69 @@
+package com.reviewflow.evaluation.listener;
+
+import com.reviewflow.evaluation.event.EvaluationPublishedEvent;
+import com.reviewflow.evaluation.event.PdfReadyEvent;
+import com.reviewflow.evaluation.repository.EvaluationRepository;
+import com.reviewflow.evaluation.dto.EvaluationPdfContext;
+import com.reviewflow.evaluation.service.EvaluationService;
+import com.reviewflow.evaluation.service.PdfGenerationService;
+import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
+import com.reviewflow.shared.domain.Evaluation;
+import com.reviewflow.shared.domain.RubricScore;
+import com.reviewflow.shared.domain.SubmissionType;
+import com.reviewflow.grading.repository.RubricScoreRepository;
+import com.reviewflow.shared.util.HashidService;
+import java.util.ArrayList;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class PdfGenerationListener {
+
+  private final EvaluationRepository evaluationRepository;
+  private final RubricScoreRepository rubricScoreRepository;
+  private final PdfGenerationService pdfGenerationService;
+  private final HashidService hashidService;
+  private final ApplicationEventPublisher eventPublisher;
+  private final ReviewFlowMetrics metrics;
+
+  @Async("pdfExecutor")
+  @EventListener
+  public void handleEvaluationPublished(EvaluationPublishedEvent event) {
+    String hashedEvalId = hashidService.encode(event.evaluationId());
+    try {
+      Evaluation evaluation =
+          evaluationRepository.findByIdWithPdfRelations(event.evaluationId()).orElse(null);
+      if (evaluation == null) {
+        return;
+      }
+      List<RubricScore> scores =
+          rubricScoreRepository.findByEvaluationIdWithCriterion(event.evaluationId());
+      EvaluationPdfContext context = EvaluationService.toPdfContext(evaluation, scores);
+      String pdfPath = pdfGenerationService.generateEvaluationPdf(context);
+      evaluation.setPdfPath(pdfPath);
+      evaluationRepository.save(evaluation);
+
+      List<Long> recipients = new ArrayList<>(event.recipientUserIds());
+      if (event.submissionType() == SubmissionType.INDIVIDUAL && event.studentId() != null) {
+        recipients = List.of(event.studentId());
+      }
+      eventPublisher.publishEvent(
+          new PdfReadyEvent(
+              event.evaluationId(),
+              event.assignmentId(),
+              recipients,
+              event.assignmentTitle()));
+      log.info("PDF generated for evaluation {}", hashedEvalId);
+    } catch (Exception e) {
+      log.error("PDF generation failed for evaluation {}: {}", hashedEvalId, e.getMessage());
+      metrics.recordPdfGenerationFailed();
+    }
+  }
+}

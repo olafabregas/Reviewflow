@@ -29,6 +29,15 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
   List<Conversation> findDistinctByCourseIdAndParticipantUserId(
       @Param("courseId") Long courseId, @Param("userId") Long userId);
 
+  @Query(
+      "SELECT DISTINCT c FROM Conversation c "
+          + "JOIN FETCH c.course "
+          + "LEFT JOIN FETCH c.team "
+          + "JOIN ConversationParticipant p ON p.conversationId = c.id "
+          + "WHERE c.course.id = :courseId AND p.userId = :userId")
+  List<Conversation> findDistinctByCourseIdAndParticipantUserIdWithDetails(
+      @Param("courseId") Long courseId, @Param("userId") Long userId);
+
   List<Conversation> findByCourse_Id(Long courseId);
 
   @Query(

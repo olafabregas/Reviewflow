@@ -5,7 +5,11 @@ import com.reviewflow.auth.AuthTimingConstants;
 import com.reviewflow.auth.repository.RefreshTokenRepository;
 import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
 import com.reviewflow.infrastructure.security.JwtService;
-import com.reviewflow.infrastructure.security.RateLimiterService;
+import com.reviewflow.infrastructure.ratelimit.RateLimitResult;
+import com.reviewflow.infrastructure.ratelimit.RateLimitService;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.AUTH_LOGIN;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.AUTH_REFRESH_IP;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.AUTH_REFRESH_USER;
 import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
 import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.exception.InactiveUserException;
@@ -34,7 +38,7 @@ public class AuthService {
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
   private final AuditService auditService;
-  private final RateLimiterService rateLimiterService;
+  private final RateLimitService rateLimitService;
   private final ReviewFlowMetrics metrics;
   private final HashidService hashidService;
   private final PasswordPolicyService passwordPolicyService;
@@ -48,17 +52,17 @@ public class AuthService {
     String normalizedEmail = email == null ? null : email.trim().toLowerCase(Locale.ROOT);
     passwordPolicyService.validateLoginInputBounds(password);
 
-    if (rateLimiterService.isLoginRateLimited(ipAddress)) {
+    RateLimitResult loginProbe = rateLimitService.probe(ipAddress, AUTH_LOGIN, null);
+    if (!loginProbe.allowed()) {
       metrics.recordLoginRateLimited();
-      long retryAfter = rateLimiterService.getLoginRetryAfterSeconds(ipAddress);
       throw new TooManyRequestsException(
-          "Too many login attempts. Please try again later.", retryAfter);
+          "Too many login attempts. Please try again later.", loginProbe.retryAfterSeconds());
     }
 
     Optional<User> userOpt = userRepository.findByEmail(normalizedEmail);
     if (userOpt.isEmpty()) {
       passwordEncoder.matches(password, AuthTimingConstants.DUMMY_PASSWORD_HASH);
-      rateLimiterService.recordFailedLogin(ipAddress);
+      rateLimitService.consumeOnFailure(ipAddress, AUTH_LOGIN, null);
       auditService.log(
           null,
           "USER_LOGIN_FAILED",
@@ -73,12 +77,12 @@ public class AuthService {
 
     if (loginLockoutService.isLocked(user)) {
       loginLockoutService.auditLoginDuringLockout(user, ipAddress);
-      rateLimiterService.recordFailedLogin(ipAddress);
+      rateLimitService.consumeOnFailure(ipAddress, AUTH_LOGIN, null);
       throw new BadCredentialsException("Invalid credentials");
     }
 
     if (!Boolean.TRUE.equals(user.getIsActive())) {
-      rateLimiterService.recordFailedLogin(ipAddress);
+      rateLimitService.consumeOnFailure(ipAddress, AUTH_LOGIN, null);
       auditService.log(
           user.getId(),
           "USER_LOGIN_FAILED",
@@ -90,7 +94,7 @@ public class AuthService {
     }
 
     if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-      rateLimiterService.recordFailedLogin(ipAddress);
+      rateLimitService.consumeOnFailure(ipAddress, AUTH_LOGIN, null);
       metrics.recordFailedLogin();
       loginLockoutService.recordLoginFailure(user, ipAddress);
       auditService.log(
@@ -98,7 +102,7 @@ public class AuthService {
       throw new BadCredentialsException("Invalid credentials");
     }
 
-    rateLimiterService.clearFailedLogins(ipAddress);
+    rateLimitService.reset(ipAddress, AUTH_LOGIN);
     metrics.recordUserLogin();
     loginLockoutService.clearFailures(user);
 
@@ -159,10 +163,10 @@ public class AuthService {
       throw new BadCredentialsException("Invalid refresh token");
     }
 
-    if (rateLimiterService.isRefreshIpRateLimited(clientIp)) {
-      long retry = rateLimiterService.getRefreshIpRetryAfterSeconds(clientIp);
+    RateLimitResult refreshIpProbe = rateLimitService.probe(clientIp, AUTH_REFRESH_IP, null);
+    if (!refreshIpProbe.allowed()) {
       throw new TooManyRequestsException(
-          "Too many refresh attempts. Please try again later.", retry);
+          "Too many refresh attempts. Please try again later.", refreshIpProbe.retryAfterSeconds());
     }
 
     String hash = RefreshTokenService.hashRefreshToken(refreshTokenValue);
@@ -172,14 +176,17 @@ public class AuthService {
             .map(t -> t.getUser())
             .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
 
-    if (rateLimiterService.isRefreshUserRateLimited(user.getId())) {
-      long retry = rateLimiterService.getRefreshUserRetryAfterSeconds(user.getId());
+    String userIdKey = String.valueOf(user.getId());
+    RateLimitResult refreshUserProbe =
+        rateLimitService.probe(userIdKey, AUTH_REFRESH_USER, user.getRole());
+    if (!refreshUserProbe.allowed()) {
       throw new TooManyRequestsException(
-          "Too many refresh attempts. Please try again later.", retry);
+          "Too many refresh attempts. Please try again later.",
+          refreshUserProbe.retryAfterSeconds());
     }
 
-    rateLimiterService.recordRefreshAttemptIp(clientIp);
-    rateLimiterService.recordRefreshAttemptUser(user.getId());
+    rateLimitService.tryConsume(clientIp, AUTH_REFRESH_IP, null);
+    rateLimitService.tryConsume(userIdKey, AUTH_REFRESH_USER, user.getRole());
 
     SessionPolicyResolver.SessionPolicy policy = sessionPolicyResolver.resolveFor(user.getRole());
     String newRefreshPlain = jwtService.generateRefreshToken(policy.refreshTtlMs());

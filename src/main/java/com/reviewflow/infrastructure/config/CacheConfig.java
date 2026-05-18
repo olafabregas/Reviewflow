@@ -24,7 +24,6 @@ public class CacheConfig {
   public static final String CACHE_COURSE_MODULES = CacheNames.CACHE_COURSE_MODULES;
   public static final String CACHE_GRADE_OVERVIEW = CacheNames.CACHE_GRADE_OVERVIEW;
   public static final String CACHE_CLASS_STATISTICS = CacheNames.CACHE_CLASS_STATISTICS;
-  public static final String CACHE_CSV_IMPORTS = CacheNames.CACHE_CSV_IMPORTS;
 
   @Value("${cache.grade-overview.ttl-seconds:300}")
   private int gradeOverviewTtlSeconds;
@@ -37,12 +36,6 @@ public class CacheConfig {
 
   @Value("${cache.class-statistics.max-size:300}")
   private int classStatisticsMaxSize;
-
-  @Value("${cache.csv-imports.ttl-seconds:600}")
-  private int csvImportsTtlSeconds;
-
-  @Value("${cache.csv-imports.max-size:50}")
-  private int csvImportsMaxSize;
 
   @Value("${cache.discussion-participation.ttl-seconds:1800}")
   private int discussionParticipationTtlSeconds;
@@ -69,7 +62,6 @@ public class CacheConfig {
             buildCache(CACHE_COURSE_MODULES, 300, 200),
             buildCache(CACHE_GRADE_OVERVIEW, gradeOverviewTtlSeconds, gradeOverviewMaxSize),
             buildCache(CACHE_CLASS_STATISTICS, classStatisticsTtlSeconds, classStatisticsMaxSize),
-            buildCache(CACHE_CSV_IMPORTS, csvImportsTtlSeconds, csvImportsMaxSize),
             buildCache(CacheNames.CACHE_DISCUSSION_PARTICIPATION, discussionParticipationTtlSeconds, discussionParticipationMaxSize),
             buildCache(CacheNames.CACHE_COURSE_DISCUSSIONS, courseDiscussionsTtlSeconds, courseDiscussionsMaxSize)));
     return cacheManager;
