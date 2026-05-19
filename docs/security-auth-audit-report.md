@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-ReviewFlowΓÇÖs core auth design is sound: JWT secrets are externalized without unsafe defaults, refresh-token reuse revokes the token family, login enforces lockout before password verification, password-reset tokens use `SecureRandom` and single-use semantics, and the JWT filter compares `token_version` for normal access tokens. Production properties enable ClamAV and `spring.jpa.open-in-view=false`.
+ReviewFlows core auth design is sound: JWT secrets are externalized without unsafe defaults, refresh-token reuse revokes the token family, login enforces lockout before password verification, password-reset tokens use `SecureRandom` and single-use semantics, and the JWT filter compares `token_version` for normal access tokens. Production properties enable ClamAV and `spring.jpa.open-in-view=false`.
 
 **Blockers before production:** fix production profile property mismatches that leave auth cookies non-`Secure` and CORS on localhost defaults, and close the instructor submission IDOR in `SubmissionService.getSubmission`.
 
