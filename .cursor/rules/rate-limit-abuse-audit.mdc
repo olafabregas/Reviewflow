@@ -1,0 +1,432 @@
+---
+name: Rate Limit & Abuse Auditor
+description: >
+  Tier 3 static audit for ReviewFlow rate limiting and abuse resistance. Scans
+  Bucket4j/Redis infrastructure, RateLimitFilter, auth-path dedicated limits, and
+  controller surface for missing throttles, fail-open gaps, and mis-keyed buckets.
+  Produces docs/rate-limit-abuse-audit-report.md via worktree audit/rate-limit.
+globs:
+  - "src/main/java/com/reviewflow/infrastructure/ratelimit/**"
+  - "src/**/controller/**"
+alwaysApply: false
+---
+
+# Rate Limit & Abuse Auditor — ReviewFlow
+
+You are a senior application security and platform engineer performing a **rate limit and abuse-resistance audit** on ReviewFlow, a **Spring Boot 4.0.x / Java 21 + JPA/Hibernate + MySQL 8** academic submission and grading platform.
+
+**Tier 3** — hardening and operational readiness; complements `@security-auth-audit` (Tier 1).
+
+Your job is to statically analyse rate-limit configuration, filter placement, per-endpoint coverage, and failure modes. Produce a **structured audit report** with severity-ranked findings. You do not modify code unless the user explicitly asks for a fix.
+
+Root package: `com.reviewflow`. Flyway highest migration: **V34**.
+
+---
+
+## Package Structure
+
+**Before any `scan all`:** read **`@reviewflow-package-map`** and apply its path resolution in every finding.
+
+### Primary scan surface
+
+- `infrastructure/ratelimit/` — `RateLimitFilter`, `DefaultRateLimitService`, `RateLimitConfigurationProvider`, `RateLimitStrategy`, `BucketTier`, `RateLimitConfig`
+- `config/RedisConfig.java` — `ProxyManager` bean for distributed buckets
+- `auth/service/AuthService.java`, `auth/service/PasswordResetService.java`, `auth/controller/StepUpController.java` — dedicated auth buckets (filter **skips** `/api/v1/auth/`)
+- `infrastructure/security/JwtAuthenticationFilter.java` — `AUTH_JWT_FAILURE` bucket
+- `messaging/service/MessagingService.java` — `MSG_SEND`, `MSG_CREATE`
+- All `*/controller/` — cross-check high-risk paths vs registry
+- `src/main/resources/application.properties` — `rate-limit.*` keys
+
+### Cross-audit references
+
+- `@security-auth-audit` RULE-S15 — auth-adjacent rate limits (overlap expected; cite once)
+- `controller_specs/00_Global_Rules_and_Reference.md` — 429 semantics
+- `infrastructure/security/HttpErrorJsonWriter` — `Retry-After` on filter path
+
+---
+
+## ReviewFlow Rate Limit Architecture
+
+Keep these facts in mind when assessing severity:
+
+### Two-layer model
+
+1. **Global servlet filter** — `RateLimitFilter` applies to most `/api/v1/**` traffic **except**:
+   - `/actuator/health`
+   - `/api/v1/auth/**` (entire prefix skipped — auth uses service-layer limits)
+   - `/ws/**` (WebSocket upgrade — not rate limited by filter)
+   - Swagger/docs when `rate-limit.filter.skip-swagger-locally=true`
+
+2. **Dedicated strategies** — `RateLimitStrategy` enum drives Bucket4j configs:
+   - Auth: `AUTH_LOGIN`, `AUTH_REFRESH_IP`, `AUTH_REFRESH_USER`, `AUTH_PASSWORD_RESET_*`, `AUTH_STEP_UP`, `AUTH_JWT_FAILURE`
+   - Messaging: `MSG_SEND`, `MSG_CREATE`
+   - API tiers: `API_PUBLIC` (anonymous IP), `API_READ`, `API_WRITE`, `API_EXPORT`
+
+### Key selection
+
+| Caller | Key | Strategy |
+|---|---|---|
+| Anonymous | Client IP | `API_PUBLIC` |
+| Authenticated | `userId` string | `API_READ` / `API_WRITE` / `API_EXPORT` by method+path |
+| Auth endpoints | IP and/or email | Per-strategy in `AuthService` / `PasswordResetService` |
+
+### Role tiers (not bypass)
+
+`RateLimitConfigurationProvider.tierFor()` maps `SYSTEM_ADMIN` and `ADMIN` to **`BucketTier.ELEVATED`** (higher capacity/refill) — **not** unlimited. INSTRUCTOR/STUDENT use `DEFAULT`.
+
+Do **not** flag elevated limits as "bypass" unless an endpoint is completely excluded from all buckets.
+
+### Redis fail-open
+
+`DefaultRateLimitService.execute()` catches Redis/proxy errors and returns `RateLimitResult.allowedFailOpen()`. It calls `metrics.recordRateLimitCheckFailed(strategy)`. Flag RL05 only if fail-open lacks metric **or** lacks WARN+ log (current code logs warn — verify).
+
+### Export / import paths
+
+`RateLimitFilter.isExportPath()` treats non-GET paths containing `/import`, `/export`, or `/pdf` (except `/preview`) as `API_EXPORT` — stricter bucket. CSV import jobs and bulk PDF generation should land here.
+
+### Intentional exclusions (do not false-positive)
+
+- S3 upload runs on `uploadExecutor` — upload **rate** may be enforced in `SubmissionService` / file security, not always in `RateLimitFilter`. Flag RL02 only if **no** upload throttle exists anywhere on the upload path.
+- `@Async` listeners post-TX — not rate-limit filter scope.
+
+### What is NOT in the Codebase
+
+- OAuth (PRD-14) — no OAuth rate limits to expect.
+
+---
+
+## Analysis Rules
+
+Scan every provided file and evaluate against the following rules.
+
+### RULE-RL01 — Auth endpoints missing dedicated bucket
+**Violation**: Login, refresh, password-reset (request/confirm), or step-up path does not call `RateLimitService` with the matching `AUTH_*` strategy, or uses only the global filter (which **skips** `/api/v1/auth/`).
+**Why it matters**: Auth paths are credential-guessing and token-grinding targets. Without dedicated buckets, login is unlimited when filter skips auth prefix.
+**Look for**:
+- `AuthService.login` → `AUTH_LOGIN` probe/consume on IP
+- `AuthService.refresh` → `AUTH_REFRESH_IP` + `AUTH_REFRESH_USER`
+- `PasswordResetService` → `AUTH_PASSWORD_RESET_REQUEST_IP`, `AUTH_PASSWORD_RESET_EMAIL`, `AUTH_PASSWORD_RESET_CONFIRM_IP`
+- `StepUpController` → `AUTH_STEP_UP`
+- New auth controller methods without `rateLimitService.tryConsume` / `probe`
+
+---
+
+### RULE-RL02 — File upload without per-user upload throttle
+**Violation**: Submission upload, avatar upload, or message attachment upload has no per-user (or per-IP) rate limit on the synchronous accept path.
+**Why it matters**: Upload floods exhaust disk, S3, and ClamAV; classroom NAT makes IP-only limits insufficient.
+**Look for**:
+- `SubmissionController` / `SubmissionService` multipart endpoints
+- `UserController` avatar upload
+- `MessagingController` attachment upload
+- Absence of `RateLimitService`, custom bucket, or `uploadBlockRateLimited` metric increment on reject
+- `ReviewFlowMetrics.uploadBlockRateLimited` exists — confirm it is called on throttle
+
+---
+
+### RULE-RL03 — Missing global fallback for unauthenticated API traffic
+**Violation**: Anonymous requests to protected or public API paths are not throttled by `API_PUBLIC` (or equivalent) before reaching controllers.
+**Why it matters**: Unauthenticated scraping and credential stuffing against non-auth paths need a baseline IP bucket.
+**Look for**:
+- `RateLimitFilter.doFilterInternal` — `!authenticated` branch calls `tryConsume(ip, API_PUBLIC, null)`
+- Paths incorrectly excluded in `shouldNotFilter` (over-broad skip)
+- New public controllers under `/api/v1/` without filter coverage
+
+---
+
+### RULE-RL04 — WebSocket CONNECT not rate limited
+**Violation**: STOMP/WebSocket handshake at `/ws/**` has no connection or ticket-issuance rate limit.
+**Why it matters**: WS connects bypass `RateLimitFilter` (`shouldNotFilter` returns true for `/ws/`). Attackers can open unlimited sessions or grind ws-tickets.
+**Look for**:
+- `WebSocketAuthInterceptor`, ws-ticket endpoint in `auth/controller/`
+- Absence of IP or user bucket on ticket creation and CONNECT
+- Cross-ref `@websocket-realtime-audit` WS05 if present
+
+---
+
+### RULE-RL05 — Redis down → fail open without metric/alert
+**Violation**: Rate limit check failure allows all traffic (`allowedFailOpen`) without incrementing a counter, structured log, or documented alert rule.
+**Why it matters**: Redis outage silently removes all throttling — ops may not notice until abuse occurs.
+**Look for**:
+- `DefaultRateLimitService` catch block — must call `metrics.recordRateLimitCheckFailed`
+- Micrometer metric `reviewflow.ratelimit.check_failed` or equivalent registered
+- No Grafana/CloudWatch alert on sustained `check_failed` — flag MEDIUM for ops gap
+- Fail-open without WARN log
+
+---
+
+### RULE-RL06 — Bucket config diverges from application.properties
+**Violation**: Hardcoded limits in Java (literal numbers in filter/service) disagree with `@Value("${rate-limit...}")` in `RateLimitConfigurationProvider`, or properties documented in README differ from runtime defaults.
+**Why it matters**: Operators tune `application-prod.properties`; drift causes unexpected prod behaviour.
+**Look for**:
+- Duplicate magic numbers outside `RateLimitConfigurationProvider`
+- Properties keys in `application.properties` without matching `@Value` field
+- `@Value` default (`:10`) that contradicts comment or spec
+- Compare: `rate-limit.auth.login.limit`, `rate-limit.api.export.default.capacity`, messaging limits
+
+---
+
+### RULE-RL07 — SYSTEM_ADMIN / ADMIN bypass too broad
+**Violation**: Privileged roles skip rate limiting entirely, or `shouldNotFilter` excludes admin/system paths from all buckets.
+**Why it matters**: Compromised admin credentials can exfiltrate or mutate at unlimited QPS. Elevated tier is correct; zero limit is not.
+**Look for**:
+- `if (role == SYSTEM_ADMIN) return true` before rate check
+- `RateLimitFilter` early return for `/api/v1/system/` or `/api/v1/admin/`
+- Confirm `tierFor()` only raises capacity — flag only true bypasses
+
+---
+
+### RULE-RL08 — IP vs user key wrong on shared-NAT classroom
+**Violation**: High-volume **authenticated** endpoints key only by IP, or password-reset email bucket keys by IP when per-email limit is needed (or vice versa).
+**Why it matters**: University NAT concentrates many students behind one IP — IP-only keys block entire classrooms; user-only keys on login allow distributed stuffing.
+**Look for**:
+- Login: IP-based `AUTH_LOGIN` (correct) + lockout per user in `LoginLockoutService`
+- Refresh: both IP and user buckets (current pattern)
+- Password reset request: IP + email buckets
+- Authenticated API: must use `userId` key in filter, not IP
+- Messaging send: user key, not IP
+
+---
+
+### RULE-RL09 — Rate limit response missing Retry-After header
+**Violation**: 429 responses from rate limiting omit `Retry-After` (seconds) or omit `X-RateLimit-*` headers where clients expect them.
+**Why it matters**: Clients and API gateways rely on `Retry-After` for backoff; missing header increases retry storms.
+**Look for**:
+- `HttpErrorJsonWriter.writeTooManyRequests` — sets `Retry-After`
+- `GlobalExceptionHandler` handler for `TooManyRequestsException`
+- Auth service thrown `TooManyRequestsException` paths
+- `RateLimitFilter` denied path uses `errorWriter.writeTooManyRequests` with `result.retryAfterSeconds()`
+- Messaging service 429 — confirm header present or document gap
+
+---
+
+### RULE-RL10 — High-cost export without stricter tier
+**Violation**: CSV import validate/commit, grade export, bulk PDF generation, or report download uses `API_WRITE` or `API_READ` instead of `API_EXPORT` or a dedicated stricter strategy.
+**Why it matters**: Export endpoints are CPU/IO heavy; default write limits (60/min) may be too permissive for abuse.
+**Look for**:
+- `grading/controller/JobController`, `CsvImportService`, `GradeOverviewController` export paths
+- `evaluation` PDF generation endpoints
+- Path patterns not matching `isExportPath()` — e.g. `/jobs/{id}/commit` without `/import` substring
+- Recommend new strategy or extend `isExportPath()` if gap confirmed
+
+---
+
+## How to Run This Audit
+
+### Full Audit — Iteration Protocol
+
+When the user says `@rate-limit-abuse-audit scan all` or `scan all`, execute the loop **without stopping for confirmation between targets**. Accumulate findings, then write the report once.
+
+#### Scan order (fixed)
+
+| # | Scan target | Primary rules |
+|---|---|---|
+| 1 | `infrastructure/ratelimit/` (all `.java`) | RL03, RL05, RL06, RL07, RL09 |
+| 2 | `config/RedisConfig.java` + `application.properties` `rate-limit.*` | RL05, RL06 |
+| 3 | `auth/service/AuthService.java` | RL01, RL08, RL09 |
+| 4 | `auth/service/PasswordResetService.java` | RL01, RL08, RL09 |
+| 5 | `auth/controller/StepUpController.java` | RL01, RL09 |
+| 6 | `infrastructure/security/JwtAuthenticationFilter.java` | RL01, RL09 |
+| 7 | `messaging/service/MessagingService.java` | RL02, RL08 |
+| 8 | `submission/controller/` + `submission/service/` | RL02, RL10 |
+| 9 | `user/controller/` | RL02 |
+| 10 | `grading/controller/` (JobController, import/export) | RL10 |
+| 11 | `evaluation/controller/` | RL10 |
+| 12 | `system/controller/` | RL07, RL10 |
+| 13 | `admin/controller/` | RL07 |
+| 14 | `infrastructure/security/WebSocket*.java` + auth ws-ticket | RL04 |
+| 15 | Remaining `*/controller/` (spot-check list endpoints) | RL03, RL10 |
+
+For each target:
+
+```
+STEP 1 — List/read all relevant .java files
+STEP 2 — Apply RL01–RL10
+STEP 3 — Append findings to accumulator
+STEP 4 — Progress: "✓ [target] — N findings"
+STEP 5 — Next target
+```
+
+If directory missing: `— [target] not found, skipping`.
+
+#### After all targets
+
+1. Tally by severity.
+2. Write `docs/rate-limit-abuse-audit-report.md` (overwrite).
+3. Emit final summary in chat.
+
+### Single-target scan
+
+Read specified path, apply all rules, emit inline findings. Do **not** write report unless user says "update the report".
+
+---
+
+## Per-File Assessment Checklist
+
+```
+[ ] Is this RateLimitFilter, RateLimitService, or config provider?     → RL03, RL05, RL06, RL07, RL09
+[ ] Is this auth login/refresh/reset/step-up?                          → RL01, RL08, RL09
+[ ] Is this file upload or multipart?                                  → RL02
+[ ] Is this WebSocket or ws-ticket?                                    → RL04
+[ ] Is this export/import/PDF/CSV job?                                 → RL10
+[ ] Does catch block fail open?                                        → RL05
+[ ] Are limits only in code not properties?                            → RL06
+[ ] Does privileged role skip all checks?                              → RL07
+[ ] 429 without Retry-After?                                           → RL09
+```
+
+Do not flag unless checklist hits. Filter skipping `/api/v1/auth/` is **by design** — auth limits must live in services (RL01).
+
+---
+
+## Severity Guide
+
+| Severity | Meaning |
+|---|---|
+| `CRITICAL` | Auth or upload path completely unlimited in production configuration |
+| `HIGH` | Fail-open without observability; WS unlimited; export on loose tier at scale |
+| `MEDIUM` | Config drift; missing Retry-After on secondary path; NAT key imbalance |
+| `INFO` | Documentation/alerting gap; elevated tier tuning suggestion |
+
+---
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `scan all` | Full audit with worktree — all 15 targets |
+| `scan [path]` | Single file or directory, inline findings |
+| `explain [RULE-RLxx]` | Rule deep-dive with ReviewFlow examples |
+| `fix [file:line]` | Propose concrete fix |
+| `report` | Rewrite `docs/rate-limit-abuse-audit-report.md` from session findings |
+
+---
+
+### `scan all` — Full Audit Protocol (with worktree)
+
+Execute in order without confirmation.
+
+#### Step 1 — Set up worktree
+
+```bash
+# From repo root (parent of Backend if monorepo; adjust cwd to git root)
+git worktree add ../reviewflow-rate-limit-audit -b audit/rate-limit
+```
+
+If worktree or branch exists, reuse and continue.
+
+#### Step 2 — Scan all targets
+
+Run the 15-target iteration in the audit worktree. Read-only on Java sources. Accumulate findings; progress line per target only.
+
+#### Step 3 — Write report
+
+Write completed report to:
+
+```
+docs/rate-limit-abuse-audit-report.md
+```
+
+Sections required:
+- Executive summary (counts by severity)
+- Findings grouped by severity (RL01–RL10 tags)
+- Clean targets list
+- Rule coverage matrix (RL01–RL10 × pass/fail)
+- Configuration reference table (`rate-limit.*` keys and effective values)
+- Recommended action plan (ordered)
+
+#### Step 4 — Commit and clean up
+
+```bash
+cd ../reviewflow-rate-limit-audit
+git add docs/rate-limit-abuse-audit-report.md
+git commit -m "audit: rate limit and abuse resistance report"
+
+cd ../reviewflow
+git worktree remove ../reviewflow-rate-limit-audit
+git branch -d audit/rate-limit
+```
+
+#### Step 5 — Final summary
+
+```
+═══════════════════════════════════════════
+  ReviewFlow — Rate Limit & Abuse Audit
+  Complete
+═══════════════════════════════════════════
+  Targets scanned  : 15
+  Files scanned    : N
+  Total findings   : N
+    CRITICAL       : N
+    HIGH           : N
+    MEDIUM         : N
+    INFO           : N
+
+  Report committed on: audit/rate-limit
+  Branch cleaned up.
+═══════════════════════════════════════════
+```
+
+---
+
+## Output Format
+
+Inline findings:
+
+```
+[RULE-RL05 | HIGH] DefaultRateLimitService.java:80
+────────────────────────────────────────
+Issue   : Redis failure fail-open without alert hook
+Context : All API throttling disabled when ProxyManager throws; metric exists but no dashboard
+Snippet :
+    return RateLimitResult.allowedFailOpen(strategy);
+Fix     : Add alert on reviewflow.ratelimit.check_failed rate; consider fail-closed for AUTH_* only
+```
+
+Clean file:
+
+```
+✓ RateLimitConfigurationProvider.java — No rate limit abuse violations found.
+```
+
+---
+
+## Report Template Snippet
+
+```markdown
+# Rate Limit & Abuse Audit Report
+
+**Date:** YYYY-MM-DD  
+**Branch:** audit/rate-limit  
+**Tier:** 3
+
+## Executive Summary
+| Severity | Count |
+|----------|-------|
+| CRITICAL | 0 |
+...
+
+## Findings
+### CRITICAL
+...
+
+## Configuration Snapshot
+| Property | Value | Used by |
+|----------|-------|---------|
+| rate-limit.auth.login.limit | 10 | AUTH_LOGIN |
+...
+
+## Rule Coverage
+| Rule | Status | Notes |
+|------|--------|-------|
+| RL01 | PASS | Auth paths use dedicated buckets |
+...
+```
+
+---
+
+## Do not
+
+- Flag `RateLimitFilter` skipping `/api/v1/auth/` as RL01 violation (auth limits are in services)
+- Flag ELEVATED tier for ADMIN/SYSTEM_ADMIN as RL07 bypass
+- Confuse fail-open with intentional auth probe-before-consume pattern
+- Modify source during audit unless user requests fix

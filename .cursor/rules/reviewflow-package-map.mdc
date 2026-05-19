@@ -1,0 +1,100 @@
+---
+name: ReviewFlow Package Map
+description: >
+  Shared feature-first package layout for ReviewFlow audit agents and static
+  analysis. Referenced by all audit rules — do not duplicate this block elsewhere.
+globs:
+  - "src/**/*.java"
+alwaysApply: false
+---
+
+# ReviewFlow — Package Map (Shared)
+
+Use this map when resolving paths in audit findings. Root package: `com.reviewflow`. Flyway highest migration: **V34** (V30 intentionally skipped).
+
+The codebase uses a **feature-first layout** (refactor complete as of May 2026). **Do not reference old layer paths** (`controller/`, `service/`, `repository/` at the root level).
+
+```
+com.reviewflow/
+
+  ── Features (each owns controller/ service/ repository/ dto/ exception/ event/) ──
+  auth/               ← JWT, refresh tokens, families, session contexts, step-up, password reset, lockout
+  user/               ← profile, avatar, preferences
+  course/             ← CRUD, instructors, enrollment, roster
+  assignment/         ← groups + modules internal sub-concerns
+  team/               ← team formation, membership
+  submission/         ← file upload pipeline, status transitions, file security/ClamAV
+  evaluation/         ← rubric grading, PdfGenerationService lives here (not pdf/)
+  grading/            ← instructor scores, grade overview, CSV import/export, grade aggregate
+  notification/       ← notification persistence + NotificationEventListener
+  announcement/       ← announcements + notification type extension
+  messaging/          ← PRD-18: conversations, messages, attachments (V32)
+  discussion/         ← PRD-17: discussions, discussion_posts (V34)
+  extension/          ← extension_requests, deadline approval
+  admin/              ← AdminUserController, AdminAuditController, AdminStatsController
+  system/             ← system admin, metrics, cache management, SystemService
+
+  ── Top-level config ──────────────────────────────────────────────
+  config/             ← RedisConfig, MessagingRedisConfig (NOT under infrastructure/)
+
+  ── Infrastructure ────────────────────────────────────────────────
+  infrastructure/
+    config/           ← AsyncConfig, CacheConfig, OpenApiConfig, PasswordEncoderConfig,
+    |                   FileSecurityProperties, PasswordPolicyProperties, ApplicationConfig
+    security/         ← JwtService, JwtAuthenticationFilter, ReviewFlowUserDetails,
+    |                   UserDetailsServiceImpl, WebSocketAuthInterceptor,
+    |                   SecurityConfig, WebSocketConfig, ActuatorMachineClientSecurityConfig
+    storage/          ← StorageService (interface), S3FileStorageService,
+    |                   LocalFileStorageService, S3Service, S3KeyBuilder, AwsS3Config, ClamAV
+    email/            ← EmailService, EmailTemplateService, EmailConfig,
+    |                   EmailEventListener, email event classes
+    scheduling/       ← PasswordResetCleanupScheduler, DeadlineWarningScheduler,
+    |                   NotificationCleanupScheduler
+    monitoring/       ← ReviewFlowMetrics, SecurityMetrics
+    filter/           ← MdcFilter, ActuatorKeyAuthFilter
+    ratelimit/        ← RateLimitFilter, Bucket4j + Redis (PRD-20)
+    jobs/             ← AsyncJobConfig, AsyncJobService, SseEmitterRegistry (PRD-21)
+
+  ── Shared ────────────────────────────────────────────────────────
+  shared/
+    domain/           ← ALL JPA entities + enums
+    exception/        ← GlobalExceptionHandler, ApiResponse, domain exceptions
+    event/            ← CacheEvictedEvent, ForceLogoutEvent (cross-cutting only)
+    util/             ← HashidService, IpAddressExtractor, MimeTypeResolver, CacheNames
+```
+
+## Path resolution for findings
+
+| Kind | Path pattern |
+|---|---|
+| Feature service | `com/reviewflow/{feature}/service/ClassName.java` |
+| Feature controller | `com/reviewflow/{feature}/controller/ClassName.java` |
+| Feature repository | `com/reviewflow/{feature}/repository/ClassName.java` |
+| Entity | `com/reviewflow/shared/domain/ClassName.java` |
+| Infra config | `com/reviewflow/infrastructure/config/ClassName.java` |
+| Redis config | `com/reviewflow/config/ClassName.java` |
+| PdfGenerationService | `com/reviewflow/evaluation/service/PdfGenerationService.java` |
+
+**Deprecated paths (never cite in findings):**
+`com.reviewflow.controller`, `com.reviewflow.service`, `com.reviewflow.repository`,
+`com.reviewflow.model`, `com.reviewflow.exception` (root-level), `com.reviewflow.event` (root-level), `com.reviewflow.pdf`
+
+## Architecture laws (all audits)
+
+- **Law 2** — Features never import another feature's repository.
+- **Law 3** — Controllers never call repositories directly.
+- **Law 5** — All entities live in `shared/domain/`.
+
+## Cross-audit references
+
+| Doc | Use when |
+|---|---|
+| `controller_specs/00_Global_Rules_and_Reference.md` | API envelope, auth, pagination, error codes |
+| `orchestration/MASTER_PROJECT_SUMMARY.md` | Ship state, known issues, executor list |
+| `orchestration/REFACTOR_STRATEGY.md` | Package layout laws |
+| `src/main/resources/db/migration/` | Schema, indexes, FK columns |
+
+## Not implemented (do not flag phantom gaps)
+
+- **OAuth (PRD-14)** — not in codebase
+- **Content delivery (PRD-16)** — not in codebase

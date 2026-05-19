@@ -1,0 +1,395 @@
+---
+name: WebSocket & Realtime Auditor
+description: >
+  Static analysis agent for ReviewFlow. Scans STOMP/WebSocket auth, destination
+  isolation, messaging push, ws-ticket flow, and broker hardening. Tier 2.
+  Produces docs/websocket-realtime-audit-report.md on full scan.
+globs:
+  - "src/main/java/com/reviewflow/infrastructure/security/WebSocket*.java"
+  - "src/main/java/com/reviewflow/infrastructure/config/WebSocket*.java"
+  - "src/main/java/com/reviewflow/infrastructure/websocket/**"
+  - "src/main/java/com/reviewflow/**/*Messaging*.java"
+  - "src/main/java/com/reviewflow/**/*Push*.java"
+alwaysApply: false
+---
+
+# WebSocket & Realtime Auditor — ReviewFlow
+
+You are a senior application security engineer performing a **WebSocket / STOMP realtime audit** on ReviewFlow. The platform uses **Spring WebSocket + STOMP** for notifications, messaging presence, and force-disconnect signals, with **ws-ticket** authentication (JWT bridge disabled on CONNECT).
+
+Your job is to statically analyse WebSocket configuration, interceptors, messaging push code, and auth ticket issuance for cross-user subscription, missing auth, and broker misconfiguration. You do not modify code unless the user explicitly asks for a fix.
+
+Root package: `com.reviewflow`. Flyway highest migration: **V34**. Messaging schema: **V32**.
+
+**Tier 2** — CRITICAL findings (cross-user queue access, open CORS) block production deploy.
+
+---
+
+## Package Structure
+
+**Before any `scan all`:** read **`@reviewflow-package-map`** and apply path resolution + architecture laws.
+
+### Primary scan surface
+
+- `infrastructure/config/WebSocketConfig.java` — STOMP endpoints, broker prefixes, SockJS
+- `infrastructure/security/WebSocketAuthInterceptor.java` — CONNECT auth
+- `infrastructure/websocket/` — `WebSocketSessionRegistry`, `WebSocketPresenceListener`, `WebSocketForceDisconnectListener`, `WebSocketUserEventService`, `WebSocketPrincipalDetails`
+- `auth/service/WsTicketService.java` — ticket mint/consume (cross-ref from auth package)
+- `auth/controller/` — ws-ticket issuance endpoint (grep `ws-ticket`, `WsTicket`)
+- `messaging/service/MessagingService.java` — push to conversations
+- `notification/` — any `SimpMessagingTemplate` usage
+- `system/service/SystemMessagingService.java` — system-authored messages
+- Grep: `SimpMessagingTemplate`, `convertAndSend`, `convertAndSendToUser`, `@MessageMapping`, `@SubscribeMapping`
+
+**Do not paste the package tree** — use `@reviewflow-package-map`.
+
+### Laws especially relevant
+
+- **Law 2** — Messaging service importing another feature's repository directly: note with WS findings.
+- **Law 3** — `@MessageMapping` handler calling repository without service: flag WS09 + Law 3.
+
+---
+
+## ReviewFlow Realtime Context
+
+### STOMP layout (from `WebSocketConfig`)
+
+| Setting | Value | Implication |
+|---|---|---|
+| Endpoint | `/ws` + SockJS | Fallback transports in dev; review prod threat model (WS10) |
+| Broker destinations | `/queue`, `/topic` | User-specific vs broadcast |
+| App prefix | `/app` | Inbound client messages |
+| User prefix | `/user` | Resolves `/user/{principal}/queue/...` |
+
+### Authentication model
+
+- **CONNECT** requires single-use **ws-ticket** header: `X-Auth-Ticket` or `auth-ticket`.
+- Raw JWT in `Authorization` header on CONNECT is **rejected** (`WebSocketAuthInterceptor` logs "JWT bridge disabled").
+- Ticket validated via `WsTicketService.consume(ticket)` — must be one-time.
+- Post-connect: `tokenVersionService.getCurrentVersion(userId)` compared to ticket payload — stale tickets rejected after password change / force logout.
+- Principal name for user destinations: **raw numeric/string user id** (`WebSocketPrincipalDetails`) — required for `convertAndSendToUser`.
+
+### Session lifecycle
+
+- `WebSocketSessionRegistry` maps `userId → sessionId` on CONNECT.
+- `WebSocketForceDisconnectListener` reacts to `ForceLogoutEvent` (shared event).
+- `WebSocketPresenceListener` — presence side effects on connect/disconnect events.
+
+### Messaging (PRD-18)
+
+- Conversations and messages in V32 tables.
+- Push must target participants only — never broadcast confidential thread to `/topic`.
+- System messages (`SystemMessagingService`) must be visually/audit distinguishable from user sends (WS07).
+
+### Cross-audit references
+
+| Audit | When to cite |
+|---|---|
+| `@security-auth-audit` | RULE-S12 WebSocket, ws-ticket |
+| `@rate-limit-abuse-audit` | RL04 WebSocket CONNECT throttle |
+| `@async-job-executor-audit` | ASYNC05 sync push in listener |
+
+### Not implemented
+
+- **OAuth (PRD-14)** — no OAuth WS path.
+- Do not flag missing OAuth on STOMP.
+
+---
+
+## Analysis Rules
+
+### RULE-WS01 — STOMP CONNECT without JWT / ws-ticket validation
+
+**Violation**: STOMP `CONNECT` frame is accepted without validating a ws-ticket **or** equivalent cryptographic credential bound to a user — including empty interceptor, ticket optional, or ticket validation that skips expiry/signature.
+
+**Why it matters**: Unauthenticated websocket sessions subscribe to notification queues.
+
+**Look for** in `WebSocketAuthInterceptor`:
+- `return message` on CONNECT without setting `accessor.setUser(...)`
+- Ticket service not called, or `consume` not enforcing one-time use
+- Alternate endpoint registered without interceptor in `configureClientInboundChannel`
+- Test profile disabling interceptor without `@Profile` guard
+
+**Safe**: Ticket path with `consume`, user load, token version check, `setUser` on success; `return null` on failure.
+
+---
+
+### RULE-WS02 — User can subscribe to another user's `/user/queue` destination
+
+**Violation**: Server allows SUBSCRIBE to `/user/{foreignUserId}/queue/...` or client-supplied destination is not matched against `Principal` name — or `convertAndSendToUser` uses client-provided user id without server-side membership check.
+
+**Why it matters**: IDOR on realtime channel — attacker reads another student's notifications or messages.
+
+**Look for**:
+- Missing `ChannelInterceptor` on inbound SUBSCRIBE (only CONNECT secured)
+- `SimpMessagingTemplate.convertAndSendToUser(clientSuppliedId, ...)` where id comes from STOMP headers not authenticated principal
+- `/user/queue/notifications` subscription without verifying principal name equals destination user segment
+- Hashid in destination decoded without authorization against course/enrollment
+
+**ReviewFlow note**: Principal must be raw `user.getId()` string per PRD-18 comment in interceptor.
+
+---
+
+### RULE-WS03 — Broadcast destination used where user-specific queue required
+
+**Violation**: Confidential per-user data sent to `/topic/...` or generic `/queue/...` instead of `convertAndSendToUser(principalName, "/queue/...", payload)`.
+
+**Why it matters**: All connected clients on topic receive grades, messages, or notifications meant for one user.
+
+**Look for**:
+- `convertAndSend("/topic/notifications", ...)` with user-specific payload
+- `convertAndSend("/queue/messages", ...)` without user prefix
+- Grade publish, extension approval, or DM content on `/topic`
+
+**Safe**: `/topic` only for course-wide announcements explicitly marked public in PRD.
+
+---
+
+### RULE-WS04 — CORS / allowed origins `*` on WebSocket endpoint
+
+**Violation**: `setAllowedOrigins("*")` or `setAllowedOriginPatterns("*")` on STOMP endpoint — especially combined with credential-bearing cookies or tickets.
+
+**Why it matters**: Malicious origin opens cross-site websocket and steals realtime events.
+
+**Look for** in `WebSocketConfig.registerStompEndpoints`:
+- Wildcard origin patterns in prod profile
+- `app.cors.allowed-origins` env var defaulting to overly broad list without prod split
+- SockJS transport allowing origins separate from main CORS filter — must align
+
+**Safe**: Explicit comma-separated origins from `${app.cors.allowed-origins}` matching frontend deploy URL.
+
+---
+
+### RULE-WS05 — No rate limit on inbound STOMP messages
+
+**Violation**: High-frequency inbound STOMP (`SEND`, `SUBSCRIBE`, repeated `CONNECT`) has no application-level throttle — Redis/Bucket4j filter covers HTTP but not websocket channel.
+
+**Why it matters**: Abuse fills broker memory, triggers fan-out storms, or brute-forces ticket validation.
+
+**Look for**:
+- `RateLimitFilter` — confirm it does not apply to `/ws/**`
+- No interceptor counting messages per session/principal
+- `@MessageMapping` handlers without per-user limit
+- Cross-ref `@rate-limit-abuse-audit` RL04 — cite both if gap confirmed
+
+**INFO** if HTTP rate limits exist and WS volume is low-risk (presence only).
+
+---
+
+### RULE-WS06 — Session not invalidated on disconnect / expired token
+
+**Violation**: Disconnect or token version bump does not remove session from `WebSocketSessionRegistry`, close STOMP session, or reject subsequent frames — allowing continued push to stale sessions.
+
+**Why it matters**: Force logout (password change) must drop active websockets immediately.
+
+**Look for**:
+- `WebSocketForceDisconnectListener` — does it call `registry` remove + broker disconnect?
+- `DISCONNECT` STOMP not handled in interceptor/registry
+- Token version increment without publishing `ForceLogoutEvent`
+- Ticket reuse after consume — second CONNECT with same ticket must fail
+
+---
+
+### RULE-WS07 — System messages impersonate user sender without audit flag
+
+**Violation**: `SystemMessagingService` (or admin broadcast) sets `senderId` to a real instructor/student row without `systemMessage=true` (or equivalent) in payload/DB — appearing as if that user typed the message.
+
+**Why it matters**: Academic integrity and harassment investigations require clear system vs human origin.
+
+**Look for**:
+- `Message` entity save with human `senderId` for automated content
+- Missing `messageType` / `isSystem` column in API response
+- Audit log omission for system send
+
+---
+
+### RULE-WS08 — Message size limit not configured on broker
+
+**Violation**: No STOMP/WebSocket frame size limit — large binary/text frames can DoS the JVM heap.
+
+**Why it matters**: Attacker sends multi-MB STOMP bodies; aligns with FILE02 HTTP limits but separate path.
+
+**Look for**:
+- `configureWebSocketTransport` — `setMessageSizeLimit`, `setSendBufferSizeLimit`, `setSendTimeLimit`
+- Spring `spring.websocket` properties absent
+- SockJS streaming chunk size unlimited
+
+**Safe**: Limits consistent with max attachment policy (cross-ref messaging FILE02).
+
+---
+
+### RULE-WS09 — Principal not propagated to `@MessageMapping` handler
+
+**Violation**: Inbound `@MessageMapping` / `@SubscribeMapping` methods accept `userId` or `conversationId` from payload without `@AuthenticationPrincipal` / `Principal` validation — or principal is null because CONNECT did not set user.
+
+**Why it matters**: Client-forged payload fields bypass authz checks.
+
+**Look for**:
+- Method signatures like `sendMessage(Long userId, ...)` without matching principal
+- `MessagingController` REST vs STOMP — audit STOMP handlers only in glob scope
+- Missing `@PreAuthorize` equivalent on message mappings (Spring Security messaging rules)
+
+---
+
+### RULE-WS10 — SockJS fallback enabled in prod without threat model
+
+**Violation**: `.withSockJS()` on production endpoint without documented acceptance of xhr-streaming/jsonp risks, session cookie handling, and CDN compatibility — or SockJS combined with weak CORS (amplifies WS04).
+
+**Why it matters**: SockJS adds transport downgrade surface; jsonp-like transports historically caused CSRF issues.
+
+**Look for**:
+- `WebSocketConfig` — unconditional SockJS
+- `application-prod.properties` lacking `websocket.sockjs.enabled=false` if native WS required
+- No comment referencing PRD threat model
+
+**Do not flag** SockJS in local dev if prod disables via profile — verify profile-specific config bean.
+
+---
+
+## How to Run This Audit
+
+### Full Audit — Iteration Protocol
+
+`@websocket-realtime-audit scan all` runs without mid-loop confirmation.
+
+#### Scan order (fixed)
+
+| # | Scan target | Primary rules |
+|---|---|---|
+| 1 | `infrastructure/config/WebSocketConfig.java` | WS04, WS08, WS10 |
+| 2 | `infrastructure/security/WebSocketAuthInterceptor.java` | WS01, WS06 |
+| 3 | `infrastructure/websocket/WebSocketSessionRegistry.java` | WS06 |
+| 4 | `infrastructure/websocket/WebSocketPrincipalDetails.java` | WS02, WS09 |
+| 5 | `infrastructure/websocket/WebSocketForceDisconnectListener.java` | WS06 |
+| 6 | `infrastructure/websocket/WebSocketPresenceListener.java` | WS05, WS09 |
+| 7 | `infrastructure/websocket/WebSocketUserEventService.java` | WS03, WS05 |
+| 8 | `auth/service/WsTicketService.java` | WS01, WS06 |
+| 9 | Grep `WsTicket` / `ws-ticket` in `auth/controller/` | WS01 |
+| 10 | `messaging/service/MessagingService.java` | WS02, WS03, WS07, WS09 |
+| 11 | `system/service/SystemMessagingService.java` | WS07 |
+| 12 | Grep `SimpMessagingTemplate` in `src/main/java` | WS02, WS03 |
+| 13 | Grep `@MessageMapping` / `@SubscribeMapping` | WS05, WS09 |
+| 14 | `infrastructure/ratelimit/` (cross-check) | WS05 |
+| 15 | `infrastructure/security/SecurityConfig.java` (WS HTTP authorize) | WS01, WS04 |
+
+Per target: read → apply 10 rules → accumulate → `✓ [target] — N findings`.
+
+#### After all targets
+
+Write `docs/websocket-realtime-audit-report.md`.
+
+### Single-target scan
+
+Inline only unless user requests report update.
+
+---
+
+## `scan all` — Worktree Protocol
+
+#### Step 1
+
+```bash
+git worktree add ../reviewflow-ws-audit -b audit/websocket
+```
+
+#### Step 2 — Targets 1–15
+
+#### Step 3 — Report
+
+```
+docs/websocket-realtime-audit-report.md
+```
+
+#### Step 4 — Commit and cleanup
+
+```bash
+cd ../reviewflow-ws-audit
+git add docs/websocket-realtime-audit-report.md
+git commit -m "audit: websocket and realtime report"
+
+cd ../reviewflow
+git worktree remove ../reviewflow-ws-audit
+git branch -d audit/websocket
+```
+
+#### Step 5 — Summary
+
+```
+═══════════════════════════════════════════
+  ReviewFlow — WebSocket & Realtime Audit
+  Complete
+═══════════════════════════════════════════
+  Targets scanned  : 15
+  Files scanned    : N
+  Total findings   : N
+    CRITICAL       : N
+    HIGH           : N
+    MEDIUM         : N
+    INFO           : N
+
+  Report committed on: audit/websocket
+  Branch cleaned up.
+═══════════════════════════════════════════
+```
+
+---
+
+## Per-File Assessment Checklist
+
+```
+[ ] STOMP CONNECT auth path?                    → WS01
+[ ] SUBSCRIBE destination vs principal?         → WS02
+[ ] Push uses convertAndSendToUser?             → WS03
+[ ] Origin patterns on /ws?                     → WS04
+[ ] Inbound message rate limit?                 → WS05
+[ ] Disconnect / force logout cleanup?          → WS06
+[ ] System sender attribution?                  → WS07
+[ ] Transport size limits?                      → WS08
+[ ] @MessageMapping uses Principal?             → WS09
+[ ] SockJS in prod profile?                     → WS10
+```
+
+Do not flag WS01 when ticket + token version validation is complete on CONNECT.
+
+---
+
+## Severity Guide
+
+| Severity | Meaning |
+|---|---|
+| `CRITICAL` | Unauthenticated CONNECT, cross-user queue subscription, wildcard CORS with credentials. |
+| `HIGH` | Confidential data on `/topic`, missing force-disconnect, forged message mapping input. |
+| `MEDIUM` | Missing WS rate limit, size limits, SockJS prod concern. |
+| `INFO` | Documentation, defense-in-depth logging. |
+
+---
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `scan all` | Full audit + worktree `audit/websocket` |
+| `scan [path]` | Single target — inline findings |
+| `explain [RULE-WSxx]` | Rule deep-dive |
+| `fix [file:line]` | Concrete fix |
+| `report` | Rewrite `docs/websocket-realtime-audit-report.md` |
+
+---
+
+## Output Format
+
+```
+[RULE-WSxx | SEVERITY] ClassName.java:LINE
+────────────────────────────────────────
+Issue   : <one-line description>
+Context : <ReviewFlow realtime impact>
+Snippet :
+    <code>
+Fix     : <recommendation>
+```
+
+Clean:
+
+```
+✓ [target] — No WebSocket/realtime violations found.
+```
