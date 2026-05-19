@@ -2,7 +2,7 @@
 
 > A university project submission and evaluation platform built for real academic workflows.
 
-**Status:** Backend core complete through PRD-13 (PRD-14 planned) · Frontend not started · Deployment pending
+**Status:** Backend through PRD-13, PRD-17 (discussions), PRD-18 (messaging), PRD-19–21 (Redis, rate limits, async jobs) · PRD-14 OAuth and PRD-16 content delivery not shipped · Frontend not started
 
 **Live demo:** Coming soon
 
@@ -21,14 +21,15 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
 | Layer            | Technology                       | Notes                                       |
 | ---------------- | -------------------------------- | ------------------------------------------- |
 | Backend          | Spring Boot 4, Java 21           |                                             |
-| Database         | MySQL 8                          | Flyway migrations V1-V24                    |
+| Database         | MySQL 8                          | Flyway **V1–V34** (see `orchestration/MASTER_PROJECT_SUMMARY.md` §3) |
 | Auth             | JWT in HTTP-only cookies         | Refresh rotation, token fingerprinting      |
 | File storage     | AWS S3                           | Pre-signed URLs                             |
 | Real-time        | WebSocket — STOMP over SockJS    |                                             |
-| Caching          | Caffeine                         | 9 configured caches, Redis-ready by design  |
-| File security    | `FileSecurityValidator` + ClamAV | Multi-gate validation, profile-based policy |
+| Caching / Redis  | Caffeine + Redis 7               | Compose **redis**; rate limits; optional `auth.token-version.store=redis` |
+| File security    | `FileSecurityValidator` + ClamAV | Multi-gate validation; ClamAV optional (not in Compose) |
 | ID obfuscation   | Hashids                          | 8-char opaque IDs on all external endpoints |
-| PDF generation   | OpenPDF                          | Evaluation report export                    |
+| PDF — reports    | iText 8                          | `evaluation/service/PdfGenerationService` |
+| PDF — validation | OpenPDF                          | Upload structural checks in file-security pipeline |
 | API docs         | SpringDoc OpenAPI / Swagger UI   |                                             |
 | Containerization | Docker + Docker Compose          |                                             |
 | Frontend         | React                            | Not started                                 |
@@ -73,7 +74,7 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
         ↓
 [Security Layer — JWT Filter · Rate Limiter · Token Fingerprinting]
         ↓
-[REST API Layer (Spring Boot · 98 route handlers · 16 controller modules)]
+[REST API Layer (Spring Boot · ~26 @RestController classes · feature packages)]
         ↓
 [Service Layer]
   ├── CourseService          ├── SubmissionService
@@ -82,21 +83,20 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
   ├── AdminStatsService      └── AuthService
         ↓
 [Infrastructure Layer]
-        ├── MySQL 8 (Flyway migrations V1-V24)
+        ├── MySQL 8 (Flyway V1–V34)
         ├── AWS S3 (pre-signed URLs)
-        ├── Caffeine Cache (Redis-ready · 9 configured caches)
+        ├── Redis + Caffeine caches
         └── WebSocket (STOMP over SockJS)
 ```
 
-> System Flows with diagrams and summaries: [ARCHITECTURE.md](./ARCHITECTURE.md)
-> Design decisions and tradeoff reasoning: [DECISIONS.md](./DECISIONS.md)
-> Documentation verification evidence: [DOCS_VERIFICATION_REPORT.md](./DOCS_VERIFICATION_REPORT.md)
+> System flows: [ARCHITECTURE.md](./ARCHITECTURE.md) · Decisions: [DECISIONS.md](./DECISIONS.md)  
+> **Ship state & PRD status:** [orchestration/MASTER_PROJECT_SUMMARY.md](./orchestration/MASTER_PROJECT_SUMMARY.md) · **Doc map for agents:** [orchestration/DOCUMENTATION_MAP.md](./orchestration/DOCUMENTATION_MAP.md)
 
 ---
 
 ## API Overview
 
-98 route handlers across controller modules. Full OpenAPI spec at `http://localhost:8081/swagger-ui.html` when running locally.
+REST surface is organised by **feature packages** (~26 `@RestController` classes — re-count with `grep` when documenting). Full OpenAPI at `http://localhost:8081/swagger-ui/index.html` when running locally (`/v3/api-docs`).
 
 | Module            | Endpoints                                         |
 | ----------------- | ------------------------------------------------- |
@@ -110,7 +110,9 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
 | Evaluations       | Create, score, publish, draft management          |
 | Instructor Scores | Draft/publish/reopen, CSV dry-run + commit        |
 | Grade Overview    | Student overview and roster analytics             |
-| PDF               | Generate and download evaluation reports          |
+| Evaluations / PDF | Rubric scoring, publish, iText report generation  |
+| Discussions       | Course discussions (PRD-17)                       |
+| Messaging         | Course-scoped conversations (PRD-18)              |
 | Notifications     | List, mark read, unread count, delete             |
 | Announcements     | Course and platform announcements                 |
 | Extensions        | Request, approve/deny assignment extensions       |
@@ -120,19 +122,18 @@ It covers security hardening, caching strategy, real-time notifications, ID obfu
 
 ## Project Structure
 
+Package-by-feature under `src/main/java/com/reviewflow/` (see [orchestration/REFACTOR_STRATEGY.md](./orchestration/REFACTOR_STRATEGY.md)):
+
 ```
 src/main/java/com/reviewflow/
-├── config/          # Security, CORS, cache, WebSocket, S3, OpenAPI config
-├── controller/      # REST controllers — thin, no business logic
-├── service/         # All business logic, caching annotations
-├── repository/      # Spring Data JPA interfaces
-├── model/           # JPA entities
-├── dto/             # Request/response DTOs with Hashid encoding
-├── security/        # JWT filter, token fingerprinting, rate limiter
-├── event/           # Application events + notification listener
-├── exception/       # Global exception handler, custom exceptions
-├── scheduler/       # Due-date reminders, token cleanup jobs
-└── util/            # HashidService, FileSecurityValidator, ClamAvScanService
+├── auth/            ├── course/          ├── assignment/
+├── team/            ├── submission/      ├── evaluation/   (incl. PdfGenerationService)
+├── grading/         ├── discussion/      ├── messaging/
+├── notification/    ├── announcement/    ├── extension/
+├── admin/           ├── system/          ├── user/
+├── config/          # RedisConfig, MessagingRedisConfig
+├── infrastructure/  # security, storage, email, ratelimit, jobs, scheduling, …
+└── shared/          # domain entities, GlobalExceptionHandler, util
 ```
 
 ---
@@ -142,7 +143,7 @@ src/main/java/com/reviewflow/
 ### Prerequisites
 
 - Java 21+
-- Docker (for MySQL + ClamAV)
+- Docker (for MySQL, Mailhog, Redis)
 - AWS credentials (or LocalStack for local S3)
 
 ### 1. Clone and configure
@@ -158,7 +159,7 @@ Edit `.env` with your values — see `.env.example` for all required variables.
 ### 2. Start dependencies
 
 ```bash
-docker compose up -d mysql clamav
+docker compose up -d mysql mailhog redis
 ```
 
 ### 3. Start the backend
@@ -174,7 +175,7 @@ mysql -u root -p reviewflow_dev < src/main/resources/db/seed/seed.sql
 ```
 
 API: `http://localhost:8081/api/v1`  
-Swagger UI: `http://localhost:8081/swagger-ui.html`
+Swagger UI: `http://localhost:8081/swagger-ui/index.html`
 
 ---
 

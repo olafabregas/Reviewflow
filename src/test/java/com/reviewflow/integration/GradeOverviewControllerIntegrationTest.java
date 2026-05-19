@@ -89,15 +89,17 @@ class GradeOverviewControllerIntegrationTest {
 
     ClassRosterDto roster =
         ClassRosterDto.builder().courseCode("CS401").students(List.of()).build();
-    when(gradeCalculationService.calculateRoster(11L, 501L, UserRole.ADMIN, "name", "desc", true))
+    when(gradeCalculationService.calculateRoster(
+            11L, 501L, UserRole.ADMIN, "name", "desc", true, 0, 20))
         .thenReturn(roster);
 
     var response =
-        controller().getRoster("COURSE_1", "name", "desc", true, principal(UserRole.ADMIN, 501L));
+        controller()
+            .getRoster("COURSE_1", "name", "desc", true, 0, 20, principal(UserRole.ADMIN, 501L));
 
     assertEquals(200, response.getStatusCode().value());
     assertEquals("CS401", response.getBody().getData().getCourseCode());
     verify(gradeCalculationService)
-        .calculateRoster(11L, 501L, UserRole.ADMIN, "name", "desc", true);
+        .calculateRoster(11L, 501L, UserRole.ADMIN, "name", "desc", true, 0, 20);
   }
 }

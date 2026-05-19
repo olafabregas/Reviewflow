@@ -5,10 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -21,9 +25,14 @@ import com.reviewflow.messaging.repository.ConversationParticipantRepository;
 import com.reviewflow.messaging.repository.ConversationRepository;
 import com.reviewflow.messaging.repository.MessageRepository;
 import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
-import com.reviewflow.infrastructure.security.RateLimiterService;
+import com.reviewflow.infrastructure.ratelimit.RateLimitService;
+import com.reviewflow.infrastructure.ratelimit.RateLimitTestFixtures;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.MSG_CREATE;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.MSG_SEND;
 import com.reviewflow.infrastructure.storage.FileSecurityValidator;
 import com.reviewflow.infrastructure.storage.S3Service;
+import com.reviewflow.messaging.repository.ConversationListMetadataView;
+import com.reviewflow.shared.exception.StorageException;
 import com.reviewflow.shared.domain.Assignment;
 import com.reviewflow.shared.domain.Conversation;
 import com.reviewflow.shared.domain.ConversationParticipant;
@@ -38,12 +47,15 @@ import com.reviewflow.shared.exception.ResourceNotFoundException;
 import com.reviewflow.shared.util.HashidService;
 import com.reviewflow.user.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.mockito.InOrder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -75,9 +87,10 @@ class MessagingServiceTest {
   @Mock private FileSecurityValidator fileSecurityValidator;
   @Mock private HashidService hashidService;
   @Mock private SimpMessagingTemplate messagingTemplate;
-  @Mock private RateLimiterService rateLimiterService;
+  @Mock private RateLimitService rateLimitService;
   @Mock private ReviewFlowMetrics reviewFlowMetrics;
   @Mock private ObjectMapper objectMapper;
+  @Mock private MessagingPersistenceService messagingPersistenceService;
 
   @InjectMocks private MessagingService messagingService;
 
@@ -87,6 +100,12 @@ class MessagingServiceTest {
     ReflectionTestUtils.setField(messagingService, "fetchPageSize", 50);
     ReflectionTestUtils.setField(messagingService, "previewMaxChars", 80);
     ReflectionTestUtils.setField(messagingService, "maxAttachmentsPerMessage", 5);
+    lenient()
+        .when(rateLimitService.tryConsume(anyString(), any(), any()))
+        .thenAnswer(
+            inv ->
+                RateLimitTestFixtures.allowed(
+                    inv.getArgument(1, com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.class)));
   }
 
   private Course activeCourse() {
@@ -303,14 +322,16 @@ class MessagingServiceTest {
     when(participantRepository.findByConversationIdAndUserId(CONV_ID, SENDER_ID))
         .thenReturn(Optional.of(ConversationParticipant.builder().conversationId(CONV_ID).userId(SENDER_ID).build()));
     when(courseEnrollmentRepository.existsByCourseIdAndUserId(COURSE_ID, SENDER_ID)).thenReturn(true);
-    when(userRepository.getReferenceById(SENDER_ID)).thenReturn(User.builder().id(SENDER_ID).build());
-    when(messageRepository.save(any(Message.class)))
-        .thenAnswer(
-            inv -> {
-              Message m = inv.getArgument(0);
-              m.setId(500L);
-              return m;
-            });
+    Message persisted =
+        Message.builder()
+            .id(500L)
+            .conversation(conv)
+            .content("hello")
+            .sentAt(Instant.now())
+            .attachments(new ArrayList<>())
+            .build();
+    when(messagingPersistenceService.persistMessageWithoutAttachments(conv, SENDER_ID, "hello"))
+        .thenReturn(persisted);
     when(userRepository.findById(SENDER_ID))
         .thenReturn(Optional.of(user(SENDER_ID, UserRole.STUDENT)));
     when(participantRepository.findByConversationId(CONV_ID))
@@ -333,7 +354,6 @@ class MessagingServiceTest {
         .convertAndSendToUser(eq(String.valueOf(OTHER_USER_ID)), eq("/queue/messages"), any());
     verify(auditService)
         .log(eq(SENDER_ID), eq("MESSAGE_SENT"), eq("CONVERSATION"), eq(CONV_ID), anyMap(), eq("127.0.0.1"));
-    verify(rateLimiterService).recordMessagingSend(SENDER_ID);
   }
 
   @Test
@@ -500,15 +520,81 @@ class MessagingServiceTest {
     when(conversationRepository.existsByCourseIdAndParticipantUserId(COURSE_ID, SENDER_ID))
         .thenReturn(true);
     Conversation c = directConversation();
-    when(conversationRepository.findDistinctByCourseIdAndParticipantUserId(COURSE_ID, SENDER_ID))
+    when(conversationRepository.findDistinctByCourseIdAndParticipantUserIdWithDetails(
+            COURSE_ID, SENDER_ID))
         .thenReturn(List.of(c));
-    when(messageRepository.countUnreadInConversation(CONV_ID, SENDER_ID)).thenReturn(0L);
-    when(messageRepository.findLatestMessage(eq(CONV_ID), any())).thenReturn(List.of());
-    when(participantRepository.findByConversationId(CONV_ID))
-        .thenReturn(
-            List.of(
-                ConversationParticipant.builder().conversationId(CONV_ID).userId(SENDER_ID).build()));
-    when(userRepository.findById(SENDER_ID)).thenReturn(Optional.of(user(SENDER_ID, UserRole.STUDENT)));
+    ConversationParticipant participant =
+        ConversationParticipant.builder()
+            .conversationId(CONV_ID)
+            .userId(SENDER_ID)
+            .user(user(SENDER_ID, UserRole.STUDENT))
+            .build();
+    when(participantRepository.findByConversationIdInWithUser(List.of(CONV_ID)))
+        .thenReturn(List.of(participant));
+    ConversationListMetadataView metadata =
+        new ConversationListMetadataView() {
+          @Override
+          public Long getConversationId() {
+            return CONV_ID;
+          }
+
+          @Override
+          public Long getUnreadCount() {
+            return 0L;
+          }
+
+          @Override
+          public Long getLatestMessageId() {
+            return null;
+          }
+
+          @Override
+          public String getLatestContent() {
+            return null;
+          }
+
+          @Override
+          public Instant getLatestSentAt() {
+            return null;
+          }
+
+          @Override
+          public Boolean getLatestIsDeleted() {
+            return null;
+          }
+
+          @Override
+          public Long getLatestSenderId() {
+            return null;
+          }
+
+          @Override
+          public String getLatestSenderFirstName() {
+            return null;
+          }
+
+          @Override
+          public String getLatestSenderLastName() {
+            return null;
+          }
+
+          @Override
+          public String getLatestSenderEmail() {
+            return null;
+          }
+
+          @Override
+          public String getLatestSenderAvatarUrl() {
+            return null;
+          }
+
+          @Override
+          public Long getHasAttachments() {
+            return 0L;
+          }
+        };
+    when(messageRepository.findListMetadataByConversationIds(List.of(CONV_ID), SENDER_ID))
+        .thenReturn(List.of(metadata));
     when(hashidService.encode(CONV_ID)).thenReturn("hc");
     when(hashidService.encode(SENDER_ID)).thenReturn("hu");
 
@@ -516,6 +602,40 @@ class MessagingServiceTest {
 
     assertEquals(1, list.size());
     assertEquals("hc", list.get(0).getId());
+    verify(messageRepository, never()).countUnreadInConversation(anyLong(), anyLong());
+    verify(messageRepository, never()).findLatestMessage(anyLong(), any());
+  }
+
+  @Test
+  void listCourseConversations_manyConversations_usesAtMostThreeRepositoryQueries() {
+    when(courseEnrollmentRepository.existsByCourseIdAndUserId(COURSE_ID, SENDER_ID)).thenReturn(true);
+    List<Conversation> convs = new ArrayList<>();
+    for (long id = 1; id <= 12; id++) {
+      convs.add(
+          Conversation.builder()
+              .id(id)
+              .course(activeCourse())
+              .conversationType(ConversationType.DIRECT)
+              .createdAt(Instant.now())
+              .build());
+    }
+    when(conversationRepository.findDistinctByCourseIdAndParticipantUserIdWithDetails(
+            COURSE_ID, SENDER_ID))
+        .thenReturn(convs);
+    when(participantRepository.findByConversationIdInWithUser(any())).thenReturn(List.of());
+    when(messageRepository.findListMetadataByConversationIds(any(), eq(SENDER_ID)))
+        .thenReturn(List.of());
+    when(hashidService.encode(anyLong())).thenAnswer(inv -> "h" + inv.getArgument(0));
+
+    messagingService.listCourseConversations(COURSE_ID, SENDER_ID);
+
+    verify(conversationRepository, times(1))
+        .findDistinctByCourseIdAndParticipantUserIdWithDetails(COURSE_ID, SENDER_ID);
+    verify(participantRepository, times(1)).findByConversationIdInWithUser(any());
+    verify(messageRepository, times(1)).findListMetadataByConversationIds(any(), eq(SENDER_ID));
+    verify(messageRepository, never()).countUnreadInConversation(anyLong(), anyLong());
+    verify(messageRepository, never()).findLatestMessage(anyLong(), any());
+    verify(participantRepository, never()).findByConversationId(anyLong());
   }
 
   @Test
@@ -525,8 +645,9 @@ class MessagingServiceTest {
     when(participantRepository.findByConversationIdAndUserId(CONV_ID, SENDER_ID))
         .thenReturn(Optional.of(ConversationParticipant.builder().conversationId(CONV_ID).userId(SENDER_ID).build()));
     when(courseEnrollmentRepository.existsByCourseIdAndUserId(COURSE_ID, SENDER_ID)).thenReturn(true);
-    when(rateLimiterService.isMessagingSendRateLimited(SENDER_ID)).thenReturn(true);
-    when(rateLimiterService.getMessagingSendRetryAfterSeconds(SENDER_ID)).thenReturn(5L);
+    when(userRepository.findById(SENDER_ID)).thenReturn(Optional.of(user(SENDER_ID, UserRole.STUDENT)));
+    when(rateLimitService.tryConsume(eq(String.valueOf(SENDER_ID)), eq(MSG_SEND), any()))
+        .thenReturn(RateLimitTestFixtures.denied(MSG_SEND));
 
     MessagingClientException ex =
         assertThrows(
@@ -534,7 +655,93 @@ class MessagingServiceTest {
             () -> messagingService.sendMessage(CONV_ID, SENDER_ID, "hello", null, "127.0.0.1"));
 
     assertEquals("MESSAGING_RATE_LIMIT_EXCEEDED", ex.getCode());
+    verify(messagingPersistenceService, never()).persistMessageWithoutAttachments(any(), anyLong(), any());
+  }
+
+  @Test
+  void sendMessage_withAttachment_uploadsOutsidePersistenceTransaction() throws IOException {
+    MultipartFile file = org.mockito.Mockito.mock(MultipartFile.class);
+    when(file.isEmpty()).thenReturn(false);
+    when(file.getOriginalFilename()).thenReturn("doc.pdf");
+    when(file.getContentType()).thenReturn("application/pdf");
+    when(file.getSize()).thenReturn(4L);
+    when(file.getInputStream())
+        .thenReturn(new ByteArrayInputStream("data".getBytes(StandardCharsets.UTF_8)));
+    Conversation conv = directConversation();
+    when(conversationRepository.findById(CONV_ID)).thenReturn(Optional.of(conv));
+    when(participantRepository.findByConversationIdAndUserId(CONV_ID, SENDER_ID))
+        .thenReturn(Optional.of(ConversationParticipant.builder().conversationId(CONV_ID).userId(SENDER_ID).build()));
+    when(courseEnrollmentRepository.existsByCourseIdAndUserId(COURSE_ID, SENDER_ID)).thenReturn(true);
+    when(userRepository.findById(SENDER_ID)).thenReturn(Optional.of(user(SENDER_ID, UserRole.STUDENT)));
+    Message persisted =
+        Message.builder()
+            .id(500L)
+            .conversation(conv)
+            .content("see file")
+            .sentAt(Instant.now())
+            .attachments(new ArrayList<>())
+            .build();
+    when(messagingPersistenceService.persistMessageWithoutAttachments(conv, SENDER_ID, "see file"))
+        .thenReturn(persisted);
+    Message withAttachment =
+        Message.builder()
+            .id(500L)
+            .conversation(conv)
+            .content("see file")
+            .sentAt(persisted.getSentAt())
+            .attachments(new ArrayList<>())
+            .build();
+    when(messagingPersistenceService.attachUploadedFiles(eq(persisted), any())).thenReturn(withAttachment);
+    when(participantRepository.findByConversationId(CONV_ID)).thenReturn(List.of());
+    when(hashidService.encode(CONV_ID)).thenReturn("hc");
+    when(hashidService.encode(500L)).thenReturn("hm");
+
+    messagingService.sendMessage(CONV_ID, SENDER_ID, "see file", List.of(file), "127.0.0.1");
+
+    InOrder order = inOrder(messagingPersistenceService, s3Service);
+    order.verify(messagingPersistenceService).persistMessageWithoutAttachments(conv, SENDER_ID, "see file");
+    order.verify(s3Service).putObject(anyString(), any(byte[].class), anyString());
+    order.verify(messagingPersistenceService).attachUploadedFiles(eq(persisted), any());
     verify(messageRepository, never()).save(any());
+  }
+
+  @Test
+  void sendMessage_s3Failure_deletesPersistedMessage() throws IOException {
+    MultipartFile file = org.mockito.Mockito.mock(MultipartFile.class);
+    when(file.isEmpty()).thenReturn(false);
+    when(file.getOriginalFilename()).thenReturn("doc.pdf");
+    when(file.getContentType()).thenReturn("application/pdf");
+    when(file.getSize()).thenReturn(4L);
+    when(file.getInputStream())
+        .thenReturn(new ByteArrayInputStream("data".getBytes(StandardCharsets.UTF_8)));
+    Conversation conv = directConversation();
+    when(conversationRepository.findById(CONV_ID)).thenReturn(Optional.of(conv));
+    when(participantRepository.findByConversationIdAndUserId(CONV_ID, SENDER_ID))
+        .thenReturn(Optional.of(ConversationParticipant.builder().conversationId(CONV_ID).userId(SENDER_ID).build()));
+    when(courseEnrollmentRepository.existsByCourseIdAndUserId(COURSE_ID, SENDER_ID)).thenReturn(true);
+    when(userRepository.findById(SENDER_ID)).thenReturn(Optional.of(user(SENDER_ID, UserRole.STUDENT)));
+    Message persisted =
+        Message.builder()
+            .id(500L)
+            .conversation(conv)
+            .content(null)
+            .sentAt(Instant.now())
+            .attachments(new ArrayList<>())
+            .build();
+    when(messagingPersistenceService.persistMessageWithoutAttachments(conv, SENDER_ID, null))
+        .thenReturn(persisted);
+    when(s3Service.putObject(anyString(), any(byte[].class), anyString()))
+        .thenThrow(new StorageException("upload failed", new RuntimeException("s3")));
+    when(hashidService.encode(CONV_ID)).thenReturn("hc");
+    when(hashidService.encode(500L)).thenReturn("hm");
+
+    assertThrows(
+        StorageException.class,
+        () -> messagingService.sendMessage(CONV_ID, SENDER_ID, null, List.of(file), "127.0.0.1"));
+
+    verify(messagingPersistenceService).deleteMessageAndAttachments(500L);
+    verify(messagingPersistenceService, never()).attachUploadedFiles(any(), any());
+    verify(s3Service, never()).deleteObject(anyString());
   }
 
   @Test
@@ -548,8 +755,8 @@ class MessagingServiceTest {
     when(conversationRepository.findDirectConversation(
             COURSE_ID, initiatorId, recipientId, ConversationType.DIRECT))
         .thenReturn(Optional.empty());
-    when(rateLimiterService.isMessagingConversationCreateRateLimited(initiatorId)).thenReturn(true);
-    when(rateLimiterService.getMessagingConversationCreateRetryAfterSeconds(initiatorId)).thenReturn(60L);
+    when(rateLimitService.tryConsume(eq(String.valueOf(initiatorId)), eq(MSG_CREATE), any()))
+        .thenReturn(RateLimitTestFixtures.denied(MSG_CREATE));
 
     MessagingClientException ex =
         assertThrows(
@@ -627,7 +834,8 @@ class MessagingServiceTest {
             .sentAt(Instant.now())
             .attachments(new ArrayList<>())
             .build();
-    when(messageRepository.findAllByConversationIdForModeration(CONV_ID)).thenReturn(List.of(deleted));
+    when(messageRepository.findAllByConversationIdForModerationWithDetails(CONV_ID))
+        .thenReturn(List.of(deleted));
     when(hashidService.encode(anyLong())).thenAnswer(inv -> "h" + inv.getArgument(0));
 
     var dtos = messagingService.listMessagesForModeration(CONV_ID);

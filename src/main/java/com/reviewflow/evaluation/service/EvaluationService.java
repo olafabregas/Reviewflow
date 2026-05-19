@@ -1,6 +1,7 @@
 package com.reviewflow.evaluation.service;
 
 import com.reviewflow.evaluation.event.EvaluationPublishedEvent;
+import com.reviewflow.grading.event.GradePublishedEvent;
 import com.reviewflow.shared.exception.AccessDeniedException;
 import com.reviewflow.shared.exception.BusinessRuleException;
 import com.reviewflow.shared.exception.DuplicateResourceException;
@@ -8,6 +9,8 @@ import com.reviewflow.submission.exception.FileTooLargeForPreviewException;
 import com.reviewflow.submission.exception.PreviewNotSupportedException;
 import com.reviewflow.shared.exception.ResourceNotFoundException;
 import com.reviewflow.shared.exception.ValidationException;
+import com.reviewflow.evaluation.dto.EvaluationPdfContext;
+import com.reviewflow.evaluation.dto.EvaluationPdfRubricRow;
 import com.reviewflow.evaluation.dto.request.UpdateScoresRequest;
 import com.reviewflow.shared.dto.PreviewResponseDto;
 import com.reviewflow.shared.domain.Assignment;
@@ -18,7 +21,6 @@ import com.reviewflow.shared.domain.Submission;
 import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.domain.UserRole;
 import com.reviewflow.shared.domain.SubmissionType;
-import com.reviewflow.evaluation.service.PdfGenerationService;
 import com.reviewflow.evaluation.repository.EvaluationRepository;
 import com.reviewflow.grading.repository.RubricCriterionRepository;
 import com.reviewflow.grading.repository.RubricScoreRepository;
@@ -31,6 +33,7 @@ import com.reviewflow.shared.util.MimeTypeResolver;
 import com.reviewflow.grading.service.GradeCalculationService;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -312,7 +315,15 @@ public class EvaluationService {
             maxPossibleScore,
             submissionType));
 
-    gradeCalculationService.evictCourseGradeCaches(assignment.getCourse().getId());
+    Long courseId = assignment.getCourse().getId();
+    if (submissionType == SubmissionType.INDIVIDUAL && submission.getStudent() != null) {
+      eventPublisher.publishEvent(new GradePublishedEvent(courseId, submission.getStudent().getId()));
+    } else {
+      for (Long memberId : memberIds) {
+        eventPublisher.publishEvent(new GradePublishedEvent(courseId, memberId));
+      }
+    }
+    gradeCalculationService.evictCourseGradeCaches(courseId);
 
     return saved;
   }
@@ -337,7 +348,10 @@ public class EvaluationService {
 
   @Transactional
   public Evaluation generatePdf(Long evalId, Long instructorId) {
-    Evaluation evaluation = getEvaluation(evalId);
+    Evaluation evaluation =
+        evaluationRepository
+            .findByIdWithPdfRelations(evalId)
+            .orElseThrow(() -> new ResourceNotFoundException("Evaluation", evalId));
     validateOwner(evaluation, instructorId);
 
     // Check if evaluation is published
@@ -346,10 +360,69 @@ public class EvaluationService {
           "Publish the evaluation before generating a PDF", "NOT_PUBLISHED");
     }
 
-    List<RubricScore> scores = rubricScoreRepository.findByEvaluationId(evalId);
-    String pdfPath = pdfGenerationService.generateEvaluationPdf(evaluation, scores);
+    List<RubricScore> scores = rubricScoreRepository.findByEvaluationIdWithCriterion(evalId);
+    EvaluationPdfContext context = toPdfContext(evaluation, scores);
+    String pdfPath = pdfGenerationService.generateEvaluationPdf(context);
     evaluation.setPdfPath(pdfPath);
     return evaluationRepository.save(evaluation);
+  }
+
+  public static EvaluationPdfContext toPdfContext(Evaluation evaluation, List<RubricScore> scores) {
+    Submission submission = evaluation.getSubmission();
+    Assignment assignment = submission.getAssignment();
+    SubmissionType submissionType =
+        assignment.getSubmissionType() != null
+            ? assignment.getSubmissionType()
+            : SubmissionType.INDIVIDUAL;
+
+    String submitterLabelLine = buildSubmitterLabelLine(submission, submissionType);
+    String instructorDisplayName = formatUserDisplayName(evaluation.getInstructor());
+
+    List<EvaluationPdfRubricRow> rubricRows = new ArrayList<>();
+    for (RubricScore rubricScore : scores) {
+      rubricRows.add(
+          new EvaluationPdfRubricRow(
+              rubricScore.getCriterion().getName(),
+              rubricScore.getScore(),
+              rubricScore.getCriterion().getMaxScore(),
+              rubricScore.getComment()));
+    }
+
+    return new EvaluationPdfContext(
+        evaluation.getId(),
+        assignment.getTitle(),
+        submission.getVersionNumber(),
+        submitterLabelLine,
+        instructorDisplayName,
+        evaluation.getPublishedAt(),
+        rubricRows,
+        evaluation.getTotalScore(),
+        evaluation.getOverallComment());
+  }
+
+  private static String buildSubmitterLabelLine(
+      Submission submission, SubmissionType submissionType) {
+    if (submissionType == SubmissionType.TEAM) {
+      String teamName =
+          submission.getTeam() != null ? submission.getTeam().getName() : "Unknown";
+      return "Team: " + teamName;
+    }
+    User student = submission.getStudent();
+    if (student != null) {
+      return "Student: "
+          + formatUserDisplayName(student)
+          + " ("
+          + student.getEmail()
+          + ")";
+    }
+    return "Student: Unknown";
+  }
+
+  private static String formatUserDisplayName(User user) {
+    String first = user.getFirstName() != null ? user.getFirstName() : "";
+    String last = user.getLastName() != null ? user.getLastName() : "";
+    String full = (first + " " + last).trim();
+    return full.isEmpty() ? user.getEmail() : full;
   }
 
   public org.springframework.core.io.Resource downloadPdf(Long evalId, Long userId, UserRole role) {

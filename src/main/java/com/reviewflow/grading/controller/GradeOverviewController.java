@@ -58,6 +58,8 @@ public class GradeOverviewController {
       @RequestParam(defaultValue = "standing") String sortBy,
       @RequestParam(defaultValue = "asc") String direction,
       @RequestParam(defaultValue = "false") boolean atRiskOnly,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size,
       @AuthenticationPrincipal ReviewFlowUserDetails user) {
     ClassRosterDto response =
         gradeCalculationService.calculateRoster(
@@ -66,7 +68,9 @@ public class GradeOverviewController {
             user.getRole(),
             sortBy,
             direction,
-            atRiskOnly);
+            atRiskOnly,
+            page,
+            size);
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 }

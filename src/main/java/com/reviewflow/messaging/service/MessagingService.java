@@ -8,7 +8,10 @@ import com.reviewflow.course.repository.CourseInstructorRepository;
 import com.reviewflow.course.repository.CourseRepository;
 import com.reviewflow.infrastructure.config.ValidationConfig;
 import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
-import com.reviewflow.infrastructure.security.RateLimiterService;
+import com.reviewflow.infrastructure.ratelimit.RateLimitResult;
+import com.reviewflow.infrastructure.ratelimit.RateLimitService;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.MSG_CREATE;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.MSG_SEND;
 import com.reviewflow.infrastructure.storage.FileSecurityValidator;
 import com.reviewflow.infrastructure.storage.S3KeyBuilder;
 import com.reviewflow.infrastructure.storage.S3Service;
@@ -23,6 +26,8 @@ import com.reviewflow.messaging.dto.response.ModerationConversationSummaryDto;
 import com.reviewflow.messaging.dto.response.ParticipantSummaryDto;
 import com.reviewflow.messaging.dto.response.SendMessageResponse;
 import com.reviewflow.messaging.exception.MessagingClientException;
+import com.reviewflow.messaging.repository.ConversationListMetadataView;
+import com.reviewflow.messaging.repository.ConversationModerationStatsView;
 import com.reviewflow.messaging.repository.ConversationParticipantRepository;
 import com.reviewflow.messaging.repository.ConversationRepository;
 import com.reviewflow.messaging.repository.MessageRepository;
@@ -39,9 +44,17 @@ import com.reviewflow.shared.exception.BusinessRuleException;
 import com.reviewflow.shared.exception.ResourceNotFoundException;
 import com.reviewflow.shared.util.HashidService;
 import com.reviewflow.user.repository.UserRepository;
+import com.reviewflow.shared.exception.FileUploadTimeoutException;
+import com.reviewflow.shared.exception.StorageException;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -50,6 +63,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -80,9 +94,10 @@ public class MessagingService {
   private final FileSecurityValidator fileSecurityValidator;
   private final HashidService hashidService;
   private final SimpMessagingTemplate messagingTemplate;
-  private final RateLimiterService rateLimiterService;
+  private final RateLimitService rateLimitService;
   private final ReviewFlowMetrics reviewFlowMetrics;
   private final ObjectMapper objectMapper;
+  private final MessagingPersistenceService messagingPersistenceService;
 
   @Autowired(required = false)
   private StringRedisTemplate redisTemplate;
@@ -101,6 +116,12 @@ public class MessagingService {
 
   @Value("${message.max-attachments-per-message:5}")
   private int maxAttachmentsPerMessage;
+
+  @Value("${async.upload.timeout-seconds:60}")
+  private int uploadTimeoutSeconds;
+
+  @jakarta.annotation.Resource(name = "uploadExecutor")
+  private Executor uploadExecutor;
 
   /**
    * NOTE: WebSocket push via SimpMessagingTemplate works on single-node only. Before horizontal
@@ -177,12 +198,13 @@ public class MessagingService {
     if (existing.isPresent()) {
       return toCreateDirectResponse(existing.get(), true);
     }
-    if (rateLimiterService.isMessagingConversationCreateRateLimited(initiatorId)) {
-      long retry =
-          rateLimiterService.getMessagingConversationCreateRetryAfterSeconds(initiatorId);
+    RateLimitResult createLimit =
+        rateLimitService.tryConsume(
+            String.valueOf(initiatorId), MSG_CREATE, initiator.getRole());
+    if (!createLimit.allowed()) {
       throw MessagingClientException.tooManyRequests(
           "MESSAGING_RATE_LIMIT_EXCEEDED",
-          "Too many new conversations. Retry after " + retry + " seconds.");
+          "Too many new conversations. Retry after " + createLimit.retryAfterSeconds() + " seconds.");
     }
     Conversation conv =
         Conversation.builder()
@@ -201,11 +223,9 @@ public class MessagingService {
     payload.put("conversationId", hashidService.encode(conv.getId()));
     payload.put("initiatorName", displayName(initiator));
     pushToRecipient(String.valueOf(recipientId), payload);
-    rateLimiterService.recordMessagingConversationCreated(initiatorId);
     return toCreateDirectResponse(conv, false);
   }
 
-  @Transactional
   public SendMessageResponse sendMessage(
       Long conversationId, Long senderId, String content, List<MultipartFile> files, String ip)
       throws IOException {
@@ -223,61 +243,42 @@ public class MessagingService {
     for (MultipartFile f : fileList) {
       fileSecurityValidator.validateMessageAttachment(f, ValidationConfig.MESSAGE);
     }
-    if (rateLimiterService.isMessagingSendRateLimited(senderId)) {
-      long retry = rateLimiterService.getMessagingSendRetryAfterSeconds(senderId);
+    User sender = userRepository.findById(senderId).orElseThrow();
+    RateLimitResult sendLimit =
+        rateLimitService.tryConsume(String.valueOf(senderId), MSG_SEND, sender.getRole());
+    if (!sendLimit.allowed()) {
       throw MessagingClientException.tooManyRequests(
           "MESSAGING_RATE_LIMIT_EXCEEDED",
-          "Too many messages. Retry after " + retry + " seconds.");
+          "Too many messages. Retry after " + sendLimit.retryAfterSeconds() + " seconds.");
     }
+    String trimmedContent = content != null && !content.isBlank() ? content.trim() : null;
+    List<PendingMessageAttachment> pendingAttachments = stageAttachments(fileList);
     Message msg =
-        Message.builder()
-            .conversation(conv)
-            .sender(userRepository.getReferenceById(senderId))
-            .content(content != null && !content.isBlank() ? content.trim() : null)
-            .isDeleted(false)
-            .sentAt(Instant.now())
-            .editedAt(null)
-            .build();
-    msg = messageRepository.save(msg);
-    messageRepository.flush();
+        messagingPersistenceService.persistMessageWithoutAttachments(conv, senderId, trimmedContent);
+    Long messageId = msg.getId();
     String hashedConv = hashidService.encode(conv.getId());
-    String hashedMsg = hashidService.encode(msg.getId());
-    for (MultipartFile f : fileList) {
-      String key =
-          S3KeyBuilder.messageAttachmentKey(
-              hashedConv, hashedMsg, Objects.requireNonNullElse(f.getOriginalFilename(), "file"));
-      String ct = f.getContentType() != null ? f.getContentType() : "application/octet-stream";
-      long size = f.getSize();
-      if (size >= 0) {
-        try (InputStream in = f.getInputStream()) {
-          s3Service.putObject(key, in, size, ct);
-        }
-      } else {
-        s3Service.putObject(key, f.getBytes(), ct);
+    String hashedMsg = hashidService.encode(messageId);
+    List<UploadedMessageAttachment> uploaded = new ArrayList<>();
+    try {
+      for (PendingMessageAttachment pending : pendingAttachments) {
+        String key =
+            S3KeyBuilder.messageAttachmentKey(hashedConv, hashedMsg, pending.fileName());
+        uploadBytesToS3(key, pending.bytes(), pending.contentType());
+        uploaded.add(
+            new UploadedMessageAttachment(
+                pending.fileName(), pending.fileSizeBytes(), pending.contentType(), key));
       }
-      MessageAttachment att =
-          MessageAttachment.builder()
-              .message(msg)
-              .fileName(f.getOriginalFilename() != null ? f.getOriginalFilename() : "file")
-              .fileSizeBytes(f.getSize())
-              .storagePath(key)
-              .contentType(ct)
-              .uploadedAt(Instant.now())
-              .build();
-      msg.getAttachments().add(att);
+      if (!uploaded.isEmpty()) {
+        msg = messagingPersistenceService.attachUploadedFiles(msg, uploaded);
+      }
+    } catch (RuntimeException e) {
+      for (UploadedMessageAttachment u : uploaded) {
+        s3Service.deleteObject(u.storagePath());
+      }
+      messagingPersistenceService.deleteMessageAndAttachments(messageId);
+      throw e;
     }
-    msg = messageRepository.save(msg);
-    List<MessageAttachmentDto> attachmentDtos = new ArrayList<>();
-    for (MessageAttachment att : msg.getAttachments()) {
-      attachmentDtos.add(
-          MessageAttachmentDto.builder()
-              .id(hashidService.encode(att.getId()))
-              .fileName(att.getFileName())
-              .fileSizeBytes(att.getFileSizeBytes())
-              .contentType(att.getContentType())
-              .downloadUrl(s3Service.generatePresignedDownloadUrl(att.getStoragePath()))
-              .build());
-    }
+    List<MessageAttachmentDto> attachmentDtos = toAttachmentDtos(msg, true);
     auditService.log(
         senderId,
         "MESSAGE_SENT",
@@ -285,8 +286,6 @@ public class MessagingService {
         conv.getId(),
         Map.of("conversationId", conv.getId(), "hasAttachments", !fileList.isEmpty()),
         ip);
-    rateLimiterService.recordMessagingSend(senderId);
-    User sender = userRepository.findById(senderId).orElseThrow();
     Map<String, Object> ws = new LinkedHashMap<>();
     ws.put("type", "NEW_MESSAGE");
     ws.put("conversationId", hashidService.encode(conv.getId()));
@@ -407,11 +406,28 @@ public class MessagingService {
           "NOT_A_COURSE_MEMBER", "Not a member of this course");
     }
     List<Conversation> convs =
-        conversationRepository.findDistinctByCourseIdAndParticipantUserId(courseId, userId);
+        conversationRepository.findDistinctByCourseIdAndParticipantUserIdWithDetails(courseId, userId);
+    if (convs.isEmpty()) {
+      return List.of();
+    }
+    List<Long> conversationIds = convs.stream().map(Conversation::getId).toList();
+    Map<Long, List<ConversationParticipant>> participantsByConversation =
+        participantRepository.findByConversationIdInWithUser(conversationIds).stream()
+            .collect(Collectors.groupingBy(ConversationParticipant::getConversationId));
+    Map<Long, ConversationListMetadataView> metadataByConversation =
+        messageRepository.findListMetadataByConversationIds(conversationIds, userId).stream()
+            .collect(
+                Collectors.toMap(
+                    ConversationListMetadataView::getConversationId,
+                    Function.identity(),
+                    (a, b) -> a));
     List<ConversationListItemDto> out = new ArrayList<>();
     for (Conversation c : convs) {
-      long unread = messageRepository.countUnreadInConversation(c.getId(), userId);
-      out.add(toConversationListItem(c, userId, unread));
+      out.add(
+          toConversationListItem(
+              c,
+              participantsByConversation.getOrDefault(c.getId(), List.of()),
+              metadataByConversation.get(c.getId())));
     }
     return out;
   }
@@ -461,18 +477,35 @@ public class MessagingService {
   @Transactional(readOnly = true)
   public List<ModerationConversationSummaryDto> listConversationsForModeration(Long courseId) {
     List<Conversation> convs = conversationRepository.findByCourse_Id(courseId);
+    if (convs.isEmpty()) {
+      return List.of();
+    }
+    List<Long> conversationIds = convs.stream().map(Conversation::getId).toList();
+    Map<Long, List<ConversationParticipant>> participantsByConversation =
+        participantRepository.findByConversationIdInWithUser(conversationIds).stream()
+            .collect(Collectors.groupingBy(ConversationParticipant::getConversationId));
+    Map<Long, ConversationModerationStatsView> statsByConversation =
+        messageRepository.findModerationStatsByConversationIds(conversationIds).stream()
+            .collect(
+                Collectors.toMap(
+                    ConversationModerationStatsView::getConversationId,
+                    Function.identity(),
+                    (a, b) -> a));
     List<ModerationConversationSummaryDto> out = new ArrayList<>();
     for (Conversation c : convs) {
-      long count = messageRepository.countByConversation_Id(c.getId());
+      ConversationModerationStatsView stats = statsByConversation.get(c.getId());
+      long count = stats != null ? stats.getMessageCount() : 0L;
       Instant last =
-          messageRepository
-              .findMaxSentAtByConversation(c.getId())
-              .orElse(c.getCreatedAt());
+          stats != null && stats.getLastActivity() != null
+              ? stats.getLastActivity()
+              : c.getCreatedAt();
       out.add(
           ModerationConversationSummaryDto.builder()
               .id(hashidService.encode(c.getId()))
               .type(c.getConversationType())
-              .participants(participantSummaries(c))
+              .participants(
+                  participantSummaries(
+                      participantsByConversation.getOrDefault(c.getId(), List.of())))
               .messageCount(count)
               .lastActivity(last)
               .build());
@@ -483,7 +516,8 @@ public class MessagingService {
   @Transactional(readOnly = true)
   public List<MessageDto> listMessagesForModeration(Long conversationId) {
     loadConversation(conversationId);
-    List<Message> msgs = messageRepository.findAllByConversationIdForModeration(conversationId);
+    List<Message> msgs =
+        messageRepository.findAllByConversationIdForModerationWithDetails(conversationId);
     return msgs.stream().map(m -> toMessageDto(m, true, true)).collect(Collectors.toList());
   }
 
@@ -539,10 +573,18 @@ public class MessagingService {
   }
 
   private List<ParticipantSummaryDto> participantSummaries(Conversation conv) {
-    return participantRepository.findByConversationId(conv.getId()).stream()
+    return participantSummaries(participantRepository.findByConversationId(conv.getId()));
+  }
+
+  private List<ParticipantSummaryDto> participantSummaries(
+      List<ConversationParticipant> participants) {
+    return participants.stream()
         .map(
             cp -> {
-              User u = userRepository.findById(cp.getUserId()).orElseThrow();
+              User u = cp.getUser();
+              if (u == null) {
+                u = userRepository.findById(cp.getUserId()).orElseThrow();
+              }
               return ParticipantSummaryDto.builder()
                   .id(hashidService.encode(u.getId()))
                   .name(displayName(u))
@@ -552,21 +594,31 @@ public class MessagingService {
         .collect(Collectors.toList());
   }
 
-  private ConversationListItemDto toConversationListItem(Conversation c, Long viewerId, long unread) {
+  private ConversationListItemDto toConversationListItem(
+      Conversation c,
+      List<ConversationParticipant> participants,
+      ConversationListMetadataView metadata) {
     Course course = c.getCourse();
     String teamName = c.getTeam() != null ? c.getTeam().getName() : null;
-    List<Message> latest =
-        messageRepository.findLatestMessage(c.getId(), PageRequest.of(0, 1));
+    long unread = metadata != null && metadata.getUnreadCount() != null ? metadata.getUnreadCount() : 0L;
     LastMessagePreviewDto last = null;
-    if (!latest.isEmpty()) {
-      Message lm = latest.get(0);
-      User s = lm.getSender();
+    if (metadata != null && metadata.getLatestMessageId() != null) {
+      String previewContent =
+          Boolean.TRUE.equals(metadata.getLatestIsDeleted()) ? null : metadata.getLatestContent();
+      User sender =
+          User.builder()
+              .id(metadata.getLatestSenderId())
+              .firstName(metadata.getLatestSenderFirstName())
+              .lastName(metadata.getLatestSenderLastName())
+              .email(metadata.getLatestSenderEmail())
+              .avatarUrl(metadata.getLatestSenderAvatarUrl())
+              .build();
       last =
           LastMessagePreviewDto.builder()
-              .content(preview(Boolean.TRUE.equals(lm.getIsDeleted()) ? null : lm.getContent()))
-              .senderName(displayName(s))
-              .sentAt(lm.getSentAt())
-              .hasAttachments(!lm.getAttachments().isEmpty())
+              .content(preview(previewContent))
+              .senderName(displayName(sender))
+              .sentAt(metadata.getLatestSentAt())
+              .hasAttachments(metadata.getHasAttachments() != null && metadata.getHasAttachments() > 0)
               .build();
     }
     return ConversationListItemDto.builder()
@@ -574,10 +626,36 @@ public class MessagingService {
         .type(c.getConversationType())
         .teamName(teamName)
         .courseCode(course.getCode())
-        .participants(participantSummaries(c))
+        .participants(participantSummaries(participants))
         .lastMessage(last)
         .unreadCount(unread)
         .build();
+  }
+
+  private List<PendingMessageAttachment> stageAttachments(List<MultipartFile> fileList)
+      throws IOException {
+    List<PendingMessageAttachment> staged = new ArrayList<>();
+    for (MultipartFile f : fileList) {
+      byte[] bytes;
+      long size = f.getSize();
+      if (size >= 0) {
+        try (InputStream in = f.getInputStream()) {
+          bytes = in.readAllBytes();
+        }
+      } else {
+        bytes = f.getBytes();
+        size = bytes.length;
+      }
+      String contentType =
+          f.getContentType() != null ? f.getContentType() : "application/octet-stream";
+      staged.add(
+          new PendingMessageAttachment(
+              f.getOriginalFilename() != null ? f.getOriginalFilename() : "file",
+              size,
+              contentType,
+              bytes));
+    }
+    return staged;
   }
 
   private MessageDto toMessageDto(Message m, boolean moderationIncludeDeletedContent, boolean includePresignedUrls) {
@@ -650,6 +728,29 @@ public class MessagingService {
         log.warn("WebSocket push failed userId={}: {}", rawUserId, e.getMessage());
         reviewFlowMetrics.recordWebSocketPushFailed("messaging");
       }
+    }
+  }
+
+  private void uploadBytesToS3(String key, byte[] bytes, String contentType) {
+    try {
+      CompletableFuture.runAsync(
+              () ->
+                  s3Service.putObject(
+                      key, new ByteArrayInputStream(bytes), bytes.length, contentType),
+              uploadExecutor)
+          .get(uploadTimeoutSeconds, TimeUnit.SECONDS);
+    } catch (TimeoutException e) {
+      s3Service.deleteObjectSilently(key);
+      throw new FileUploadTimeoutException(uploadTimeoutSeconds);
+    } catch (ExecutionException e) {
+      Throwable cause = e.getCause() != null ? e.getCause() : e;
+      if (cause instanceof RuntimeException re) {
+        throw re;
+      }
+      throw new StorageException("Attachment upload failed", cause);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new StorageException("Attachment upload interrupted", e);
     }
   }
 }

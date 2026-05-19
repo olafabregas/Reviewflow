@@ -66,6 +66,7 @@ public class GradeCalculationService {
   private final HashidService hashidService;
   private final AuditService auditService;
   private final CacheManager cacheManager;
+  private final GradeAggregateService gradeAggregateService;
 
   @Value("${grade.at-risk-threshold:70}")
   private BigDecimal atRiskThreshold;
@@ -147,7 +148,9 @@ public class GradeCalculationService {
       UserRole actorRole,
       String sortBy,
       String direction,
-      boolean atRiskOnly) {
+      boolean atRiskOnly,
+      int page,
+      int size) {
     ensureCourseExists(courseId);
     verifyRosterAccess(courseId, actorId, actorRole);
 
@@ -174,16 +177,38 @@ public class GradeCalculationService {
     }
     students = students.stream().sorted(comparator).toList();
 
+    int totalElements = students.size();
+    int totalPages = size > 0 ? (int) Math.ceil((double) totalElements / size) : 0;
+    int fromIndex = Math.min(Math.max(page, 0) * size, totalElements);
+    int toIndex = Math.min(fromIndex + size, totalElements);
+    List<ClassRosterDto.StudentStandingDto> pageSlice = students.subList(fromIndex, toIndex);
+
     return ClassRosterDto.builder()
         .courseCode(base.getCourseCode())
         .classStats(base.getClassStats())
-        .students(students)
+        .students(pageSlice)
+        .page(page)
+        .size(size)
+        .totalElements(totalElements)
+        .totalPages(totalPages)
         .build();
   }
 
   @Cacheable(value = CacheNames.CACHE_GRADE_OVERVIEW, key = "#courseId + ':' + #studentId")
   @Transactional(readOnly = true)
   public GradeOverviewDto calculateOverviewCached(Long courseId, Long studentId) {
+    return gradeAggregateService
+        .getFromRedis(courseId, studentId)
+        .orElseGet(
+            () -> {
+              GradeOverviewDto computed = calculateOverviewFromDb(courseId, studentId);
+              gradeAggregateService.storeInRedis(courseId, studentId, computed);
+              return computed;
+            });
+  }
+
+  @Transactional(readOnly = true)
+  public GradeOverviewDto calculateOverviewFromDb(Long courseId, Long studentId) {
     try {
       Course course =
           courseRepository

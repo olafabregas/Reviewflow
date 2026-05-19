@@ -18,6 +18,16 @@ public class HttpErrorJsonWriter {
 
   public void writeTooManyRequests(HttpServletResponse response, long retryAfterSeconds, String message)
       throws IOException {
+    writeTooManyRequests(response, retryAfterSeconds, message, 0, 0);
+  }
+
+  public void writeTooManyRequests(
+      HttpServletResponse response,
+      long retryAfterSeconds,
+      String message,
+      long limitCapacity,
+      long resetEpochSeconds)
+      throws IOException {
     ErrorResponse body =
         ErrorResponse.builder()
             .error(
@@ -29,6 +39,13 @@ public class HttpErrorJsonWriter {
             .build();
     response.setStatus(429);
     response.setHeader("Retry-After", String.valueOf(retryAfterSeconds));
+    response.setHeader("X-RateLimit-Remaining", "0");
+    if (limitCapacity > 0) {
+      response.setHeader("X-RateLimit-Limit", String.valueOf(limitCapacity));
+    }
+    if (resetEpochSeconds > 0) {
+      response.setHeader("X-RateLimit-Reset", String.valueOf(resetEpochSeconds));
+    }
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
     response.setCharacterEncoding("UTF-8");
     response.getWriter().write(objectMapper.writeValueAsString(body));

@@ -1,5 +1,6 @@
 package com.reviewflow.infrastructure.security;
 
+import com.reviewflow.infrastructure.ratelimit.RateLimitFilter;
 import com.reviewflow.infrastructure.security.JwtAuthenticationFilter;
 import java.util.Arrays;
 import java.util.List;
@@ -29,6 +30,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
+  private final RateLimitFilter rateLimitFilter;
 
   @Value("${app.cors.allowed-origins:http://localhost:5173}")
   private String allowedOriginsConfig;
@@ -133,7 +135,8 @@ public class SecurityConfig {
                     .hasRole("SYSTEM_ADMIN")
                     .anyRequest()
                     .authenticated())
-        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterAfter(rateLimitFilter, JwtAuthenticationFilter.class);
     return http.build();
   }
 

@@ -45,7 +45,6 @@ import com.reviewflow.admin.service.AdminStatsService;
 import com.reviewflow.admin.service.AuditService;
 import com.reviewflow.infrastructure.storage.ClamAvScanService;
 import com.reviewflow.infrastructure.storage.FileSecurityValidator;
-import com.reviewflow.infrastructure.security.RateLimiterService;
 import com.reviewflow.submission.repository.SubmissionRepository;
 import com.reviewflow.team.repository.TeamMemberRepository;
 import com.reviewflow.team.repository.TeamRepository;
@@ -83,7 +82,6 @@ class SubmissionServiceTest {
   @Mock private FileSecurityValidator fileSecurityValidator;
   @Mock private AdminStatsService adminStatsService;
   @Mock private ClamAvScanService clamAvScanService;
-  @Mock private RateLimiterService rateLimiterService;
   @Mock private SecurityMetrics securityMetrics;
   @Mock private AuditService auditService;
   @Mock private HashidService hashidService;
@@ -93,7 +91,6 @@ class SubmissionServiceTest {
   @BeforeEach
   void setUp() throws Exception {
     ReflectionTestUtils.setField(submissionService, "submissionMaxFileSizeBytes", 104857600L);
-    lenient().when(rateLimiterService.isUploadBlockRateLimited(anyString())).thenReturn(false);
     lenient()
         .doNothing()
         .when(fileSecurityValidator)
@@ -112,20 +109,6 @@ class SubmissionServiceTest {
                 .findTopByAssignmentIdAndTeamIdAndStatusOrderByRespondedAtDesc(
                     anyLong(), anyLong(), eq(ExtensionRequestStatus.APPROVED)))
         .thenReturn(Optional.empty());
-  }
-
-  @Test
-  void upload_whenRateLimited_throwsRateLimitException() {
-    Long uploaderId = 77L;
-    when(rateLimiterService.isUploadBlockRateLimited("user_" + uploaderId)).thenReturn(true);
-    when(rateLimiterService.getUploadBlockRetryAfterSeconds("user_" + uploaderId)).thenReturn(42L);
-
-    assertThrows(
-        RateLimitException.class,
-        () -> submissionService.upload(null, 10L, null, validFile("essay.pdf"), uploaderId));
-
-    verify(securityMetrics).recordUploadBlockRateLimited();
-    verify(assignmentRepository, never()).findById(anyLong());
   }
 
   @Test
@@ -212,7 +195,6 @@ class SubmissionServiceTest {
             .build();
     User uploader = User.builder().id(uploaderId).role(UserRole.STUDENT).build();
 
-    when(rateLimiterService.isUploadBlockRateLimited("user_" + uploaderId)).thenReturn(false);
     doNothing().when(fileSecurityValidator).validateFromPath(any(), anyLong(), anyString());
     doNothing().when(clamAvScanService).scanAndThrow(any(), anyLong());
     when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
@@ -242,7 +224,6 @@ class SubmissionServiceTest {
             .build();
     User uploader = User.builder().id(uploaderId).role(UserRole.STUDENT).build();
 
-    when(rateLimiterService.isUploadBlockRateLimited("user_" + uploaderId)).thenReturn(false);
     doNothing().when(fileSecurityValidator).validateFromPath(any(), anyLong(), anyString());
     doNothing().when(clamAvScanService).scanAndThrow(any(), anyLong());
     when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
@@ -485,7 +466,6 @@ class SubmissionServiceTest {
             submissionService.upload(null, assignmentId, null, validFile("essay.pdf"), uploaderId));
 
     verify(securityMetrics).recordFileBlocked();
-    verify(rateLimiterService).recordBlockedUpload("user_" + uploaderId);
   }
 
   @Test

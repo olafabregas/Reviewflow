@@ -44,6 +44,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import org.mockito.ArgumentMatchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -68,11 +69,15 @@ class GradeCalculationServiceTest {
   @Mock private HashidService hashidService;
   @Mock private AuditService auditService;
   @Mock private CacheManager cacheManager;
+  @Mock private GradeAggregateService gradeAggregateService;
 
   @InjectMocks private GradeCalculationService gradeCalculationService;
 
   @BeforeEach
   void setUp() {
+    lenient()
+        .when(gradeAggregateService.getFromRedis(ArgumentMatchers.anyLong(), ArgumentMatchers.anyLong()))
+        .thenReturn(Optional.empty());
     lenient().when(hashidService.encode(isNull())).thenReturn(null);
     lenient()
         .when(hashidService.encode(notNull()))
@@ -245,7 +250,7 @@ class GradeCalculationServiceTest {
 
     ClassRosterDto roster =
         gradeCalculationService.calculateRoster(
-            courseId, actorId, UserRole.INSTRUCTOR, "standing", "desc", false);
+            courseId, actorId, UserRole.INSTRUCTOR, "standing", "desc", false, 0, 20);
 
     assertEquals(2, roster.getStudents().size());
     assertEquals("h102", roster.getStudents().get(0).getStudentId());
@@ -294,7 +299,7 @@ class GradeCalculationServiceTest {
         AccessDeniedException.class,
         () ->
             gradeCalculationService.calculateRoster(
-                courseId, actorId, UserRole.STUDENT, "standing", "asc", false));
+                courseId, actorId, UserRole.STUDENT, "standing", "asc", false, 0, 20));
   }
 
   @Test
@@ -336,7 +341,7 @@ class GradeCalculationServiceTest {
 
     ClassRosterDto roster =
         gradeCalculationService.calculateRoster(
-            courseId, actorId, UserRole.SYSTEM_ADMIN, "name", "asc", false);
+            courseId, actorId, UserRole.SYSTEM_ADMIN, "name", "asc", false, 0, 20);
 
     assertEquals("Alpha Student", roster.getStudents().get(0).getName());
     assertEquals("Zeta Student", roster.getStudents().get(1).getName());
@@ -390,7 +395,7 @@ class GradeCalculationServiceTest {
 
     ClassRosterDto roster =
         gradeCalculationService.calculateRoster(
-            courseId, actorId, UserRole.SYSTEM_ADMIN, "email", "asc", true);
+            courseId, actorId, UserRole.SYSTEM_ADMIN, "email", "asc", true, 0, 20);
 
     assertEquals(2, roster.getStudents().size());
     assertEquals("a@test.local", roster.getStudents().get(0).getEmail());

@@ -1,5 +1,6 @@
 package com.reviewflow.infrastructure.monitoring;
 
+import com.reviewflow.shared.domain.UserRole;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -319,6 +320,10 @@ public class ReviewFlowMetrics {
     evaluationPublishedCounter.increment();
   }
 
+  public void recordPdfGenerationFailed() {
+    meterRegistry.counter("reviewflow.pdf.generation.failed").increment();
+  }
+
   // ──── ASSIGNMENT GROUPS ───────────────────────────────────────
   public void recordAssignmentGroupCreated() {
     assignmentGroupCreatedCounter.increment();
@@ -339,5 +344,20 @@ public class ReviewFlowMetrics {
   /** WebSocket push delivery failures (e.g. STOMP principal mismatch, broker issues). */
   public void recordWebSocketPushFailed(String type) {
     meterRegistry.counter("reviewflow.websocket.push.failed", "type", type).increment();
+  }
+
+  public void recordRateLimitHit(String strategy, UserRole role) {
+    meterRegistry
+        .counter(
+            "reviewflow.ratelimit.hit",
+            "strategy",
+            strategy,
+            "role",
+            role != null ? role.name() : "PUBLIC")
+        .increment();
+  }
+
+  public void recordRateLimitCheckFailed(String strategy) {
+    meterRegistry.counter("reviewflow.ratelimit.check.failed", "strategy", strategy).increment();
   }
 }

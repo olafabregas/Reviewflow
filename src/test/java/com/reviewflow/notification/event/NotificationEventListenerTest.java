@@ -18,6 +18,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -28,6 +29,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import com.reviewflow.evaluation.event.EvaluationPublishedEvent;
+import com.reviewflow.evaluation.event.PdfReadyEvent;
 import com.reviewflow.submission.event.SubmissionUploadedEvent;
 import com.reviewflow.team.event.TeamInviteEvent;
 import com.reviewflow.team.event.TeamLockedEvent;
@@ -189,6 +191,27 @@ class NotificationEventListenerTest {
     assertEquals(2, emails.size());
     assertEquals("H99", emails.get(0).getEvaluationHashId());
     assertEquals("H99", emails.get(1).getEvaluationHashId());
+  }
+
+  @Test
+  void onPdfReady_persistsInAppNotificationForAllRecipients() {
+    PdfReadyEvent event =
+        new PdfReadyEvent(88L, 18L, List.of(200L, 201L), "Project 2");
+
+    listener.onPdfReady(event);
+
+    ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
+    verify(notificationRepository, times(2)).save(notificationCaptor.capture());
+    List<Notification> notifications = notificationCaptor.getAllValues();
+    assertEquals(2, notifications.size());
+    for (Notification n : notifications) {
+      assertEquals(NotificationType.FEEDBACK_PUBLISHED, n.getType());
+      assertEquals("Evaluation Report Ready", n.getTitle());
+      assertEquals("/evaluations/H88/pdf", n.getActionUrl());
+    }
+    assertEquals(200L, notifications.get(0).getUserId());
+    assertEquals(201L, notifications.get(1).getUserId());
+    verify(eventPublisher, never()).publishEvent(any());
   }
 
   @Test

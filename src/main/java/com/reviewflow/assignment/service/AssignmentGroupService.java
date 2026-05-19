@@ -28,8 +28,10 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
+import com.reviewflow.grading.event.GradeStructureChangedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.Cache;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.access.AccessDeniedException;
@@ -52,6 +54,7 @@ public class AssignmentGroupService {
   private final HashidService hashidService;
   private final CacheManager cacheManager;
   private final GradeCalculationService gradeCalculationService;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
   public AssignmentGroupResponse create(
@@ -127,6 +130,7 @@ public class AssignmentGroupService {
 
     Long courseId = saved.getCourse().getId();
     evictCourseCaches(courseId);
+    eventPublisher.publishEvent(new GradeStructureChangedEvent(courseId));
     gradeCalculationService.evictCourseGradeCaches(courseId);
     if (nameChanged) {
       evictAssignmentCachesForCourse(courseId);
@@ -221,8 +225,10 @@ public class AssignmentGroupService {
         null);
 
     evictAssignmentCache(assignmentId);
-    evictCourseCaches(assignment.getCourse().getId());
-    gradeCalculationService.evictCourseGradeCaches(assignment.getCourse().getId());
+    Long courseId = assignment.getCourse().getId();
+    evictCourseCaches(courseId);
+    eventPublisher.publishEvent(new GradeStructureChangedEvent(courseId));
+    gradeCalculationService.evictCourseGradeCaches(courseId);
 
     return AssignmentGroupMoveResponse.builder()
         .assignmentId(hashidService.encode(assignmentId))

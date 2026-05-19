@@ -6,16 +6,15 @@ import com.itextpdf.layout.Document;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.properties.UnitValue;
-import com.reviewflow.shared.domain.Evaluation;
-import com.reviewflow.shared.domain.RubricScore;
+import com.reviewflow.evaluation.dto.EvaluationPdfContext;
+import com.reviewflow.evaluation.dto.EvaluationPdfRubricRow;
+import com.reviewflow.infrastructure.storage.S3KeyBuilder;
 import com.reviewflow.infrastructure.storage.StorageService;
 import com.reviewflow.shared.util.HashidService;
-import com.reviewflow.infrastructure.storage.S3KeyBuilder;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -30,30 +29,31 @@ public class PdfGenerationService {
   private final StorageService storageService;
   private final HashidService hashidService;
 
-  public String generateEvaluationPdf(Evaluation evaluation, List<RubricScore> scores) {
+  public String generateEvaluationPdf(EvaluationPdfContext context) {
+    byte[] pdfBytes = render(context);
+    String relativePath = S3KeyBuilder.pdfKey(hashidService.encode(context.evaluationId()));
+    storageService.store(
+        relativePath, new ByteArrayInputStream(pdfBytes), pdfBytes.length, "application/pdf");
+    return relativePath;
+  }
+
+  byte[] render(EvaluationPdfContext context) {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     try (PdfWriter writer = new PdfWriter(baos);
         PdfDocument pdf = new PdfDocument(writer);
         Document document = new Document(pdf)) {
 
       document.add(new Paragraph("Evaluation Report").setBold().setFontSize(18));
-      document.add(
-          new Paragraph("Assignment: " + evaluation.getSubmission().getAssignment().getTitle()));
-      document.add(new Paragraph("Team: " + evaluation.getSubmission().getTeam().getName()));
-      document.add(
-          new Paragraph("Submission Version: " + evaluation.getSubmission().getVersionNumber()));
-      document.add(
-          new Paragraph(
-              "Instructor: "
-                  + evaluation.getInstructor().getFirstName()
-                  + " "
-                  + evaluation.getInstructor().getLastName()));
-      if (evaluation.getPublishedAt() != null) {
-        document.add(new Paragraph("Published At: " + FMT.format(evaluation.getPublishedAt())));
+      document.add(new Paragraph("Assignment: " + context.assignmentTitle()));
+      document.add(new Paragraph(context.submitterLabelLine()));
+      document.add(new Paragraph("Submission Version: " + context.submissionVersion()));
+      document.add(new Paragraph("Instructor: " + context.instructorDisplayName()));
+      if (context.publishedAt() != null) {
+        document.add(new Paragraph("Published At: " + FMT.format(context.publishedAt())));
       }
       document.add(new Paragraph(" "));
 
-      if (!scores.isEmpty()) {
+      if (!context.rubricRows().isEmpty()) {
         Table table =
             new Table(UnitValue.createPercentArray(new float[] {4, 2, 2, 4}))
                 .useAllAvailableWidth();
@@ -61,33 +61,31 @@ public class PdfGenerationService {
         table.addHeaderCell("Score");
         table.addHeaderCell("Max");
         table.addHeaderCell("Comment");
-        for (RubricScore rs : scores) {
-          table.addCell(rs.getCriterion().getName());
-          table.addCell(rs.getScore() != null ? rs.getScore().toPlainString() : "-");
-          table.addCell(String.valueOf(rs.getCriterion().getMaxScore()));
-          table.addCell(rs.getComment() != null ? rs.getComment() : "");
+        for (EvaluationPdfRubricRow row : context.rubricRows()) {
+          table.addCell(row.criterionName());
+          table.addCell(row.score() != null ? row.score().toPlainString() : "-");
+          table.addCell(String.valueOf(row.maxScore()));
+          table.addCell(row.comment() != null ? row.comment() : "");
         }
         document.add(table);
         document.add(new Paragraph(" "));
         document.add(
             new Paragraph(
                 "Total Score: "
-                    + (evaluation.getTotalScore() != null
-                        ? evaluation.getTotalScore().toPlainString()
+                    + (context.totalScore() != null
+                        ? context.totalScore().toPlainString()
                         : "0")));
       }
 
-      if (evaluation.getOverallComment() != null && !evaluation.getOverallComment().isBlank()) {
+      if (context.overallComment() != null && !context.overallComment().isBlank()) {
         document.add(new Paragraph("Overall Comment:").setBold());
-        document.add(new Paragraph(evaluation.getOverallComment()));
+        document.add(new Paragraph(context.overallComment()));
       }
     } catch (Exception e) {
-      throw new RuntimeException("Failed to generate PDF for evaluation " + evaluation.getId(), e);
+      throw new RuntimeException(
+          "Failed to generate PDF for evaluation " + context.evaluationId(), e);
     }
-    String relativePath = S3KeyBuilder.pdfKey(hashidService.encode(evaluation.getId()));
-    storageService.store(
-        relativePath, new ByteArrayInputStream(baos.toByteArray()), baos.size(), "application/pdf");
-    return relativePath;
+    return baos.toByteArray();
   }
 
   public Resource loadPdf(String path) {

@@ -1,6 +1,9 @@
 # ReviewFlow — Module 6: Evaluations
 
-> Controller: `EvaluationController.java`
+> Controller: `com.reviewflow.evaluation.controller.EvaluationController`  
+> PDF generation: **iText** in `evaluation/service/PdfGenerationService` using `EvaluationPdfContext` / `EvaluationPdfRubricRow`  
+> Async PDF on publish: `evaluation/listener/PdfGenerationListener` (`@Async("pdfExecutor")`) — see PRD-21 / MASTER §2  
+> Upload PDF **validation** (submissions): OpenPDF in file-security pipeline — not report generation  
 > Base path: `/api/v1/evaluations`
 >
 > **Related PRDs:** [PRD-01 Submission Type](../Features/PRD_01_submission_type.md) | [PRD-07 File Preview](../Features/PRD_07_file_preview.md) | [PRD-09 System Admin](../Features/PRD9-SystemAdmin.md)
@@ -180,7 +183,7 @@
 
 - [ ] INSTRUCTOR only
 - [ ] Evaluation must be published (`is_draft = false`)
-- [ ] Generates PDF server-side using OpenPDF
+- [ ] Generates PDF server-side using **iText** (`PdfGenerationService`)
 - [ ] Stores PDF reference in DB
 - [ ] Returns `{ message: "PDF generated", downloadUrl: "/api/v1/evaluations/{id}/pdf" }`
 - [ ] Logs `PDF_GENERATED` to `audit_log`

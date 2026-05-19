@@ -19,7 +19,11 @@ import com.reviewflow.auth.exception.SessionExpiredException;
 import com.reviewflow.auth.repository.RefreshTokenRepository;
 import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
 import com.reviewflow.infrastructure.security.JwtService;
-import com.reviewflow.infrastructure.security.RateLimiterService;
+import com.reviewflow.infrastructure.ratelimit.RateLimitService;
+import com.reviewflow.infrastructure.ratelimit.RateLimitTestFixtures;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.AUTH_LOGIN;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.AUTH_REFRESH_IP;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.AUTH_REFRESH_USER;
 import com.reviewflow.shared.domain.RefreshToken;
 import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.domain.UserRole;
@@ -44,7 +48,7 @@ class AuthServiceTest {
   @Mock private PasswordEncoder passwordEncoder;
   @Mock private JwtService jwtService;
   @Mock private AuditService auditService;
-  @Mock private RateLimiterService rateLimiterService;
+  @Mock private RateLimitService rateLimitService;
   @Mock private ReviewFlowMetrics metrics;
   @Mock private HashidService hashidService;
   @Mock private PasswordPolicyService passwordPolicyService;
@@ -72,7 +76,8 @@ class AuthServiceTest {
             .emailNotificationsEnabled(true)
             .build();
 
-    when(rateLimiterService.isLoginRateLimited("127.0.0.1")).thenReturn(false);
+    when(rateLimitService.probe("127.0.0.1", AUTH_LOGIN, null))
+        .thenReturn(RateLimitTestFixtures.allowed(AUTH_LOGIN));
     when(userRepository.findByEmail("admin@reviewflow.com")).thenReturn(Optional.of(user));
     when(loginLockoutService.isLocked(user)).thenReturn(false);
     when(passwordEncoder.matches("Test@1234", "hash")).thenReturn(true);
@@ -131,7 +136,8 @@ class AuthServiceTest {
             .emailNotificationsEnabled(true)
             .build();
 
-    when(rateLimiterService.isLoginRateLimited("127.0.0.1")).thenReturn(false);
+    when(rateLimitService.probe("127.0.0.1", AUTH_LOGIN, null))
+        .thenReturn(RateLimitTestFixtures.allowed(AUTH_LOGIN));
     when(userRepository.findByEmail("admin@reviewflow.com")).thenReturn(Optional.of(user));
     when(loginLockoutService.isLocked(user)).thenReturn(false);
     when(passwordEncoder.matches("  Test@1234  ", "hash")).thenReturn(false);
@@ -192,8 +198,14 @@ class AuthServiceTest {
     token.setRevoked(false);
     token.setExpiresAt(java.time.Instant.now().plus(java.time.Duration.ofHours(1)));
 
-    when(rateLimiterService.isRefreshIpRateLimited(anyString())).thenReturn(false);
-    when(rateLimiterService.isRefreshUserRateLimited(99L)).thenReturn(false);
+    when(rateLimitService.probe(anyString(), eq(AUTH_REFRESH_IP), isNull()))
+        .thenReturn(RateLimitTestFixtures.allowed(AUTH_REFRESH_IP));
+    when(rateLimitService.probe(eq("99"), eq(AUTH_REFRESH_USER), any()))
+        .thenReturn(RateLimitTestFixtures.allowed(AUTH_REFRESH_USER));
+    when(rateLimitService.tryConsume(anyString(), eq(AUTH_REFRESH_IP), isNull()))
+        .thenReturn(RateLimitTestFixtures.allowed(AUTH_REFRESH_IP));
+    when(rateLimitService.tryConsume(eq("99"), eq(AUTH_REFRESH_USER), any()))
+        .thenReturn(RateLimitTestFixtures.allowed(AUTH_REFRESH_USER));
     when(sessionPolicyResolver.resolveFor(UserRole.STUDENT)).thenReturn(defaultPolicy());
     when(refreshTokenRepository.findByTokenHash(anyString())).thenReturn(Optional.of(token));
     when(jwtService.generateRefreshToken(604800000L)).thenReturn("new-refresh");
@@ -237,8 +249,14 @@ class AuthServiceTest {
     token.setRevoked(false);
     token.setExpiresAt(java.time.Instant.now().plus(java.time.Duration.ofHours(1)));
 
-    when(rateLimiterService.isRefreshIpRateLimited(anyString())).thenReturn(false);
-    when(rateLimiterService.isRefreshUserRateLimited(99L)).thenReturn(false);
+    when(rateLimitService.probe(anyString(), eq(AUTH_REFRESH_IP), isNull()))
+        .thenReturn(RateLimitTestFixtures.allowed(AUTH_REFRESH_IP));
+    when(rateLimitService.probe(eq("99"), eq(AUTH_REFRESH_USER), any()))
+        .thenReturn(RateLimitTestFixtures.allowed(AUTH_REFRESH_USER));
+    when(rateLimitService.tryConsume(anyString(), eq(AUTH_REFRESH_IP), isNull()))
+        .thenReturn(RateLimitTestFixtures.allowed(AUTH_REFRESH_IP));
+    when(rateLimitService.tryConsume(eq("99"), eq(AUTH_REFRESH_USER), any()))
+        .thenReturn(RateLimitTestFixtures.allowed(AUTH_REFRESH_USER));
     when(sessionPolicyResolver.resolveFor(UserRole.STUDENT)).thenReturn(defaultPolicy());
     when(refreshTokenRepository.findByTokenHash(anyString())).thenReturn(Optional.of(token));
     when(jwtService.generateRefreshToken(604800000L)).thenReturn("new-refresh");

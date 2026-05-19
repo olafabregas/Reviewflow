@@ -31,7 +31,6 @@ import com.reviewflow.admin.service.AdminStatsService;
 import com.reviewflow.admin.service.AuditService;
 import com.reviewflow.infrastructure.storage.ClamAvScanService;
 import com.reviewflow.infrastructure.storage.FileSecurityValidator;
-import com.reviewflow.infrastructure.security.RateLimiterService;
 import com.reviewflow.user.repository.UserRepository;
 import com.reviewflow.infrastructure.storage.StorageService;
 import com.reviewflow.shared.util.HashidService;
@@ -79,7 +78,6 @@ class SubmissionServicePreviewTest {
 
   @Mock private ClamAvScanService clamAvScanService;
 
-  @Mock private RateLimiterService rateLimiterService;
 
   @Mock private SecurityMetrics securityMetrics;
 

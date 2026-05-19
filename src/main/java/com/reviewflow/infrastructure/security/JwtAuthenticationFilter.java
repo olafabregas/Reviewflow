@@ -5,6 +5,9 @@ import com.reviewflow.auth.service.SessionPolicyResolver;
 import com.reviewflow.auth.service.TokenVersionService;
 import com.reviewflow.auth.service.UserDetailsCacheService;
 import com.reviewflow.infrastructure.monitoring.SecurityMetrics;
+import com.reviewflow.infrastructure.ratelimit.RateLimitResult;
+import com.reviewflow.infrastructure.ratelimit.RateLimitService;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.AUTH_JWT_FAILURE;
 import com.reviewflow.shared.util.HashidService;
 import com.reviewflow.shared.util.IpAddressExtractor;
 import jakarta.servlet.FilterChain;
@@ -32,7 +35,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
   private final JwtService jwtService;
   private final UserDetailsCacheService userDetailsCacheService;
-  private final RateLimiterService rateLimiterService;
+  private final RateLimitService rateLimitService;
   private final IpAddressExtractor ipAddressExtractor;
   private final SecurityMetrics securityMetrics;
   private final HashidService hashidService;
@@ -55,13 +58,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     String ip = ipAddressExtractor.extract(request);
 
-    if (rateLimiterService.isTokenRateLimited(ip)) {
+    RateLimitResult jwtProbe = rateLimitService.probe(ip, AUTH_JWT_FAILURE, null);
+    if (!jwtProbe.allowed()) {
       log.warn("Token validation rate limited for IP: {}", ip);
       securityMetrics.recordTokenRateLimited();
       httpErrorJsonWriter.writeTooManyRequests(
           response,
-          rateLimiterService.getTokenRetryAfterSeconds(ip),
-          "Too many token validation attempts. Try again later.");
+          jwtProbe.retryAfterSeconds(),
+          "Too many token validation attempts. Try again later.",
+          jwtProbe.limitCapacity(),
+          jwtProbe.resetEpochSeconds());
       return;
     }
 
@@ -110,7 +116,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                   tokenUserAgent,
                   requestUserAgent);
               securityMetrics.recordTokenFingerprintMismatch();
-              rateLimiterService.recordFailedTokenValidation(ip);
+              rateLimitService.consumeOnFailure(ip, AUTH_JWT_FAILURE, null);
               filterChain.doFilter(request, response);
               return;
             }
@@ -144,7 +150,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         | org.springframework.security.core.userdetails.UsernameNotFoundException
         | TokenVersionMismatchException e) {
       log.debug("Token validation failed for ip={}: {}", ip, e.getMessage());
-      rateLimiterService.recordFailedTokenValidation(ip);
+      rateLimitService.consumeOnFailure(ip, AUTH_JWT_FAILURE, null);
     }
 
     filterChain.doFilter(request, response);

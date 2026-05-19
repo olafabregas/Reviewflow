@@ -26,7 +26,11 @@ import com.reviewflow.admin.service.AuditService;
 import com.reviewflow.auth.repository.PasswordResetTokenRepository;
 import com.reviewflow.auth.repository.RefreshTokenRepository;
 import com.reviewflow.infrastructure.email.event.PasswordResetCompletedEmailEvent;
-import com.reviewflow.infrastructure.security.RateLimiterService;
+import com.reviewflow.infrastructure.ratelimit.RateLimitService;
+import com.reviewflow.infrastructure.ratelimit.RateLimitTestFixtures;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.AUTH_PASSWORD_RESET_CONFIRM_IP;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.AUTH_PASSWORD_RESET_EMAIL;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.AUTH_PASSWORD_RESET_REQUEST_IP;
 import com.reviewflow.shared.domain.PasswordResetToken;
 import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.domain.UserRole;
@@ -44,14 +48,16 @@ class PasswordResetServiceTest {
   @Mock private UserDetailsCacheService userDetailsCacheService;
   @Mock private AuditService auditService;
   @Mock private ApplicationEventPublisher eventPublisher;
-  @Mock private RateLimiterService rateLimiterService;
+  @Mock private RateLimitService rateLimitService;
 
   @InjectMocks private PasswordResetService passwordResetService;
 
   @Test
   void requestReset_unknownEmail_doesNotPublishOrSave() {
-    when(rateLimiterService.isPasswordResetRequestIpRateLimited("1.1.1.1")).thenReturn(false);
-    when(rateLimiterService.isPasswordResetRequestEmailRateLimited("x@y.com")).thenReturn(false);
+    when(rateLimitService.tryConsume("1.1.1.1", AUTH_PASSWORD_RESET_REQUEST_IP, null))
+        .thenReturn(RateLimitTestFixtures.allowed(AUTH_PASSWORD_RESET_REQUEST_IP));
+    when(rateLimitService.tryConsume("x@y.com", AUTH_PASSWORD_RESET_EMAIL, null))
+        .thenReturn(RateLimitTestFixtures.allowed(AUTH_PASSWORD_RESET_EMAIL));
     when(userRepository.findByEmail("x@y.com")).thenReturn(Optional.empty());
 
     passwordResetService.requestReset("x@y.com", "1.1.1.1");
@@ -87,7 +93,8 @@ class PasswordResetServiceTest {
             .ipRequested("198.51.100.1")
             .build();
 
-    when(rateLimiterService.isPasswordResetConfirmIpRateLimited("2.2.2.2")).thenReturn(false);
+    when(rateLimitService.tryConsume("2.2.2.2", AUTH_PASSWORD_RESET_CONFIRM_IP, null))
+        .thenReturn(RateLimitTestFixtures.allowed(AUTH_PASSWORD_RESET_CONFIRM_IP));
     when(passwordResetTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(row));
     when(passwordEncoder.encode("NewP@ssw0rd!")).thenReturn("encoded-password");
 

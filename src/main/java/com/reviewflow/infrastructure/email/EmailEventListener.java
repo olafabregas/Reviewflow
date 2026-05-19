@@ -5,6 +5,9 @@ import com.reviewflow.infrastructure.email.event.AnnouncementPostedEmailEvent;
 import com.reviewflow.infrastructure.email.event.AssignmentDueSoonEmailEvent;
 import com.reviewflow.infrastructure.email.event.EmailEvent;
 import com.reviewflow.infrastructure.email.event.EvaluationPublishedEmailEvent;
+import com.reviewflow.infrastructure.email.event.DiscussionInstructorReplyEmailEvent;
+import com.reviewflow.infrastructure.email.event.DiscussionPublishedEmailEvent;
+import com.reviewflow.infrastructure.email.event.DiscussionReminderEmailEvent;
 import com.reviewflow.infrastructure.email.event.ExtensionDecisionEmailEvent;
 import com.reviewflow.infrastructure.email.event.ExtensionRequestReceivedEmailEvent;
 import com.reviewflow.infrastructure.email.event.PasswordResetCompletedEmailEvent;
@@ -159,6 +162,65 @@ public class EmailEventListener {
                 "senderName", event.getSenderName(),
                 "courseCode", event.getCourseCode())),
         "New announcement: " + event.getAnnouncementTitle());
+  }
+
+  @Async("emailTaskExecutor")
+  @EventListener
+  public void handleDiscussionPublished(DiscussionPublishedEmailEvent event) {
+    if (!isEmailEnabled(event)) {
+      return;
+    }
+    sendEmail(
+        event,
+        "discussion-published",
+        withCommon(
+            event,
+            vars(
+                "recipientName", event.getRecipientName(),
+                "discussionTitle", event.getDiscussionTitle(),
+                "dueAt", event.getDueAt(),
+                "courseCode", event.getCourseCode(),
+                "discussionHashId", event.getDiscussionHashId())),
+        "New discussion: " + event.getDiscussionTitle());
+  }
+
+  @Async("emailTaskExecutor")
+  @EventListener
+  public void handleDiscussionInstructorReply(DiscussionInstructorReplyEmailEvent event) {
+    if (!isEmailEnabled(event)) {
+      return;
+    }
+    sendEmail(
+        event,
+        "discussion-instructor-reply",
+        withCommon(
+            event,
+            vars(
+                "recipientName", event.getRecipientName(),
+                "replierName", event.getReplierName(),
+                "discussionTitle", event.getDiscussionTitle(),
+                "replySnippet", event.getReplySnippet(),
+                "discussionHashId", event.getDiscussionHashId())),
+        event.getReplierName() + " replied in " + event.getDiscussionTitle());
+  }
+
+  @Async("emailTaskExecutor")
+  @EventListener
+  public void handleDiscussionReminder(DiscussionReminderEmailEvent event) {
+    if (!isEmailEnabled(event)) {
+      return;
+    }
+    sendEmail(
+        event,
+        "discussion-reminder",
+        withCommon(
+            event,
+            vars(
+                "recipientName", event.getRecipientName(),
+                "discussionTitle", event.getDiscussionTitle(),
+                "dueAt", event.getDueAt(),
+                "discussionHashId", event.getDiscussionHashId())),
+        "Reminder: " + event.getDiscussionTitle() + " due soon");
   }
 
   @Async("emailTaskExecutor")

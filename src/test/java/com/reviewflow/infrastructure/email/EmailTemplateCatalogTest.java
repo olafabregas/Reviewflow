@@ -56,7 +56,10 @@ class EmailTemplateCatalogTest {
         "announcement-posted",
         "extension-request-received",
         "extension-decision",
-        "account-reactivated"
+        "account-reactivated",
+        "discussion-published",
+        "discussion-instructor-reply",
+        "discussion-reminder"
       })
   void renderHtml_templatesExistAndRender(String templateName) {
     String rendered = templateService.renderHtml(templateName, baseVariables());
@@ -77,7 +80,10 @@ class EmailTemplateCatalogTest {
         "announcement-posted",
         "extension-request-received",
         "extension-decision",
-        "account-reactivated"
+        "account-reactivated",
+        "discussion-published",
+        "discussion-instructor-reply",
+        "discussion-reminder"
       })
   void renderText_templatesExistAndRender(String templateName) {
     String rendered = templateService.renderText(templateName, baseVariables());
@@ -117,6 +123,10 @@ class EmailTemplateCatalogTest {
     vars.put("newDueAt", Instant.parse("2026-04-03T12:00:00Z"));
     vars.put("appBaseUrl", "http://localhost:5173");
     vars.put("preferencesUrl", "http://localhost:5173/settings/preferences");
+    vars.put("discussionTitle", "Week 3 Reflection");
+    vars.put("discussionHashId", "DISC123");
+    vars.put("replierName", "Prof. Smith");
+    vars.put("replySnippet", "Thanks for sharing your perspective.");
     return vars;
   }
 }

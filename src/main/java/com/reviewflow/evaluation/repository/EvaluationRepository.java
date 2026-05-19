@@ -9,6 +9,19 @@ import org.springframework.data.repository.query.Param;
 
 public interface EvaluationRepository extends JpaRepository<Evaluation, Long> {
 
+  @Query(
+      """
+      SELECT e
+      FROM Evaluation e
+      JOIN FETCH e.submission s
+      JOIN FETCH s.assignment a
+      LEFT JOIN FETCH s.team
+      LEFT JOIN FETCH s.student
+      JOIN FETCH e.instructor
+      WHERE e.id = :id
+      """)
+  Optional<Evaluation> findByIdWithPdfRelations(@Param("id") Long id);
+
   Optional<Evaluation> findBySubmissionId(Long submissionId);
 
   List<Evaluation> findByInstructorIdAndSubmissionAssignmentCourseId(

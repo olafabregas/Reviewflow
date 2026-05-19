@@ -26,7 +26,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
+import com.reviewflow.grading.event.GradePublishedEvent;
+import com.reviewflow.grading.event.GradeStructureChangedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -45,6 +48,7 @@ public class InstructorScoreService {
   private final AuditService auditService;
   private final HashidService hashidService;
   private final GradeCalculationService gradeCalculationService;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
   public InstructorScoreResponse create(
@@ -229,6 +233,7 @@ public class InstructorScoreService {
         saved.getId(),
         "Published instructor score",
         null);
+    publishGradeEvents(saved);
     gradeCalculationService.evictCourseGradeCaches(score.getAssignment().getCourse().getId());
     return toResponse(saved);
   }
@@ -253,8 +258,19 @@ public class InstructorScoreService {
         assignmentId,
         "Published count=" + drafts.size(),
         null);
-    gradeCalculationService.evictCourseGradeCaches(assignment.getCourse().getId());
+    Long courseId = assignment.getCourse().getId();
+    eventPublisher.publishEvent(new GradeStructureChangedEvent(courseId));
+    gradeCalculationService.evictCourseGradeCaches(courseId);
     return drafts.size();
+  }
+
+  private void publishGradeEvents(InstructorScore score) {
+    Long courseId = score.getAssignment().getCourse().getId();
+    if (score.getStudent() != null) {
+      eventPublisher.publishEvent(new GradePublishedEvent(courseId, score.getStudent().getId()));
+    } else if (score.getTeam() != null) {
+      eventPublisher.publishEvent(new GradeStructureChangedEvent(courseId));
+    }
   }
 
   @Transactional

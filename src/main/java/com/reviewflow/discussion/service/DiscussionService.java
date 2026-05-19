@@ -189,7 +189,12 @@ public class DiscussionService {
     discussionRepository.save(d);
     evictCourseDiscussionList(d.getCourse().getId());
     eventPublisher.publishEvent(
-        new DiscussionPublishedEvent(d.getCourse().getId(), d.getId(), d.getTitle(), d.getDueAt()));
+        new DiscussionPublishedEvent(
+            d.getCourse().getId(),
+            d.getCourse().getCode(),
+            d.getId(),
+            d.getTitle(),
+            d.getDueAt()));
   }
 
   @Transactional
@@ -352,6 +357,20 @@ public class DiscussionService {
     return role == UserRole.INSTRUCTOR || role == UserRole.ADMIN || role == UserRole.SYSTEM_ADMIN;
   }
 
+  private static String emailSnippet(String content, int maxLen) {
+    if (content == null) {
+      return null;
+    }
+    String trimmed = content.strip();
+    if (trimmed.isEmpty()) {
+      return null;
+    }
+    if (trimmed.length() <= maxLen) {
+      return trimmed;
+    }
+    return trimmed.substring(0, maxLen - 1) + "\u2026";
+  }
+
   private MyPostResponse buildMyPost(Discussion d, Long userId) {
     List<DiscussionPost> mine =
         discussionPostRepository.findCountingInitialsForAuthor(
@@ -432,8 +451,12 @@ public class DiscussionService {
           new DiscussionReplyEvent(
               discussionId,
               resolvedParent.getAuthor().getId(),
+              resolvedParent.getAuthor().getRole(),
               authorId,
-              author.getFullNameOrEmail()));
+              author.getRole(),
+              author.getFullNameOrEmail(),
+              d.getTitle(),
+              emailSnippet(req.getContent(), 240)));
     }
 
     return new CreatePostResponse(

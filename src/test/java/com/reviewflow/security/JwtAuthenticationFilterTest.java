@@ -1,7 +1,11 @@
 package com.reviewflow.security;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -13,7 +17,9 @@ import com.reviewflow.infrastructure.monitoring.SecurityMetrics;
 import com.reviewflow.infrastructure.security.HttpErrorJsonWriter;
 import com.reviewflow.infrastructure.security.JwtAuthenticationFilter;
 import com.reviewflow.infrastructure.security.JwtService;
-import com.reviewflow.infrastructure.security.RateLimiterService;
+import com.reviewflow.infrastructure.ratelimit.RateLimitService;
+import com.reviewflow.infrastructure.ratelimit.RateLimitTestFixtures;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.AUTH_JWT_FAILURE;
 import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
 import com.reviewflow.shared.domain.UserRole;
 import com.reviewflow.shared.util.HashidService;
@@ -35,7 +41,7 @@ class JwtAuthenticationFilterTest {
 
   @Mock private JwtService jwtService;
   @Mock private UserDetailsCacheService userDetailsCacheService;
-  @Mock private RateLimiterService rateLimiterService;
+  @Mock private RateLimitService rateLimitService;
   @Mock private IpAddressExtractor ipAddressExtractor;
   @Mock private SecurityMetrics securityMetrics;
   @Mock private HashidService hashidService;
@@ -52,7 +58,8 @@ class JwtAuthenticationFilterTest {
   @BeforeEach
   void setUp() {
     when(ipAddressExtractor.extract(request)).thenReturn("127.0.0.1");
-    when(rateLimiterService.isTokenRateLimited("127.0.0.1")).thenReturn(false);
+    when(rateLimitService.probe("127.0.0.1", AUTH_JWT_FAILURE, null))
+        .thenReturn(RateLimitTestFixtures.allowed(AUTH_JWT_FAILURE));
     lenient().when(userDetails.getRole()).thenReturn(UserRole.STUDENT);
     lenient().when(userDetails.getUserId()).thenReturn(1L);
     lenient().when(hashidService.encode(1L)).thenReturn("U1");
@@ -100,20 +107,25 @@ class JwtAuthenticationFilterTest {
 
     filter.doFilter(request, response, filterChain);
 
-    verify(rateLimiterService).recordFailedTokenValidation("127.0.0.1");
+    verify(rateLimitService).consumeOnFailure("127.0.0.1", AUTH_JWT_FAILURE, null);
     verify(filterChain).doFilter(request, response);
   }
 
   @Test
   void doFilterInternal_WhenTokenRateLimited_WritesJson429() throws Exception {
-    when(rateLimiterService.isTokenRateLimited("127.0.0.1")).thenReturn(true);
-    when(rateLimiterService.getTokenRetryAfterSeconds("127.0.0.1")).thenReturn(42L);
+    when(rateLimitService.probe("127.0.0.1", AUTH_JWT_FAILURE, null))
+        .thenReturn(RateLimitTestFixtures.denied(AUTH_JWT_FAILURE));
 
     filter.doFilter(request, response, filterChain);
 
     verify(securityMetrics).recordTokenRateLimited();
     verify(httpErrorJsonWriter)
         .writeTooManyRequests(
-            response, 42L, "Too many token validation attempts. Try again later.");
+            eq(response),
+            anyLong(),
+            eq("Too many token validation attempts. Try again later."),
+            anyLong(),
+            anyLong());
+    verify(filterChain, never()).doFilter(request, response);
   }
 }

@@ -1,13 +1,10 @@
 package com.reviewflow.grading.controller;
 
-import com.reviewflow.auth.annotation.RequiresStepUp;
 import com.reviewflow.grading.dto.request.CreateInstructorScoreRequest;
-import com.reviewflow.grading.dto.request.InstructorScoreImportCommitRequest;
 import com.reviewflow.grading.dto.request.ReopenInstructorScoreRequest;
 import com.reviewflow.grading.dto.request.UpdateInstructorScoreRequest;
 import com.reviewflow.shared.exception.ApiResponse;
-import com.reviewflow.grading.dto.response.InstructorScoreImportCommitResponse;
-import com.reviewflow.grading.dto.response.InstructorScoreImportPreviewResponse;
+import com.reviewflow.grading.dto.response.ImportJobStartResponse;
 import com.reviewflow.grading.dto.response.InstructorScoreListResponse;
 import com.reviewflow.grading.dto.response.InstructorScoreResponse;
 import com.reviewflow.grading.dto.response.PublishAllScoresResponse;
@@ -92,28 +89,15 @@ public class InstructorScoreController {
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 
-  @Operation(summary = "Dry-run CSV score import")
+  @Operation(summary = "Start async CSV score import")
   @PostMapping("/assignments/{id}/instructor-scores/import")
-  public ResponseEntity<ApiResponse<InstructorScoreImportPreviewResponse>> dryRunImport(
+  public ResponseEntity<ApiResponse<ImportJobStartResponse>> startImport(
       @PathVariable String id,
       @RequestPart("file") MultipartFile file,
       @AuthenticationPrincipal ReviewFlowUserDetails user) {
-    InstructorScoreImportPreviewResponse response =
-        csvImportService.dryRun(hashidService.decodeOrThrow(id), user.getUserId(), file);
-    return ResponseEntity.ok(ApiResponse.ok(response));
-  }
-
-  @Operation(summary = "Commit CSV score import")
-  @PostMapping("/assignments/{id}/instructor-scores/import/commit")
-  @RequiresStepUp(maxAgeSeconds = 300)
-  public ResponseEntity<ApiResponse<InstructorScoreImportCommitResponse>> commitImport(
-      @PathVariable String id,
-      @Valid @RequestBody InstructorScoreImportCommitRequest request,
-      @AuthenticationPrincipal ReviewFlowUserDetails user) {
-    InstructorScoreImportCommitResponse response =
-        csvImportService.commit(
-            hashidService.decodeOrThrow(id), user.getUserId(), request.getImportId());
-    return ResponseEntity.ok(ApiResponse.ok(response));
+    ImportJobStartResponse response =
+        csvImportService.startImport(hashidService.decodeOrThrow(id), user.getUserId(), file);
+    return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.ok(response));
   }
 
   @Operation(summary = "Publish single score")

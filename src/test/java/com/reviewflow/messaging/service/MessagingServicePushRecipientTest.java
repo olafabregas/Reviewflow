@@ -13,7 +13,7 @@ import com.reviewflow.course.repository.CourseEnrollmentRepository;
 import com.reviewflow.course.repository.CourseInstructorRepository;
 import com.reviewflow.course.repository.CourseRepository;
 import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
-import com.reviewflow.infrastructure.security.RateLimiterService;
+import com.reviewflow.infrastructure.ratelimit.RateLimitService;
 import com.reviewflow.infrastructure.storage.FileSecurityValidator;
 import com.reviewflow.infrastructure.storage.S3Service;
 import com.reviewflow.messaging.repository.ConversationParticipantRepository;
@@ -47,7 +47,7 @@ class MessagingServicePushRecipientTest {
   @Mock private FileSecurityValidator fileSecurityValidator;
   @Mock private HashidService hashidService;
   @Mock private SimpMessagingTemplate messagingTemplate;
-  @Mock private RateLimiterService rateLimiterService;
+  @Mock private RateLimitService rateLimitService;
   @Mock private ReviewFlowMetrics reviewFlowMetrics;
   @Mock private StringRedisTemplate redisTemplate;
 
