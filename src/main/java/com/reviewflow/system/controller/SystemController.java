@@ -150,14 +150,18 @@ public class SystemController {
   @Operation(summary = "List conversation messages (moderation)")
   public ResponseEntity<ApiResponse<Map<String, Object>>> moderationListConversationMessages(
       @PathVariable String conversationId,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "50") int size,
       Authentication authentication,
       HttpServletRequest request) {
     Long convId = hashidService.decodeOrThrow(conversationId);
     Long actorId = extractUserIdFromAuthentication(authentication);
-    return ResponseEntity.ok(
-        ApiResponse.ok(
-            systemService.moderationListConversationMessages(
-                convId, actorId, clientIp(request))));
+    var messages =
+        systemService.moderationListConversationMessages(
+            convId, actorId, clientIp(request), page, size);
+    return ResponseEntity.ok()
+        .headers(com.reviewflow.shared.util.PaginationHeaders.forPage(messages))
+        .body(ApiResponse.ok(java.util.Map.of("messages", messages.getContent())));
   }
 
   /** PRD-09 Flow D: Get security events */

@@ -51,19 +51,19 @@ class SystemMessagingServiceTest {
   @Test
   void getConversationMessagesForApi_auditsAndReturnsPayload() {
     List<MessageDto> messages = List.of(MessageDto.builder().id("m1").build());
-    when(messagingService.listMessagesForModeration(55L)).thenReturn(messages);
+    when(messagingService.listMessagesForModeration(55L, 0, 50))
+        .thenReturn(new org.springframework.data.domain.PageImpl<>(messages));
 
-    Map<String, Object> payload =
-        systemMessagingService.getConversationMessagesForApi(55L, 1L, "10.0.0.1");
+    var page = systemMessagingService.getConversationMessagesForApi(55L, 1L, "10.0.0.1", 0, 50);
 
-    assertEquals(messages, payload.get("messages"));
+    assertEquals(messages, page.getContent());
     verify(auditService)
         .log(
             eq(1L),
             eq("CONVERSATION_VIEWED"),
             eq("CONVERSATION"),
             eq(55L),
-            eq(Map.of("conversationId", 55L)),
+            eq(Map.of("conversationId", 55L, "page", 0, "size", 50)),
             eq("10.0.0.1"));
   }
 }

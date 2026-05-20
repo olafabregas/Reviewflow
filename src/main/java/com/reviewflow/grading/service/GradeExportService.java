@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -86,7 +87,7 @@ public class GradeExportService {
   private final TeamMemberRepository teamMemberRepository;
   private final AuditService auditService;
 
-  @Transactional
+  @Transactional(readOnly = true)
   public ExportResult export(String courseHashId, String assignmentHashId, Long actorUserId) {
     Long courseId = hashidService.decodeOrThrow(courseHashId);
     Long assignmentId = hashidService.decodeOrThrow(assignmentHashId);
@@ -153,7 +154,9 @@ public class GradeExportService {
 
   private List<String[]> buildTeamRows(Assignment assignment, int maxScore) {
     List<Submission> submissions =
-        submissionRepository.findLatestTeamSubmissionsByAssignmentId(assignment.getId());
+        submissionRepository
+            .findLatestTeamSubmissionsByAssignmentId(assignment.getId(), Pageable.unpaged())
+            .getContent();
     Map<Long, Evaluation> evaluationBySubmissionId =
         findPublishedEvaluationsBySubmissionId(submissions);
 
@@ -203,7 +206,9 @@ public class GradeExportService {
 
   private List<String[]> buildIndividualRows(Assignment assignment, int maxScore) {
     List<Submission> submissions =
-        submissionRepository.findLatestIndividualSubmissionsByAssignmentId(assignment.getId());
+        submissionRepository
+            .findLatestIndividualSubmissionsByAssignmentId(assignment.getId(), Pageable.unpaged())
+            .getContent();
     Map<Long, Evaluation> evaluationBySubmissionId =
         findPublishedEvaluationsBySubmissionId(submissions);
 

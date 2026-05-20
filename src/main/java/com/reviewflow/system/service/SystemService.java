@@ -467,9 +467,11 @@ public class SystemService {
   }
 
   /** PRD-18: SYSTEM_ADMIN moderation — full message history including soft-deleted. */
-  public java.util.Map<String, Object> moderationListConversationMessages(
-      Long conversationId, Long actorId, String ip) {
-    return systemMessagingService.getConversationMessagesForApi(conversationId, actorId, ip);
+  public org.springframework.data.domain.Page<com.reviewflow.messaging.dto.response.MessageDto>
+      moderationListConversationMessages(
+          Long conversationId, Long actorId, String ip, int page, int size) {
+    return systemMessagingService.getConversationMessagesForApi(
+        conversationId, actorId, ip, page, size);
   }
 
   /** Build a JSON snapshot of evaluation scores for audit trail */

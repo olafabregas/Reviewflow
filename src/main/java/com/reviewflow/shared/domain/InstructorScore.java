@@ -13,6 +13,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -82,4 +83,8 @@ public class InstructorScore {
 
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
+
+  @Version
+  @Column(name = "lock_version")
+  private Long lockVersion;
 }

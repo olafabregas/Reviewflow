@@ -24,8 +24,9 @@ public class SystemMessagingService {
   }
 
   @Transactional(readOnly = true)
-  public List<MessageDto> getConversationMessages(Long conversationId, Long actorId) {
-    return messagingService.listMessagesForModeration(conversationId);
+  public org.springframework.data.domain.Page<MessageDto> getConversationMessages(
+      Long conversationId, Long actorId, int page, int size) {
+    return messagingService.listMessagesForModeration(conversationId, page, size);
   }
 
   public Map<String, Object> getCourseConversationsForApi(Long courseId, Long actorId, String ip) {
@@ -40,16 +41,16 @@ public class SystemMessagingService {
     return Map.of("conversations", list);
   }
 
-  public Map<String, Object> getConversationMessagesForApi(
-      Long conversationId, Long actorId, String ip) {
-    List<MessageDto> messages = getConversationMessages(conversationId, actorId);
+  public org.springframework.data.domain.Page<MessageDto> getConversationMessagesForApi(
+      Long conversationId, Long actorId, String ip, int page, int size) {
+    var messages = getConversationMessages(conversationId, actorId, page, size);
     auditService.log(
         actorId,
         "CONVERSATION_VIEWED",
         "CONVERSATION",
         conversationId,
-        Map.of("conversationId", conversationId),
+        Map.of("conversationId", conversationId, "page", page, "size", size),
         ip);
-    return Map.of("messages", messages);
+    return messages;
   }
 }

@@ -35,6 +35,9 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -158,12 +161,21 @@ public class EvaluationService {
     // Get assignment ID for criterion validation
     Long assignmentId = evaluation.getSubmission().getAssignment().getId();
 
+    Set<Long> criterionIds =
+        scores.stream()
+            .map(entry -> hashidService.decodeOrThrow(entry.getCriterionId()))
+            .collect(Collectors.toSet());
+
+    Map<Long, RubricCriterion> criteriaById =
+        rubricCriterionRepository.findAllById(criterionIds).stream()
+            .collect(Collectors.toMap(RubricCriterion::getId, criterion -> criterion));
+
     for (UpdateScoresRequest.ScoreEntry entry : scores) {
       Long criterionId = hashidService.decodeOrThrow(entry.getCriterionId());
-      RubricCriterion criterion =
-          rubricCriterionRepository
-              .findById(criterionId)
-              .orElseThrow(() -> new ResourceNotFoundException("RubricCriterion", criterionId));
+      RubricCriterion criterion = criteriaById.get(criterionId);
+      if (criterion == null) {
+        throw new ResourceNotFoundException("RubricCriterion", criterionId);
+      }
 
       // Validate criterion belongs to this assignment
       if (!criterion.getAssignment().getId().equals(assignmentId)) {

@@ -32,4 +32,8 @@ public class RubricScore {
 
   @Column(columnDefinition = "TEXT")
   private String comment;
+
+  @Version
+  @Column(name = "lock_version")
+  private Long lockVersion;
 }

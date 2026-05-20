@@ -42,6 +42,9 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -712,32 +715,24 @@ public class AssignmentService {
     assignmentRepository.delete(a);
   }
 
-  public List<Submission> getSubmissionsForAssignment(Long assignmentId, Long userId) {
+  public Page<Submission> getSubmissionsForAssignment(
+      Long assignmentId, Long userId, int page, int size) {
     Assignment a = getAssignmentById(assignmentId);
     ensureInstructor(a.getCourse().getId(), userId);
-    List<Submission> allSubmissions =
-        submissionRepository.findByAssignmentIdOrderByTeamIdAscVersionNumberDesc(assignmentId);
-
-    // Return only the latest submission per team
-    return allSubmissions.stream()
-        .collect(
-            Collectors.groupingBy(
-                s -> s.getTeam().getId(),
-                Collectors.collectingAndThen(
-                    Collectors.maxBy(Comparator.comparing(Submission::getVersionNumber)),
-                    opt -> opt.orElse(null))))
-        .values()
-        .stream()
-        .filter(s -> s != null)
-        .sorted(Comparator.comparing(s -> s.getTeam().getName()))
-        .collect(Collectors.toList());
+    Pageable pageable = PageRequest.of(page, size);
+    if (a.getSubmissionType() == SubmissionType.TEAM) {
+      return submissionRepository.findLatestTeamSubmissionsByAssignmentId(
+          assignmentId, pageable);
+    }
+    return submissionRepository.findLatestIndividualSubmissionsByAssignmentId(
+        assignmentId, pageable);
   }
 
   public List<GradebookEntryResponse> getGradebookForAssignment(Long assignmentId, Long userId) {
     Assignment a = getAssignmentById(assignmentId);
     ensureInstructor(a.getCourse().getId(), userId);
 
-    List<Team> teams = teamRepository.findByAssignmentId(assignmentId);
+    List<Team> teams = teamRepository.findByAssignmentIdWithMembers(assignmentId);
 
     return teams.stream()
         .map(

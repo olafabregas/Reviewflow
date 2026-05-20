@@ -834,15 +834,16 @@ class MessagingServiceTest {
             .sentAt(Instant.now())
             .attachments(new ArrayList<>())
             .build();
-    when(messageRepository.findAllByConversationIdForModerationWithDetails(CONV_ID))
-        .thenReturn(List.of(deleted));
+    when(messageRepository.findAllByConversationIdForModerationWithDetails(
+            eq(CONV_ID), any(org.springframework.data.domain.Pageable.class)))
+        .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(deleted)));
     when(hashidService.encode(anyLong())).thenAnswer(inv -> "h" + inv.getArgument(0));
 
-    var dtos = messagingService.listMessagesForModeration(CONV_ID);
+    var page = messagingService.listMessagesForModeration(CONV_ID, 0, 50);
 
-    assertEquals(1, dtos.size());
-    assertEquals("removed text", dtos.get(0).getContent());
-    assertTrue(dtos.get(0).isDeleted());
+    assertEquals(1, page.getContent().size());
+    assertEquals("removed text", page.getContent().get(0).getContent());
+    assertTrue(page.getContent().get(0).isDeleted());
   }
 
   @Test
