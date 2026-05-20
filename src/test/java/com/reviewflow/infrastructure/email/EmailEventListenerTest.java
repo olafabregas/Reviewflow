@@ -4,9 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
+import org.junit.jupiter.api.BeforeEach;
 
 import com.reviewflow.infrastructure.email.EmailEventListener;
 import com.reviewflow.infrastructure.email.event.AccountReactivatedEmailEvent;
@@ -32,8 +35,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class EmailEventListenerTest {
 
   @Mock private EmailService emailService;
@@ -42,7 +48,14 @@ class EmailEventListenerTest {
 
   @Mock private UserRepository userRepository;
 
+  @Mock private ReviewFlowMetrics metrics;
+
   @InjectMocks private EmailEventListener listener;
+
+  @BeforeEach
+  void stubEmailSend() {
+    doNothing().when(emailService).send(anyString(), anyString(), anyString(), anyString());
+  }
 
   @Test
   void handleSubmissionReceived_emailDisabled_skipsSend() {

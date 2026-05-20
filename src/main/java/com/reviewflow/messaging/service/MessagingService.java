@@ -50,7 +50,11 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.RejectedExecutionException;
+import com.reviewflow.shared.exception.ServiceUnavailableException;
+import org.slf4j.MDC;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
@@ -732,18 +736,37 @@ public class MessagingService {
   }
 
   private void uploadBytesToS3(String key, byte[] bytes, String contentType) {
+    Map<String, String> mdcContext = MDC.getCopyOfContextMap();
+    CompletableFuture<Void> uploadFuture;
     try {
-      CompletableFuture.runAsync(
-              () ->
-                  s3Service.putObject(
-                      key, new ByteArrayInputStream(bytes), bytes.length, contentType),
-              uploadExecutor)
-          .get(uploadTimeoutSeconds, TimeUnit.SECONDS);
+      uploadFuture =
+          CompletableFuture.runAsync(
+              () -> {
+                if (mdcContext != null) {
+                  MDC.setContextMap(mdcContext);
+                }
+                s3Service.putObject(
+                    key, new ByteArrayInputStream(bytes), bytes.length, contentType);
+              },
+              uploadExecutor);
+    } catch (RejectedExecutionException e) {
+      reviewFlowMetrics.recordAsyncRejected("uploadExecutor");
+      log.warn("uploadExecutor queue full — message attachment upload rejected for key={}", key);
+      throw new ServiceUnavailableException(
+          "Upload service is temporarily at capacity. Please try again shortly.");
+    }
+    try {
+      uploadFuture.get(uploadTimeoutSeconds, TimeUnit.SECONDS);
     } catch (TimeoutException e) {
       s3Service.deleteObjectSilently(key);
       throw new FileUploadTimeoutException(uploadTimeoutSeconds);
     } catch (ExecutionException e) {
       Throwable cause = e.getCause() != null ? e.getCause() : e;
+      if (cause instanceof RejectedExecutionException) {
+        reviewFlowMetrics.recordAsyncRejected("uploadExecutor");
+        throw new ServiceUnavailableException(
+            "Upload service is temporarily at capacity. Please try again shortly.");
+      }
       if (cause instanceof RuntimeException re) {
         throw re;
       }

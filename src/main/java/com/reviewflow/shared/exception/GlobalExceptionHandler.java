@@ -532,6 +532,22 @@ public class GlobalExceptionHandler {
     return errorResponse(ex.getCode(), ex.getMessage(), HttpStatus.REQUEST_TIMEOUT);
   }
 
+  @ExceptionHandler(ServiceUnavailableException.class)
+  public ResponseEntity<ErrorResponse> handleServiceUnavailable(ServiceUnavailableException ex) {
+    ErrorResponse body =
+        ErrorResponse.builder()
+            .error(
+                ErrorResponse.ErrorDetail.builder()
+                    .code(ex.getCode())
+                    .message(ex.getMessage())
+                    .build())
+            .timestamp(Instant.now())
+            .build();
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+        .header("Retry-After", "30")
+        .body(body);
+  }
+
   @ExceptionHandler(BusinessRuleException.class)
   public ResponseEntity<ErrorResponse> handleBusinessRule(BusinessRuleException ex) {
     ErrorResponse body =

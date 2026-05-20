@@ -9,4 +9,6 @@ public class JobProgressEvent {
   int processed;
   int total;
   int percent;
+  String status;
+  String errorMessage;
 }

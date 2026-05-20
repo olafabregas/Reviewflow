@@ -47,7 +47,7 @@ public class ClamAvScanService {
    * Asynchronously scan a file for malware. Returns immediately with a CompletableFuture that
    * completes when scan finishes. Does not block the calling thread.
    */
-  @Async
+  @Async("scanExecutor")
   public CompletableFuture<ClamAvScanResult> scanAsync(Path filePath) {
     if (!enabled) {
       return CompletableFuture.completedFuture(ClamAvScanResult.DISABLED);
@@ -86,6 +86,10 @@ public class ClamAvScanService {
       log.warn("ClamAV scan timeout for file={}", filePath.getFileName());
       securityMetrics.recordClamavError();
       throw new RuntimeException("ClamAV scan timeout");
+    } catch (java.util.concurrent.RejectedExecutionException e) {
+      log.warn("ClamAV scan rejected for file={}: queue full", filePath.getFileName());
+      securityMetrics.recordClamavError();
+      throw new RuntimeException("ClamAV scan queue full", e);
     } catch (Exception e) {
       log.error("ClamAV scan failed for file={}: {}", filePath.getFileName(), e.getMessage());
       securityMetrics.recordClamavError();

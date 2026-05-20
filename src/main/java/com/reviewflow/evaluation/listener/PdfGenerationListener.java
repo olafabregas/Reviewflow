@@ -2,7 +2,6 @@ package com.reviewflow.evaluation.listener;
 
 import com.reviewflow.evaluation.event.EvaluationPublishedEvent;
 import com.reviewflow.evaluation.event.PdfReadyEvent;
-import com.reviewflow.evaluation.repository.EvaluationRepository;
 import com.reviewflow.evaluation.dto.EvaluationPdfContext;
 import com.reviewflow.evaluation.service.EvaluationService;
 import com.reviewflow.evaluation.service.PdfGenerationService;
@@ -11,6 +10,7 @@ import com.reviewflow.shared.domain.Evaluation;
 import com.reviewflow.shared.domain.RubricScore;
 import com.reviewflow.shared.domain.SubmissionType;
 import com.reviewflow.grading.repository.RubricScoreRepository;
+import com.reviewflow.evaluation.repository.EvaluationRepository;
 import com.reviewflow.shared.util.HashidService;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +29,7 @@ public class PdfGenerationListener {
   private final EvaluationRepository evaluationRepository;
   private final RubricScoreRepository rubricScoreRepository;
   private final PdfGenerationService pdfGenerationService;
+  private final EvaluationService evaluationService;
   private final HashidService hashidService;
   private final ApplicationEventPublisher eventPublisher;
   private final ReviewFlowMetrics metrics;
@@ -41,14 +42,23 @@ public class PdfGenerationListener {
       Evaluation evaluation =
           evaluationRepository.findByIdWithPdfRelations(event.evaluationId()).orElse(null);
       if (evaluation == null) {
+        log.warn(
+            "PDF generation skipped — evaluation not found id={}", event.evaluationId());
         return;
       }
+
+      if (evaluation.getPdfPath() != null) {
+        log.debug(
+            "PDF generation skipped — pdfPath already set evaluationId={}",
+            event.evaluationId());
+        return;
+      }
+
       List<RubricScore> scores =
           rubricScoreRepository.findByEvaluationIdWithCriterion(event.evaluationId());
       EvaluationPdfContext context = EvaluationService.toPdfContext(evaluation, scores);
       String pdfPath = pdfGenerationService.generateEvaluationPdf(context);
-      evaluation.setPdfPath(pdfPath);
-      evaluationRepository.save(evaluation);
+      evaluationService.updatePdfPath(event.evaluationId(), pdfPath);
 
       List<Long> recipients = new ArrayList<>(event.recipientUserIds());
       if (event.submissionType() == SubmissionType.INDIVIDUAL && event.studentId() != null) {
@@ -62,7 +72,11 @@ public class PdfGenerationListener {
               event.assignmentTitle()));
       log.info("PDF generated for evaluation {}", hashedEvalId);
     } catch (Exception e) {
-      log.error("PDF generation failed for evaluation {}: {}", hashedEvalId, e.getMessage());
+      log.error(
+          "PDF generation failed evaluationId={}: {}",
+          hashedEvalId,
+          e.getMessage(),
+          e);
       metrics.recordPdfGenerationFailed();
     }
   }

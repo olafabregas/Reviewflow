@@ -298,7 +298,7 @@ public class ReviewFlowMetrics {
   }
 
   public void recordEmailFailed(String eventType) {
-    emailFailedCounter.increment();
+    meterRegistry.counter("reviewflow.email.failed", "type", eventType).increment();
   }
 
   // ──── NOTIFICATIONS ───────────────────────────────────────────
@@ -359,5 +359,21 @@ public class ReviewFlowMetrics {
 
   public void recordRateLimitCheckFailed(String strategy) {
     meterRegistry.counter("reviewflow.ratelimit.check.failed", "strategy", strategy).increment();
+  }
+
+  public void recordAsyncRejected(String executorName) {
+    meterRegistry.counter("reviewflow.async.rejected", "executor", executorName).increment();
+  }
+
+  public void recordGradeAggregateFailed() {
+    meterRegistry.counter("reviewflow.grade.aggregate.failed").increment();
+  }
+
+  public void recordJobFailed(String jobType) {
+    meterRegistry.counter("reviewflow.job.failed", "jobType", jobType).increment();
+  }
+
+  public void recordScanRejected() {
+    meterRegistry.counter("reviewflow.clamav.scan.rejected").increment();
   }
 }

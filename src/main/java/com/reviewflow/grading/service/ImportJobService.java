@@ -9,17 +9,22 @@ import com.reviewflow.grading.job.JobState;
 import com.reviewflow.grading.job.JobStatus;
 import com.reviewflow.infrastructure.jobs.AsyncJobService;
 import com.reviewflow.infrastructure.jobs.SseEmitterRegistry;
+import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
 import com.reviewflow.infrastructure.storage.S3Service;
+import com.reviewflow.shared.exception.ServiceUnavailableException;
 import com.reviewflow.shared.domain.UserRole;
 import com.reviewflow.shared.exception.AccessDeniedException;
 import com.reviewflow.shared.util.HashidService;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Service
+@Slf4j
 public class ImportJobService {
 
   private final AsyncJobService asyncJobService;
@@ -28,6 +33,7 @@ public class ImportJobService {
   private final S3Service s3Service;
   private final HashidService hashidService;
   private final Executor csvWorkerExecutor;
+  private final ReviewFlowMetrics metrics;
 
   public ImportJobService(
       AsyncJobService asyncJobService,
@@ -35,13 +41,15 @@ public class ImportJobService {
       SseEmitterRegistry sseEmitterRegistry,
       S3Service s3Service,
       HashidService hashidService,
-      @Qualifier("csvWorkerExecutor") Executor csvWorkerExecutor) {
+      @Qualifier("csvWorkerExecutor") Executor csvWorkerExecutor,
+      ReviewFlowMetrics metrics) {
     this.asyncJobService = asyncJobService;
     this.csvImportService = csvImportService;
     this.sseEmitterRegistry = sseEmitterRegistry;
     this.s3Service = s3Service;
     this.hashidService = hashidService;
     this.csvWorkerExecutor = csvWorkerExecutor;
+    this.metrics = metrics;
   }
 
   public JobStatusDto getStatus(String jobId, Long actorId, UserRole actorRole) {
@@ -73,7 +81,16 @@ public class ImportJobService {
           "Commit is only allowed when status is VALIDATION_PASSED");
     }
     asyncJobService.updateStatus(jobId, JobStatus.COMMITTING);
-    CompletableFuture.runAsync(() -> csvImportService.runCommit(jobId), csvWorkerExecutor);
+    try {
+      CompletableFuture.runAsync(() -> csvImportService.runCommit(jobId), csvWorkerExecutor);
+    } catch (RejectedExecutionException e) {
+      metrics.recordAsyncRejected("csvWorkerExecutor");
+      log.warn("csvWorkerExecutor rejected commit for jobId={}", jobId);
+      asyncJobService.updateStatus(jobId, JobStatus.VALIDATION_PASSED);
+      asyncJobService.updateJobError(jobId, "Commit temporarily rejected — please retry.");
+      throw new ServiceUnavailableException(
+          "Commit service is temporarily at capacity. Please try again.");
+    }
     return JobStatusDto.builder().jobId(jobId).status(JobStatus.COMMITTING).build();
   }
 

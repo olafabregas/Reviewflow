@@ -5,7 +5,6 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -32,9 +31,8 @@ public class EmailService {
 
       mailSender.send(message);
       log.debug("Email sent to {}: {}", to, subject);
-    } catch (MessagingException | MailException e) {
-      // Email is fire-and-forget; never break core request flow on email failures.
-      log.error("Email send failed to {}: {}", to, e.getMessage());
+    } catch (MessagingException e) {
+      throw new org.springframework.mail.MailSendException("Failed to compose email", e);
     }
   }
 }

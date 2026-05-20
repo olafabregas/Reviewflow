@@ -19,6 +19,8 @@ import com.reviewflow.infrastructure.email.event.WelcomeEmailEvent;
 import com.reviewflow.user.repository.UserRepository;
 import com.reviewflow.infrastructure.email.EmailService;
 import com.reviewflow.infrastructure.email.EmailTemplateService;
+import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
+import org.springframework.mail.MailException;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +38,7 @@ public class EmailEventListener {
   private final EmailService emailService;
   private final EmailTemplateService templateService;
   private final UserRepository userRepository;
+  private final ReviewFlowMetrics metrics;
 
   @Value("${app.base-url:http://localhost:5173}")
   private String appBaseUrl;
@@ -327,13 +330,23 @@ public class EmailEventListener {
           "Email sent: event={}, recipient={}",
           event.getClass().getSimpleName(),
           event.getRecipientEmail());
-    } catch (Exception e) {
-      // Never break request flows due to email processing.
+    } catch (MailException e) {
+      String eventType = event.getClass().getSimpleName();
+      metrics.recordEmailFailed(eventType);
       log.error(
-          "Email handler failed: template={}, recipient={}, error={}",
-          template,
+          "Email delivery failed type={} recipient={}: {}",
+          eventType,
           event.getRecipientEmail(),
-          e.getMessage());
+          e.getMessage(),
+          e);
+    } catch (Exception e) {
+      String eventType = event.getClass().getSimpleName();
+      metrics.recordEmailFailed(eventType);
+      log.error(
+          "Unexpected email handler failure type={}: {}",
+          eventType,
+          e.getMessage(),
+          e);
     }
   }
 

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -39,6 +40,22 @@ public class SseEmitterRegistry {
           SseEmitter.event().name("progress").data(objectMapper.writeValueAsString(event)));
     } catch (IOException e) {
       log.debug("SSE push failed for job {}: {}", jobId, e.getMessage());
+      emitters.remove(jobId);
+    }
+  }
+
+  public void pushFailed(String jobId, String errorMessage) {
+    SseEmitter emitter = emitters.get(jobId);
+    if (emitter == null) {
+      return;
+    }
+    try {
+      Map<String, String> payload = new HashMap<>();
+      payload.put("status", "FAILED");
+      payload.put("errorMessage", errorMessage);
+      emitter.send(
+          SseEmitter.event().name("failed").data(objectMapper.writeValueAsString(payload)));
+    } catch (IOException e) {
       emitters.remove(jobId);
     }
   }

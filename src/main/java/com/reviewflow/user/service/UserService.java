@@ -30,7 +30,9 @@ import com.reviewflow.user.exception.AvatarUploadFailedException;
 import java.io.ByteArrayInputStream;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -122,6 +124,22 @@ public class UserService {
 
   public User getUserById(Long id) {
     return userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("User", id));
+  }
+
+  public Optional<User> findUserById(Long id) {
+    return userRepository.findById(id);
+  }
+
+  public Optional<User> findUserByEmail(String email) {
+    return userRepository.findByEmail(email);
+  }
+
+  public List<Long> findAllUserIdsByRole(UserRole role) {
+    return userRepository.findAllIdsByRole(role);
+  }
+
+  public List<Long> findAllUserIds() {
+    return userRepository.findAllIds();
   }
 
   public UserDetailResponse getUserByIdWithCounts(Long id) {
