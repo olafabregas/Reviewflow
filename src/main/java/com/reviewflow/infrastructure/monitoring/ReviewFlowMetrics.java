@@ -257,6 +257,10 @@ public class ReviewFlowMetrics {
     }
   }
 
+  public void recordUploadBlockRateLimited() {
+    meterRegistry.counter("reviewflow.upload.block.rate_limited").increment();
+  }
+
   // ──── CLAMAV SCAN RESULTS ─────────────────────────────────────
   public void recordClamAvScanResult(String result) {
     switch (result) {
