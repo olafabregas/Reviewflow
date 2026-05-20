@@ -4,7 +4,7 @@ import com.reviewflow.auth.exception.TokenVersionMismatchException;
 import com.reviewflow.auth.service.SessionPolicyResolver;
 import com.reviewflow.auth.service.TokenVersionService;
 import com.reviewflow.auth.service.UserDetailsCacheService;
-import com.reviewflow.infrastructure.monitoring.SecurityMetrics;
+import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
 import com.reviewflow.infrastructure.ratelimit.RateLimitResult;
 import com.reviewflow.infrastructure.ratelimit.RateLimitService;
 import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.AUTH_JWT_FAILURE;
@@ -38,7 +38,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   private final UserDetailsCacheService userDetailsCacheService;
   private final RateLimitService rateLimitService;
   private final IpAddressExtractor ipAddressExtractor;
-  private final SecurityMetrics securityMetrics;
+  private final ReviewFlowMetrics metrics;
   private final HashidService hashidService;
   private final TokenVersionService tokenVersionService;
   private final SessionPolicyResolver sessionPolicyResolver;
@@ -62,7 +62,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     RateLimitResult jwtProbe = rateLimitService.probe(ip, AUTH_JWT_FAILURE, null);
     if (!jwtProbe.allowed()) {
       log.warn("Token validation rate limited for IP: {}", ip);
-      securityMetrics.recordTokenRateLimited();
+      metrics.recordTokenRateLimited();
       httpErrorJsonWriter.writeTooManyRequests(
           response,
           jwtProbe.retryAfterSeconds(),
@@ -116,7 +116,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                   ip,
                   tokenUserAgent,
                   requestUserAgent);
-              securityMetrics.recordTokenFingerprintMismatch();
+              metrics.recordTokenFingerprintMismatch();
               rateLimitService.consumeOnFailure(ip, AUTH_JWT_FAILURE, null);
               filterChain.doFilter(request, response);
               return;
@@ -130,9 +130,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
           SecurityContextHolder.getContext().setAuthentication(auth);
 
           if (extraction.fromBearer()) {
-            securityMetrics.recordAuthTokenFromBearer();
+            metrics.recordAuthTokenFromBearer();
           } else {
-            securityMetrics.recordAuthTokenFromCookie();
+            metrics.recordAuthTokenFromCookie();
           }
 
           if (userDetails instanceof ReviewFlowUserDetails rfDetails) {
@@ -150,6 +150,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     } catch (TokenVersionMismatchException ex) {
       log.warn("Token version mismatch for request {}: {}", request.getRequestURI(), ex.getMessage());
       rateLimitService.consumeOnFailure(ip, AUTH_JWT_FAILURE, null);
+      metrics.recordTokenValidation("invalid");
       httpErrorJsonWriter.writeError(
           response,
           HttpStatus.UNAUTHORIZED.value(),
@@ -160,6 +161,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         | org.springframework.security.core.userdetails.UsernameNotFoundException e) {
       log.debug("Token validation failed for ip={}: {}", ip, e.getMessage());
       rateLimitService.consumeOnFailure(ip, AUTH_JWT_FAILURE, null);
+      metrics.recordTokenValidation("invalid");
     }
 
     filterChain.doFilter(request, response);

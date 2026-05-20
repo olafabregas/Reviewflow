@@ -1,21 +1,27 @@
 package com.reviewflow.auth.service;
 
 import com.reviewflow.admin.service.AuditService;
+import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
 import com.reviewflow.shared.domain.User;
+import com.reviewflow.shared.util.HashidService;
 import com.reviewflow.user.repository.UserRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LoginLockoutService {
 
   private final UserRepository userRepository;
   private final AuditService auditService;
+  private final ReviewFlowMetrics metrics;
+  private final HashidService hashidService;
 
   @Value("${auth.lockout.threshold:10}")
   private int threshold;
@@ -46,7 +52,14 @@ public class LoginLockoutService {
     user.setFailedLoginCount(count);
     user.setLastFailedLoginAt(now);
     if (count >= threshold) {
-      user.setLockedUntil(now.plus(durationMinutes, ChronoUnit.MINUTES));
+      Instant lockedUntil = now.plus(durationMinutes, ChronoUnit.MINUTES);
+      user.setLockedUntil(lockedUntil);
+      log.warn(
+          "Account locked userId={} ipAddress={} lockedUntil={}",
+          hashidService.encode(user.getId()),
+          ipAddress,
+          lockedUntil);
+      metrics.recordLockout();
       auditService.log(
           user.getId(),
           "ACCOUNT_LOCKED",
