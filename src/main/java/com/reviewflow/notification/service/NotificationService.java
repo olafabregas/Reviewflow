@@ -32,8 +32,21 @@ public class NotificationService {
   private final HashidService hashidService;
 
   @Transactional
+  @CacheEvict(value = CacheNames.CACHE_UNREAD_COUNT, key = "#userId")
   public Notification create(
       Long userId, NotificationType type, String title, String message, String actionUrl) {
+    return create(userId, type, title, message, actionUrl, null);
+  }
+
+  @Transactional
+  @CacheEvict(value = CacheNames.CACHE_UNREAD_COUNT, key = "#userId")
+  public Notification create(
+      Long userId,
+      NotificationType type,
+      String title,
+      String message,
+      String actionUrl,
+      Long targetId) {
     Notification n =
         Notification.builder()
             .userId(userId)
@@ -41,9 +54,42 @@ public class NotificationService {
             .title(title)
             .message(message)
             .actionUrl(actionUrl)
+            .targetId(targetId)
             .isRead(false)
             .build();
     return notificationRepository.save(n);
+  }
+
+  /**
+   * Idempotent per (user, type, assignment, UTC calendar day) via {@code uk_notification_dedup}.
+   */
+  @Transactional
+  @CacheEvict(value = CacheNames.CACHE_UNREAD_COUNT, key = "#userId")
+  public Optional<Notification> tryCreateDedupedDeadlineReminder(
+      Long userId,
+      NotificationType type,
+      Long assignmentId,
+      String title,
+      String message,
+      String actionUrl) {
+    Notification n =
+        Notification.builder()
+            .userId(userId)
+            .type(type)
+            .title(title)
+            .message(message)
+            .actionUrl(actionUrl)
+            .targetId(assignmentId)
+            .dateBucket(LocalDate.now(ZoneOffset.UTC))
+            .isRead(false)
+            .build();
+    try {
+      Notification saved = notificationRepository.save(n);
+      notificationRepository.flush();
+      return Optional.of(saved);
+    } catch (DataIntegrityViolationException ex) {
+      return Optional.empty();
+    }
   }
 
   /**

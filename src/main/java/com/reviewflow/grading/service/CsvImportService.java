@@ -15,6 +15,8 @@ import com.reviewflow.infrastructure.config.ValidationConfig;
 import com.reviewflow.infrastructure.jobs.AsyncJobService;
 import com.reviewflow.infrastructure.jobs.JobProgressEvent;
 import com.reviewflow.infrastructure.jobs.SseEmitterRegistry;
+import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
+import com.reviewflow.shared.exception.ServiceUnavailableException;
 import com.reviewflow.infrastructure.storage.FileSecurityValidator;
 import com.reviewflow.infrastructure.storage.S3Service;
 import com.reviewflow.shared.domain.Assignment;
@@ -38,7 +40,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -67,6 +71,7 @@ public class CsvImportService {
   private final ObjectMapper objectMapper;
   private final Executor csvWorkerExecutor;
   private final Executor uploadExecutor;
+  private final ReviewFlowMetrics metrics;
 
   public CsvImportService(
       AssignmentRepository assignmentRepository,
@@ -83,7 +88,8 @@ public class CsvImportService {
       HashidService hashidService,
       ObjectMapper objectMapper,
       @Qualifier("csvWorkerExecutor") Executor csvWorkerExecutor,
-      @Qualifier("uploadExecutor") Executor uploadExecutor) {
+      @Qualifier("uploadExecutor") Executor uploadExecutor,
+      ReviewFlowMetrics metrics) {
     this.assignmentRepository = assignmentRepository;
     this.userRepository = userRepository;
     this.teamRepository = teamRepository;
@@ -99,6 +105,7 @@ public class CsvImportService {
     this.objectMapper = objectMapper;
     this.csvWorkerExecutor = csvWorkerExecutor;
     this.uploadExecutor = uploadExecutor;
+    this.metrics = metrics;
   }
 
   public ImportJobStartResponse startImport(Long assignmentId, Long actorId, MultipartFile file) {
@@ -136,8 +143,10 @@ public class CsvImportService {
     }
 
     String sourceKey = "imports/" + jobId + "/source.csv";
+    CompletableFuture<Void> uploadFuture;
     try {
-      CompletableFuture.runAsync(
+      uploadFuture =
+          CompletableFuture.runAsync(
               () -> {
                 try {
                   s3Service.putObject(
@@ -146,14 +155,26 @@ public class CsvImportService {
                   throw new StorageException("Failed to upload source CSV", e);
                 }
               },
-              uploadExecutor)
-          .join();
-    } catch (Exception e) {
+              uploadExecutor);
+    } catch (RejectedExecutionException e) {
+      metrics.recordAsyncRejected("uploadExecutor");
       asyncJobService.releaseImportLock(hashedCourseId);
+      throw new ServiceUnavailableException(
+          "Upload service is temporarily at capacity. Please try again.");
+    }
+    try {
+      uploadFuture.join();
+    } catch (CompletionException e) {
+      asyncJobService.releaseImportLock(hashedCourseId);
+      if (e.getCause() instanceof RejectedExecutionException) {
+        metrics.recordAsyncRejected("uploadExecutor");
+        throw new ServiceUnavailableException(
+            "Upload service is temporarily at capacity. Please try again.");
+      }
       if (e.getCause() instanceof StorageException se) {
         throw se;
       }
-      throw new StorageException("Failed to upload source CSV", e);
+      throw new StorageException("Failed to upload source CSV", e.getCause());
     }
 
     Instant now = Instant.now();
@@ -176,7 +197,22 @@ public class CsvImportService {
             now);
     asyncJobService.saveJob(initial);
 
-    CompletableFuture.runAsync(() -> runValidation(jobId), csvWorkerExecutor);
+    try {
+      CompletableFuture.runAsync(() -> runValidation(jobId), csvWorkerExecutor);
+    } catch (RejectedExecutionException e) {
+      metrics.recordAsyncRejected("csvWorkerExecutor");
+      metrics.recordJobFailed("csv_import");
+      log.warn("csvWorkerExecutor rejected validation for jobId={}: {}", jobId, e.getMessage());
+
+      String errorMessage =
+          "Import service is temporarily at capacity. Please try again.";
+      asyncJobService.failJob(jobId, hashedCourseId, errorMessage);
+      sseEmitterRegistry.pushFailed(jobId, "Import rejected — service at capacity. Please retry.");
+      sseEmitterRegistry.complete(jobId);
+
+      throw new ServiceUnavailableException(
+          "Import service is temporarily at capacity. Please try again shortly.");
+    }
 
     return ImportJobStartResponse.builder().jobId(jobId).status(JobStatus.UPLOADED).build();
   }
@@ -228,12 +264,10 @@ public class CsvImportService {
       }
     } catch (ValidationException e) {
       failJob(jobId, state.courseId(), e.getMessage());
-      sseEmitterRegistry.complete(jobId);
       return;
     } catch (Exception e) {
       log.error("CSV validation failed for job {}: {}", jobId, e.getMessage(), e);
       failJob(jobId, state.courseId(), e.getMessage());
-      sseEmitterRegistry.complete(jobId);
       return;
     }
 
@@ -285,6 +319,17 @@ public class CsvImportService {
                   s.createdAt(),
                   Instant.now()));
       asyncJobService.releaseImportLock(state.courseId());
+      String validationErrorMessage = "Validation failed — download error CSV for details";
+      sseEmitterRegistry.pushFailed(jobId, validationErrorMessage);
+      sseEmitterRegistry.push(
+          jobId,
+          JobProgressEvent.builder()
+              .processed(processedRows)
+              .total(totalDataRows)
+              .percent(totalDataRows > 0 ? (processedRows * 100) / totalDataRows : 0)
+              .status(JobStatus.VALIDATION_FAILED.name())
+              .errorMessage(validationErrorMessage)
+              .build());
       sseEmitterRegistry.complete(jobId);
       return;
     }
@@ -295,7 +340,6 @@ public class CsvImportService {
       s3Service.putObject(validatedKey, json, "application/json");
     } catch (IOException e) {
       failJob(jobId, state.courseId(), "Failed to store validated rows");
-      sseEmitterRegistry.complete(jobId);
       return;
     }
 
@@ -331,51 +375,19 @@ public class CsvImportService {
       csvImportCommitService.commitJob(jobId);
     } catch (Exception e) {
       log.error("CSV commit failed for job {}: {}", jobId, e.getMessage(), e);
-      asyncJobService.updateJob(
-          jobId,
-          s ->
-              new JobState(
-                  s.jobId(),
-                  JobStatus.FAILED,
-                  s.assignmentId(),
-                  s.instructorId(),
-                  s.courseId(),
-                  s.totalRows(),
-                  s.validRows(),
-                  s.invalidRows(),
-                  s.processedRows(),
-                  s.sourceS3Key(),
-                  s.validatedRowsS3Key(),
-                  s.errorCsvS3Key(),
-                  e.getMessage(),
-                  s.createdAt(),
-                  Instant.now()));
+      String errorMessage = e.getMessage() != null ? e.getMessage() : "Commit failed";
+      asyncJobService.failJob(jobId, courseId, errorMessage);
+      sseEmitterRegistry.pushFailed(jobId, errorMessage);
+      sseEmitterRegistry.complete(jobId);
     } finally {
       asyncJobService.releaseImportLock(courseId);
     }
   }
 
   private void failJob(String jobId, String hashedCourseId, String message) {
-    asyncJobService.updateJob(
-        jobId,
-        s ->
-            new JobState(
-                s.jobId(),
-                JobStatus.FAILED,
-                s.assignmentId(),
-                s.instructorId(),
-                s.courseId(),
-                s.totalRows(),
-                s.validRows(),
-                s.invalidRows(),
-                s.processedRows(),
-                s.sourceS3Key(),
-                s.validatedRowsS3Key(),
-                s.errorCsvS3Key(),
-                message,
-                s.createdAt(),
-                Instant.now()));
-    asyncJobService.releaseImportLock(hashedCourseId);
+    asyncJobService.failJob(jobId, hashedCourseId, message);
+    sseEmitterRegistry.pushFailed(jobId, message);
+    sseEmitterRegistry.complete(jobId);
   }
 
   private void validateDataRow(

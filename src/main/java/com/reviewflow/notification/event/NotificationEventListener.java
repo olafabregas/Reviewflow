@@ -5,7 +5,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.List;
 
-import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -40,11 +39,9 @@ import com.reviewflow.infrastructure.email.event.SubmissionReceivedEmailEvent;
 import com.reviewflow.infrastructure.email.event.TeamInviteReceivedEmailEvent;
 import com.reviewflow.infrastructure.email.event.TeamUnlockedEmailEvent;
 import com.reviewflow.notification.dto.response.NotificationDto;
-import com.reviewflow.notification.repository.NotificationRepository;
 import com.reviewflow.notification.service.NotificationService;
-import com.reviewflow.course.repository.CourseEnrollmentRepository;
-import com.reviewflow.user.repository.UserRepository;
-import com.reviewflow.shared.constant.CacheNames;
+import com.reviewflow.course.service.CourseService;
+import com.reviewflow.user.service.UserService;
 import com.reviewflow.shared.domain.CourseEnrollment;
 import com.reviewflow.shared.domain.Notification;
 import com.reviewflow.shared.domain.NotificationType;
@@ -63,12 +60,10 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class NotificationEventListener {
 
-  private final NotificationRepository notificationRepository;
   private final SimpMessagingTemplate messagingTemplate;
-  private final CacheManager cacheManager;
   private final HashidService hashidService;
-  private final UserRepository userRepository;
-  private final CourseEnrollmentRepository courseEnrollmentRepository;
+  private final UserService userService;
+  private final CourseService courseService;
   private final NotificationService notificationService;
   private final ApplicationEventPublisher eventPublisher;
 
@@ -79,14 +74,14 @@ public class NotificationEventListener {
     List<Long> recipientUserIds;
 
     if ("COURSE".equals(event.getTarget())) {
-      recipientUserIds = courseEnrollmentRepository.findUserIdsByCourseId(event.getCourseId());
+      recipientUserIds = courseService.findEnrolledUserIdsByCourseId(event.getCourseId());
     } else {
       if ("ALL_STUDENTS".equals(event.getRecipientType())) {
-        recipientUserIds = userRepository.findAllIdsByRole(UserRole.STUDENT);
+        recipientUserIds = userService.findAllUserIdsByRole(UserRole.STUDENT);
       } else if ("ALL_INSTRUCTORS".equals(event.getRecipientType())) {
-        recipientUserIds = userRepository.findAllIdsByRole(UserRole.INSTRUCTOR);
+        recipientUserIds = userService.findAllUserIdsByRole(UserRole.INSTRUCTOR);
       } else {
-        recipientUserIds = userRepository.findAllIds();
+        recipientUserIds = userService.findAllUserIds();
       }
     }
 
@@ -100,8 +95,8 @@ public class NotificationEventListener {
           "/announcements/{id}",
           event.getAnnouncementId());
 
-      userRepository
-          .findById(recipientUserId)
+      userService
+          .findUserById(recipientUserId)
           .ifPresent(
               user ->
                   eventPublisher.publishEvent(
@@ -123,7 +118,7 @@ public class NotificationEventListener {
     String title = "New discussion";
     String message = event.title();
     String discussionHashId = hashidService.encode(event.discussionId());
-    for (CourseEnrollment e : courseEnrollmentRepository.findWithUserByCourseId(event.courseId())) {
+    for (CourseEnrollment e : courseService.findEnrollmentsWithUserByCourseId(event.courseId())) {
       if (e.getUser().getRole() != UserRole.STUDENT) {
         continue;
       }
@@ -164,8 +159,8 @@ public class NotificationEventListener {
         "/discussions/{id}",
         event.discussionId());
     if (event.originalAuthorRole() == UserRole.STUDENT && isStaffRole(event.replierRole())) {
-      userRepository
-          .findById(event.originalAuthorId())
+      userService
+          .findUserById(event.originalAuthorId())
           .ifPresent(
               original ->
                   eventPublisher.publishEvent(
@@ -232,8 +227,8 @@ public class NotificationEventListener {
         "/teams/{id}",
         event.teamId());
 
-    userRepository
-        .findById(event.inviteeUserId())
+    userService
+        .findUserById(event.inviteeUserId())
         .ifPresent(
             user ->
                 eventPublisher.publishEvent(
@@ -264,8 +259,8 @@ public class NotificationEventListener {
         "/assignments/" + event.assignmentId() + "/submissions");
 
     for (Long recipientUserId : event.recipientUserIds()) {
-      userRepository
-          .findById(recipientUserId)
+      userService
+          .findUserById(recipientUserId)
           .ifPresent(
               user ->
                   eventPublisher.publishEvent(
@@ -298,8 +293,8 @@ public class NotificationEventListener {
           message,
           "/assignments/" + event.assignmentId() + "/feedback");
 
-      userRepository
-          .findById(event.studentId())
+      userService
+          .findUserById(event.studentId())
           .ifPresent(
               user ->
                   eventPublisher.publishEvent(
@@ -321,8 +316,8 @@ public class NotificationEventListener {
         "/assignments/" + event.assignmentId() + "/feedback");
 
     for (Long recipientUserId : event.recipientUserIds()) {
-      userRepository
-          .findById(recipientUserId)
+      userService
+          .findUserById(recipientUserId)
           .ifPresent(
               user ->
                   eventPublisher.publishEvent(
@@ -372,31 +367,36 @@ public class NotificationEventListener {
             ? NotificationType.DEADLINE_WARNING_24H
             : NotificationType.DEADLINE_WARNING_48H;
 
-    saveAndPushMany(
-        event.recipientUserIds(),
-        type,
-        "Assignment Due Soon",
+    String title = "Assignment Due Soon";
+    String message =
         event.assignmentTitle()
             + " ("
             + event.courseCode()
             + ") is due in "
             + event.hoursUntilDue()
-            + " hours. You have not submitted yet.",
-        "/assignments/" + event.assignmentId() + "/submit");
+            + " hours. You have not submitted yet.";
+    String actionUrl = "/assignments/" + event.assignmentId() + "/submit";
 
     for (Long recipientUserId : event.recipientUserIds()) {
-      userRepository
-          .findById(recipientUserId)
+      notificationService
+          .tryCreateDedupedDeadlineReminder(
+              recipientUserId, type, event.assignmentId(), title, message, actionUrl)
           .ifPresent(
-              user ->
-                  eventPublisher.publishEvent(
-                      new AssignmentDueSoonEmailEvent(
-                          user.getEmail(),
-                          user.getFullNameOrEmail(),
-                          event.assignmentTitle(),
-                          event.dueAt(),
-                          event.courseCode(),
-                          hashidService.encode(event.assignmentId()))));
+              saved -> {
+                pushNotification(recipientUserId, saved);
+                userService
+                    .findUserById(recipientUserId)
+                    .ifPresent(
+                        user ->
+                            eventPublisher.publishEvent(
+                                new AssignmentDueSoonEmailEvent(
+                                    user.getEmail(),
+                                    user.getFullNameOrEmail(),
+                                    event.assignmentTitle(),
+                                    event.dueAt(),
+                                    event.courseCode(),
+                                    hashidService.encode(event.assignmentId()))));
+              });
     }
   }
 
@@ -413,8 +413,8 @@ public class NotificationEventListener {
           "/extension-requests/{id}",
           event.extensionRequestId());
 
-      userRepository
-          .findById(instructorUserId)
+      userService
+          .findUserById(instructorUserId)
           .ifPresent(
               user ->
                   eventPublisher.publishEvent(
@@ -447,8 +447,8 @@ public class NotificationEventListener {
         "/extension-requests/{id}");
 
     for (Long recipientUserId : event.recipientUserIds()) {
-      userRepository
-          .findById(recipientUserId)
+      userService
+          .findUserById(recipientUserId)
           .ifPresent(
               user ->
                   eventPublisher.publishEvent(
@@ -488,31 +488,20 @@ public class NotificationEventListener {
       String message,
       String actionUrl,
       Long targetId) {
-    Notification notification =
-        Notification.builder()
-            .userId(userId)
-            .type(type)
-            .title(title)
-            .message(message)
-            .actionUrl(actionUrl)
-            .targetId(targetId)
-            .build();
+    Notification saved =
+        notificationService.create(userId, type, title, message, actionUrl, targetId);
+    pushNotification(userId, saved);
+  }
 
-    notificationRepository.save(notification);
-
-    var cache = cacheManager.getCache(CacheNames.CACHE_UNREAD_COUNT);
-    if (cache != null) {
-      cache.evict(userId);
-    }
-
+  private void pushNotification(Long userId, Notification notification) {
     try {
       messagingTemplate.convertAndSendToUser(
           userId.toString(),
           "/queue/notifications",
           NotificationDto.from(notification, hashidService));
-      log.debug("Pushed {} to user {}", type, userId);
+      log.debug("Pushed {} to user {}", notification.getType(), userId);
     } catch (Exception e) {
-      log.debug("User {} offline - {} saved to DB only", userId, type);
+      log.debug("User {} offline - {} saved to DB only", userId, notification.getType());
     }
   }
 
@@ -560,8 +549,8 @@ public class NotificationEventListener {
           message,
           "/teams/" + hashidService.encode(event.getTeamId()));
 
-      userRepository
-          .findById(Long.valueOf(member.getId()))
+      userService
+          .findUserById(Long.valueOf(member.getId()))
           .ifPresent(
               user ->
                   eventPublisher.publishEvent(
@@ -584,8 +573,8 @@ public class NotificationEventListener {
             + event.getReason();
     String instructorEmail = event.getInstructorEmail();
 
-    userRepository
-        .findByEmail(instructorEmail)
+    userService
+        .findUserByEmail(instructorEmail)
         .ifPresent(
             instructor ->
                 saveAndPush(
@@ -604,8 +593,8 @@ public class NotificationEventListener {
             + " update the scores. Reason: "
             + event.getReason();
     for (String teamMemberEmail : event.getTeamMemberEmails()) {
-      userRepository
-          .findByEmail(teamMemberEmail)
+      userService
+          .findUserByEmail(teamMemberEmail)
           .ifPresent(
               member -> {
                 saveAndPush(

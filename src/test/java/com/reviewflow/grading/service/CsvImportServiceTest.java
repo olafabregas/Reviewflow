@@ -19,6 +19,7 @@ import com.reviewflow.grading.job.JobStatus;
 import com.reviewflow.grading.repository.InstructorScoreRepository;
 import com.reviewflow.infrastructure.jobs.AsyncJobService;
 import com.reviewflow.infrastructure.jobs.SseEmitterRegistry;
+import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
 import com.reviewflow.infrastructure.config.ValidationConfig;
 import com.reviewflow.infrastructure.storage.FileSecurityValidator;
 import com.reviewflow.infrastructure.storage.S3Service;
@@ -60,6 +61,7 @@ class CsvImportServiceTest {
   @Mock private HashidService hashidService;
   @Mock private Executor csvWorkerExecutor;
   @Mock private Executor uploadExecutor;
+  @Mock private ReviewFlowMetrics metrics;
 
   private CsvImportService csvImportService;
 
@@ -81,7 +83,8 @@ class CsvImportServiceTest {
             hashidService,
             new ObjectMapper(),
             csvWorkerExecutor,
-            uploadExecutor);
+            uploadExecutor,
+            metrics);
 
   }
 

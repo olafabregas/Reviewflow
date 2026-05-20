@@ -99,6 +99,51 @@ public class AsyncJobService {
     redisTemplate.delete(IMPORT_LOCK_PREFIX + courseId);
   }
 
+  public void failJob(String jobId, String hashedCourseId, String reason) {
+    updateJob(
+        jobId,
+        state ->
+            new JobState(
+                state.jobId(),
+                JobStatus.FAILED,
+                state.assignmentId(),
+                state.instructorId(),
+                state.courseId(),
+                state.totalRows(),
+                state.validRows(),
+                state.invalidRows(),
+                state.processedRows(),
+                state.sourceS3Key(),
+                state.validatedRowsS3Key(),
+                state.errorCsvS3Key(),
+                reason,
+                state.createdAt(),
+                Instant.now()));
+    releaseImportLock(hashedCourseId);
+  }
+
+  public void updateJobError(String jobId, String reason) {
+    updateJob(
+        jobId,
+        state ->
+            new JobState(
+                state.jobId(),
+                state.status(),
+                state.assignmentId(),
+                state.instructorId(),
+                state.courseId(),
+                state.totalRows(),
+                state.validRows(),
+                state.invalidRows(),
+                state.processedRows(),
+                state.sourceS3Key(),
+                state.validatedRowsS3Key(),
+                state.errorCsvS3Key(),
+                reason,
+                state.createdAt(),
+                Instant.now()));
+  }
+
   private static JobState withStatus(JobState state, JobStatus status, Instant updatedAt) {
     return new JobState(
         state.jobId(),

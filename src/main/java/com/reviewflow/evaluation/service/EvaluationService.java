@@ -535,4 +535,14 @@ public class EvaluationService {
         .filename("evaluation.pdf")
         .build();
   }
+
+  @Transactional
+  public void updatePdfPath(Long evaluationId, String pdfPath) {
+    Evaluation evaluation =
+        evaluationRepository
+            .findById(evaluationId)
+            .orElseThrow(() -> new ResourceNotFoundException("Evaluation", evaluationId));
+    evaluation.setPdfPath(pdfPath);
+    evaluationRepository.save(evaluation);
+  }
 }

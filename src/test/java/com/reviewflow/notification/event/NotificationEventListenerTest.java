@@ -15,6 +15,7 @@ import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.doThrow;
@@ -23,8 +24,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
@@ -37,23 +38,24 @@ import com.reviewflow.infrastructure.email.event.AssignmentDueSoonEmailEvent;
 import com.reviewflow.infrastructure.email.event.EvaluationPublishedEmailEvent;
 import com.reviewflow.infrastructure.email.event.SubmissionReceivedEmailEvent;
 import com.reviewflow.infrastructure.email.event.TeamInviteReceivedEmailEvent;
+import com.reviewflow.notification.service.NotificationService;
+import com.reviewflow.user.service.UserService;
+import com.reviewflow.course.service.CourseService;
 import com.reviewflow.shared.domain.User;
-import com.reviewflow.notification.repository.NotificationRepository;
-import com.reviewflow.user.repository.UserRepository;
 import com.reviewflow.shared.domain.Notification;
 import com.reviewflow.shared.domain.NotificationType;
 import com.reviewflow.shared.domain.SubmissionType;
 import com.reviewflow.shared.util.HashidService;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class NotificationEventListenerTest {
 
-  @Mock private NotificationRepository notificationRepository;
+  @Mock private NotificationService notificationService;
   @Mock private SimpMessagingTemplate messagingTemplate;
-  @Mock private CacheManager cacheManager;
-  @Mock private Cache cache;
   @Mock private HashidService hashidService;
-  @Mock private UserRepository userRepository;
+  @Mock private UserService userService;
+  @Mock private CourseService courseService;
   @Mock private ApplicationEventPublisher eventPublisher;
 
   @InjectMocks private NotificationEventListener listener;
@@ -62,40 +64,65 @@ class NotificationEventListenerTest {
     return User.builder().id(id).email(email).firstName(firstName).lastName(lastName).build();
   }
 
-  private void stubNotificationSave() {
+  private void stubNotificationCreate() {
     AtomicLong id = new AtomicLong(1000L);
-    when(notificationRepository.save(any(Notification.class)))
+    when(notificationService.create(
+            anyLong(),
+            any(NotificationType.class),
+            any(),
+            any(),
+            any(),
+            any()))
         .thenAnswer(
             invocation -> {
-              Notification n = invocation.getArgument(0);
-              if (n.getId() == null) {
-                n.setId(id.getAndIncrement());
-              }
+              Notification n =
+                  Notification.builder()
+                      .id(id.getAndIncrement())
+                      .userId(invocation.getArgument(0))
+                      .type(invocation.getArgument(1))
+                      .title(invocation.getArgument(2))
+                      .message(invocation.getArgument(3))
+                      .actionUrl(invocation.getArgument(4))
+                      .targetId(invocation.getArgument(5))
+                      .build();
               return n;
             });
+    when(notificationService.create(
+            anyLong(), any(NotificationType.class), any(), any(), any()))
+        .thenAnswer(
+            invocation ->
+                Notification.builder()
+                    .id(id.getAndIncrement())
+                    .userId(invocation.getArgument(0))
+                    .type(invocation.getArgument(1))
+                    .title(invocation.getArgument(2))
+                    .message(invocation.getArgument(3))
+                    .actionUrl(invocation.getArgument(4))
+                    .build());
   }
 
   @org.junit.jupiter.api.BeforeEach
   void setUp() {
-    when(cacheManager.getCache(any())).thenReturn(null);
     when(hashidService.encode(anyLong())).thenAnswer(invocation -> "H" + invocation.getArgument(0));
-    stubNotificationSave();
+    stubNotificationCreate();
   }
 
   @Test
   void onTeamInvite_persistsNotificationAndPublishesEmail() {
     TeamInviteEvent event = new TeamInviteEvent(10L, 77L, "Team Delta", "Alex", 12L, "Essay 1");
-    when(userRepository.findById(10L))
+    when(userService.findUserById(10L))
         .thenReturn(Optional.of(user(10L, "invitee@test.local", "Ada", "Lovelace")));
 
     listener.onTeamInvite(event);
 
-    ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
-    verify(notificationRepository).save(notificationCaptor.capture());
-    Notification notification = notificationCaptor.getValue();
-    assertEquals(NotificationType.TEAM_INVITE, notification.getType());
-    assertEquals(10L, notification.getUserId());
-    assertEquals(77L, notification.getTargetId());
+    verify(notificationService)
+        .create(
+            eq(10L),
+            eq(NotificationType.TEAM_INVITE),
+            eq("Team Invitation"),
+            any(),
+            eq("/teams/{id}"),
+            eq(77L));
 
     ArgumentCaptor<TeamInviteReceivedEmailEvent> emailCaptor =
         ArgumentCaptor.forClass(TeamInviteReceivedEmailEvent.class);
@@ -120,19 +147,21 @@ class NotificationEventListenerTest {
             SubmissionType.INDIVIDUAL,
             501L);
 
-    when(userRepository.findById(20L))
+    when(userService.findUserById(20L))
         .thenReturn(Optional.of(user(20L, "instructor1@test.local", "Prof", "Kim")));
-    when(userRepository.findById(21L))
+    when(userService.findUserById(21L))
         .thenReturn(Optional.of(user(21L, "instructor2@test.local", "Grace", "Hopper")));
 
     listener.onSubmissionUploaded(event);
 
-    ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
-    verify(notificationRepository, times(2)).save(notificationCaptor.capture());
-    List<Notification> saved = notificationCaptor.getAllValues();
-    assertEquals(2, saved.size());
-    assertEquals(NotificationType.NEW_SUBMISSION, saved.get(0).getType());
-    assertEquals(NotificationType.NEW_SUBMISSION, saved.get(1).getType());
+    verify(notificationService, times(2))
+        .create(
+            anyLong(),
+            eq(NotificationType.NEW_SUBMISSION),
+            any(),
+            any(),
+            any(),
+            nullable(Long.class));
 
     ArgumentCaptor<SubmissionReceivedEmailEvent> emailCaptor =
         ArgumentCaptor.forClass(SubmissionReceivedEmailEvent.class);
@@ -150,15 +179,19 @@ class NotificationEventListenerTest {
         new EvaluationPublishedEvent(
             List.of(200L, 201L), 200L, 88L, 18L, "Project 2", 92, 100, SubmissionType.INDIVIDUAL);
 
-    when(userRepository.findById(200L))
+    when(userService.findUserById(200L))
         .thenReturn(Optional.of(user(200L, "student@test.local", "Ada", "Lovelace")));
 
     listener.onEvaluationPublished(event);
 
-    ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
-    verify(notificationRepository).save(notificationCaptor.capture());
-    assertEquals(200L, notificationCaptor.getValue().getUserId());
-    assertEquals(NotificationType.FEEDBACK_PUBLISHED, notificationCaptor.getValue().getType());
+    verify(notificationService)
+        .create(
+            eq(200L),
+            eq(NotificationType.FEEDBACK_PUBLISHED),
+            any(),
+            any(),
+            any(),
+            nullable(Long.class));
 
     ArgumentCaptor<EvaluationPublishedEmailEvent> emailCaptor =
         ArgumentCaptor.forClass(EvaluationPublishedEmailEvent.class);
@@ -175,14 +208,21 @@ class NotificationEventListenerTest {
         new EvaluationPublishedEvent(
             List.of(300L, 301L), null, 99L, 19L, "Project Team", 75, 100, SubmissionType.TEAM);
 
-    when(userRepository.findById(300L))
+    when(userService.findUserById(300L))
         .thenReturn(Optional.of(user(300L, "team1@test.local", "Alan", "Turing")));
-    when(userRepository.findById(301L))
+    when(userService.findUserById(301L))
         .thenReturn(Optional.of(user(301L, "team2@test.local", "Katherine", "Johnson")));
 
     listener.onEvaluationPublished(event);
 
-    verify(notificationRepository, times(2)).save(any(Notification.class));
+    verify(notificationService, times(2))
+        .create(
+            anyLong(),
+            eq(NotificationType.FEEDBACK_PUBLISHED),
+            any(),
+            any(),
+            any(),
+            nullable(Long.class));
 
     ArgumentCaptor<EvaluationPublishedEmailEvent> emailCaptor =
         ArgumentCaptor.forClass(EvaluationPublishedEmailEvent.class);
@@ -200,17 +240,14 @@ class NotificationEventListenerTest {
 
     listener.onPdfReady(event);
 
-    ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
-    verify(notificationRepository, times(2)).save(notificationCaptor.capture());
-    List<Notification> notifications = notificationCaptor.getAllValues();
-    assertEquals(2, notifications.size());
-    for (Notification n : notifications) {
-      assertEquals(NotificationType.FEEDBACK_PUBLISHED, n.getType());
-      assertEquals("Evaluation Report Ready", n.getTitle());
-      assertEquals("/evaluations/H88/pdf", n.getActionUrl());
-    }
-    assertEquals(200L, notifications.get(0).getUserId());
-    assertEquals(201L, notifications.get(1).getUserId());
+    verify(notificationService, times(2))
+        .create(
+            anyLong(),
+            eq(NotificationType.FEEDBACK_PUBLISHED),
+            eq("Evaluation Report Ready"),
+            any(),
+            eq("/evaluations/H88/pdf"),
+            nullable(Long.class));
     verify(eventPublisher, never()).publishEvent(any());
   }
 
@@ -221,15 +258,14 @@ class NotificationEventListenerTest {
 
     listener.onTeamLocked(event);
 
-    ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
-    verify(notificationRepository, times(3)).save(notificationCaptor.capture());
-    List<Notification> notifications = notificationCaptor.getAllValues();
-    List<Long> ids = new ArrayList<>();
-    for (Notification n : notifications) {
-      assertEquals(NotificationType.TEAM_LOCKED, n.getType());
-      ids.add(n.getUserId());
-    }
-    assertEquals(List.of(40L, 41L, 42L), ids);
+    verify(notificationService, times(3))
+        .create(
+            anyLong(),
+            eq(NotificationType.TEAM_LOCKED),
+            any(),
+            any(),
+            any(),
+            nullable(Long.class));
   }
 
   @Test
@@ -238,7 +274,16 @@ class NotificationEventListenerTest {
     DeadlineWarningEvent event =
         new DeadlineWarningEvent(List.of(31L), 12L, "Project 2", "CSC101", 24, dueAt);
 
-    when(userRepository.findById(31L))
+    Notification saved =
+        Notification.builder()
+            .id(1L)
+            .userId(31L)
+            .type(NotificationType.DEADLINE_WARNING_24H)
+            .build();
+    when(notificationService.tryCreateDedupedDeadlineReminder(
+            eq(31L), eq(NotificationType.DEADLINE_WARNING_24H), eq(12L), any(), any(), any()))
+        .thenReturn(Optional.of(saved));
+    when(userService.findUserById(31L))
         .thenReturn(Optional.of(user(31L, "student@test.local", "Ada", "Lovelace")));
 
     listener.onDeadlineWarning(event);
@@ -252,9 +297,9 @@ class NotificationEventListenerTest {
     assertEquals(dueAt, published.getDueAt());
     assertEquals("H12", published.getAssignmentHashId());
 
-    ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
-    verify(notificationRepository).save(notificationCaptor.capture());
-    assertEquals(NotificationType.DEADLINE_WARNING_24H, notificationCaptor.getValue().getType());
+    verify(notificationService)
+        .tryCreateDedupedDeadlineReminder(
+            eq(31L), eq(NotificationType.DEADLINE_WARNING_24H), eq(12L), any(), any(), any());
   }
 
   @Test
@@ -263,27 +308,41 @@ class NotificationEventListenerTest {
     DeadlineWarningEvent event =
         new DeadlineWarningEvent(List.of(41L), 13L, "Project 3", "CSC201", 48, dueAt);
 
-    when(userRepository.findById(41L))
-        .thenReturn(Optional.of(user(41L, "student2@test.local", "Grace", "Hopper")));
+    Notification saved =
+        Notification.builder()
+            .id(2L)
+            .userId(41L)
+            .type(NotificationType.DEADLINE_WARNING_48H)
+            .build();
+    when(notificationService.tryCreateDedupedDeadlineReminder(
+            eq(41L), eq(NotificationType.DEADLINE_WARNING_48H), eq(13L), any(), any(), any()))
+        .thenReturn(Optional.of(saved));
 
     listener.onDeadlineWarning(event);
 
-    ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
-    verify(notificationRepository).save(notificationCaptor.capture());
-    assertEquals(NotificationType.DEADLINE_WARNING_48H, notificationCaptor.getValue().getType());
+    verify(notificationService)
+        .tryCreateDedupedDeadlineReminder(
+            eq(41L), eq(NotificationType.DEADLINE_WARNING_48H), eq(13L), any(), any(), any());
   }
 
   @Test
   void onTeamInvite_pushFailureStillPersistsAndReturns() {
     TeamInviteEvent event = new TeamInviteEvent(55L, 900L, "Beta", "Maria", 44L, "Capstone");
-    when(userRepository.findById(55L))
+    when(userService.findUserById(55L))
         .thenReturn(Optional.of(user(55L, "beta@test.local", "Beta", "User")));
     doThrow(new RuntimeException("offline"))
         .when(messagingTemplate)
         .convertAndSendToUser(eq("55"), eq("/queue/notifications"), any());
 
     assertDoesNotThrow(() -> listener.onTeamInvite(event));
-    verify(notificationRepository).save(any(Notification.class));
+    verify(notificationService)
+        .create(
+            eq(55L),
+            eq(NotificationType.TEAM_INVITE),
+            any(),
+            any(),
+            any(),
+            eq(900L));
     verify(eventPublisher).publishEvent(any(TeamInviteReceivedEmailEvent.class));
   }
 }

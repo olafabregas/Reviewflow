@@ -327,4 +327,12 @@ public class CourseService {
   public int getAssignmentCount(Long courseId) {
     return assignmentRepository.findByCourseId(courseId).size();
   }
+
+  public List<Long> findEnrolledUserIdsByCourseId(Long courseId) {
+    return courseEnrollmentRepository.findUserIdsByCourseId(courseId);
+  }
+
+  public List<CourseEnrollment> findEnrollmentsWithUserByCourseId(Long courseId) {
+    return courseEnrollmentRepository.findWithUserByCourseId(courseId);
+  }
 }

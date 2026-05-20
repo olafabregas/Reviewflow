@@ -9,8 +9,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
+import com.reviewflow.shared.exception.ServiceUnavailableException;
+import org.slf4j.MDC;
 import com.reviewflow.shared.exception.FileUploadTimeoutException;
 import com.reviewflow.shared.exception.StorageException;
 import com.reviewflow.infrastructure.storage.S3Service;
@@ -100,6 +104,7 @@ public class SubmissionService {
   private final AuditService auditService;
   private final HashidService hashidService;
   private final S3Service s3Service;
+  private final ReviewFlowMetrics reviewFlowMetrics;
 
   @Value("${file.validation.submission.max-size-bytes:104857600}")
   private long submissionMaxFileSizeBytes;
@@ -545,10 +550,15 @@ public class SubmissionService {
 
   private String uploadToStorage(
       String relativePath, java.nio.file.Path tempFile, MultipartFile file) {
+    java.util.Map<String, String> mdcContext = MDC.getCopyOfContextMap();
+    CompletableFuture<String> uploadFuture;
     try {
-      CompletableFuture<String> uploadFuture =
+      uploadFuture =
           CompletableFuture.supplyAsync(
               () -> {
+                if (mdcContext != null) {
+                  MDC.setContextMap(mdcContext);
+                }
                 try (InputStream is = java.nio.file.Files.newInputStream(tempFile)) {
                   return storageService.store(
                       relativePath, is, file.getSize(), file.getContentType());
@@ -557,12 +567,25 @@ public class SubmissionService {
                 }
               },
               uploadExecutor);
+    } catch (RejectedExecutionException e) {
+      reviewFlowMetrics.recordAsyncRejected("uploadExecutor");
+      log.warn(
+          "uploadExecutor queue full — submission upload rejected for path={}", relativePath);
+      throw new ServiceUnavailableException(
+          "Upload service is temporarily at capacity. Please try again shortly.");
+    }
+    try {
       return uploadFuture.get(uploadTimeoutSeconds, TimeUnit.SECONDS);
     } catch (TimeoutException e) {
       s3Service.deleteObjectSilently(relativePath);
       throw new FileUploadTimeoutException(uploadTimeoutSeconds);
     } catch (ExecutionException e) {
       Throwable cause = e.getCause() != null ? e.getCause() : e;
+      if (cause instanceof RejectedExecutionException) {
+        reviewFlowMetrics.recordAsyncRejected("uploadExecutor");
+        throw new ServiceUnavailableException(
+            "Upload service is temporarily at capacity. Please try again shortly.");
+      }
       if (cause instanceof RuntimeException re) {
         throw re;
       }
