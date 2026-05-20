@@ -1,6 +1,7 @@
 package com.reviewflow.team.controller;
 
 import com.reviewflow.grading.dto.request.AutoAssignRequest;
+import com.reviewflow.team.dto.request.CreateTeamRequest;
 import com.reviewflow.team.dto.request.RenameTeamRequest;
 import com.reviewflow.team.dto.request.TeamInviteRequest;
 import com.reviewflow.team.dto.request.TeamRespondRequest;
@@ -105,16 +106,13 @@ public class TeamController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PostMapping("/assignments/{assignmentId}/teams")
+  @PreAuthorize("hasRole('STUDENT')")
   public ResponseEntity<ApiResponse<TeamResponse>> create(
       @PathVariable String assignmentId,
-      @RequestBody Map<String, String> body,
+      @Valid @RequestBody CreateTeamRequest request,
       @AuthenticationPrincipal ReviewFlowUserDetails user) {
     Long assignmentIdLong = hashidService.decodeOrThrow(assignmentId);
-    String name = body != null ? body.get("name") : null;
-    if (name == null || name.isBlank()) {
-      throw new IllegalArgumentException("name is required");
-    }
-    Team team = teamService.createTeam(assignmentIdLong, name, user.getUserId());
+    Team team = teamService.createTeam(assignmentIdLong, request.getName(), user.getUserId());
     return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
         .body(ApiResponse.ok(toResponse(team)));
   }
@@ -139,7 +137,7 @@ public class TeamController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PostMapping("/assignments/{assignmentId}/teams/assign")
-  @PreAuthorize("hasRole('INSTRUCTOR') or hasRole('ADMIN')")
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
   public ResponseEntity<ApiResponse<List<TeamResponse>>> autoAssign(
       @PathVariable String assignmentId,
       @RequestBody(required = false) AutoAssignRequest body,
@@ -209,6 +207,7 @@ public class TeamController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PutMapping("/teams/{id}")
+  @PreAuthorize("hasRole('STUDENT')")
   public ResponseEntity<ApiResponse<TeamResponse>> rename(
       @PathVariable String id,
       @Valid @RequestBody RenameTeamRequest request,
@@ -246,6 +245,7 @@ public class TeamController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PostMapping("/teams/{id}/invite")
+  @PreAuthorize("hasRole('STUDENT')")
   public ResponseEntity<ApiResponse<TeamMemberCreatedResponse>> invite(
       @PathVariable String id,
       @Valid @RequestBody TeamInviteRequest request,
@@ -289,6 +289,7 @@ public class TeamController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PatchMapping("/team-members/{id}/respond")
+  @PreAuthorize("hasRole('STUDENT')")
   public ResponseEntity<ApiResponse<Map<String, String>>> respond(
       @PathVariable String id,
       @Valid @RequestBody TeamRespondRequest request,
@@ -323,14 +324,15 @@ public class TeamController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @DeleteMapping("/teams/{id}/members/{userId}")
-  public ResponseEntity<ApiResponse<Map<String, String>>> removeMember(
+  @PreAuthorize("hasAnyRole('STUDENT', 'INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
+  public ResponseEntity<Void> removeMember(
       @PathVariable String id,
       @PathVariable String userId,
       @AuthenticationPrincipal ReviewFlowUserDetails user) {
     Long teamId = hashidService.decodeOrThrow(id);
     Long userIdLong = hashidService.decodeOrThrow(userId);
     teamService.removeMember(teamId, userIdLong, user.getUserId());
-    return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Member removed")));
+    return ResponseEntity.noContent().build();
   }
 
   @Operation(
@@ -357,7 +359,7 @@ public class TeamController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PostMapping("/teams/{id}/lock")
-  @PreAuthorize("hasRole('INSTRUCTOR') or hasRole('ADMIN')")
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
   public ResponseEntity<ApiResponse<TeamResponse>> lock(
       @PathVariable String id, @AuthenticationPrincipal ReviewFlowUserDetails user) {
     Long teamId = hashidService.decodeOrThrow(id);

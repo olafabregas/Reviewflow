@@ -6770,9 +6770,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
-                      "const body = pm.response.json();",
-                      "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                      "pm.test('Status 204 No Content', () => pm.response.to.have.status(204));",
+                      "pm.test('Empty body', () => pm.expect(pm.response.text()).to.be.empty);"
                     ]
                   }
                 }
@@ -19601,9 +19600,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
-                      "const body = pm.response.json();",
-                      "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                      "pm.test('Status 204 No Content', () => pm.response.to.have.status(204));",
+                      "pm.test('Empty body', () => pm.expect(pm.response.text()).to.be.empty);"
                     ]
                   }
                 }
@@ -20744,9 +20742,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test('Status code', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]));",
-                      "const body = pm.response.json();",
-                      "pm.test('Envelope success', () => pm.expect(body.success).to.eql(true));"
+                      "pm.test('Status 204 No Content', () => pm.response.to.have.status(204));",
+                      "pm.test('Empty body', () => pm.expect(pm.response.text()).to.be.empty);"
                     ]
                   }
                 }

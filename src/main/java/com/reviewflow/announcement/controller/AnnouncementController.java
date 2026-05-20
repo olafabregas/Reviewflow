@@ -222,13 +222,14 @@ public class AnnouncementController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @DeleteMapping("/announcements/{id}")
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
   public ResponseEntity<Void> delete(
       @PathVariable String id, @AuthenticationPrincipal ReviewFlowUserDetails user) {
 
     Long announcementId = hashidService.decodeOrThrow(id);
     announcementService.delete(announcementId, user.getUserId());
 
-    return ResponseEntity.ok().build();
+    return ResponseEntity.noContent().build();
   }
 
   @Operation(

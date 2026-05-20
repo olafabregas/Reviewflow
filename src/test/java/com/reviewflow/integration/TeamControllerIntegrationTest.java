@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import com.reviewflow.team.controller.TeamController;
 import com.reviewflow.team.exception.TeamNotAllowedException;
 import com.reviewflow.shared.exception.ApiResponse;
+import com.reviewflow.team.dto.request.CreateTeamRequest;
 import com.reviewflow.team.dto.response.TeamResponse;
 import com.reviewflow.shared.domain.Assignment;
 import com.reviewflow.shared.domain.Team;
@@ -16,7 +17,6 @@ import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
 import com.reviewflow.submission.service.SubmissionService;
 import com.reviewflow.team.service.TeamService;
 import com.reviewflow.shared.util.HashidService;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -58,7 +58,8 @@ class TeamControllerIntegrationTest {
     assertThrows(
         TeamNotAllowedException.class,
         () ->
-            controller().create("ASSIGN3", Map.of("name", "Team Should Fail"), studentPrincipal()));
+            controller()
+                .create("ASSIGN3", createTeamRequest("Team Should Fail"), studentPrincipal()));
   }
 
   @Test
@@ -79,12 +80,18 @@ class TeamControllerIntegrationTest {
     when(hashidService.encode(66L)).thenReturn("USER_HASH_66");
 
     ResponseEntity<ApiResponse<TeamResponse>> response =
-        controller().create("ASSIGN3", Map.of("name", "Alpha Team"), studentPrincipal());
+        controller().create("ASSIGN3", createTeamRequest("Alpha Team"), studentPrincipal());
 
     assertEquals(HttpStatus.CREATED, response.getStatusCode());
     assertEquals(true, response.getBody().isSuccess());
     assertEquals("TEAM_HASH_900", response.getBody().getData().getId());
     assertEquals("ASSIGN_HASH_404", response.getBody().getData().getAssignmentId());
     assertEquals("USER_HASH_66", response.getBody().getData().getCreatedById());
+  }
+
+  private static CreateTeamRequest createTeamRequest(String name) {
+    CreateTeamRequest request = new CreateTeamRequest();
+    request.setName(name);
+    return request;
   }
 }

@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -59,7 +60,7 @@ public class AvatarController {
         description = "Payload Too Large - file exceeds size limit",
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
-  @PutMapping("/users/me/avatar")
+  @PutMapping(value = "/users/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<ApiResponse<AuthUserResponse>> uploadAvatar(
       @AuthenticationPrincipal ReviewFlowUserDetails user,
       @RequestParam("file") MultipartFile file,

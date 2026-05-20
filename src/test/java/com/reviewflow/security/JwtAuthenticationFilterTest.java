@@ -108,7 +108,13 @@ class JwtAuthenticationFilterTest {
     filter.doFilter(request, response, filterChain);
 
     verify(rateLimitService).consumeOnFailure("127.0.0.1", AUTH_JWT_FAILURE, null);
-    verify(filterChain).doFilter(request, response);
+    verify(httpErrorJsonWriter)
+        .writeError(
+            eq(response),
+            eq(401),
+            eq("TOKEN_REVOKED"),
+            eq("Your session has been invalidated. Please log in again."));
+    verify(filterChain, never()).doFilter(request, response);
   }
 
   @Test

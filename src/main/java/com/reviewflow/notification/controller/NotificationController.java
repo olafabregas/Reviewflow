@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -105,6 +106,7 @@ public class NotificationController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PatchMapping("/{id}/read")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<ApiResponse<Map<String, String>>> markRead(
       @PathVariable String id, @AuthenticationPrincipal ReviewFlowUserDetails user) {
     Long notificationId = hashidService.decodeOrThrow(id);
@@ -126,6 +128,7 @@ public class NotificationController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PatchMapping("/read-all")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<ApiResponse<MarkAllReadResponse>> markAllRead(
       @AuthenticationPrincipal ReviewFlowUserDetails user) {
     int updatedCount = notificationService.markAllAsRead(user.getUserId());
@@ -155,10 +158,11 @@ public class NotificationController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @DeleteMapping("/{id}")
-  public ResponseEntity<ApiResponse<Map<String, String>>> delete(
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<Void> delete(
       @PathVariable String id, @AuthenticationPrincipal ReviewFlowUserDetails user) {
     Long notificationId = hashidService.decodeOrThrow(id);
     notificationService.deleteNotification(notificationId, user.getUserId());
-    return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Notification deleted")));
+    return ResponseEntity.noContent().build();
   }
 }

@@ -111,6 +111,7 @@ public class AssignmentController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PostMapping("/courses/{courseId}/assignments")
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
   public ResponseEntity<ApiResponse<AssignmentResponse>> create(
       @PathVariable String courseId,
       @Valid @RequestBody CreateAssignmentRequest request,
@@ -198,9 +199,10 @@ public class AssignmentController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PutMapping("/assignments/{id}")
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
   public ResponseEntity<ApiResponse<AssignmentResponse>> update(
       @PathVariable String id,
-      @RequestBody CreateAssignmentRequest request,
+      @Valid @RequestBody CreateAssignmentRequest request,
       @AuthenticationPrincipal ReviewFlowUserDetails user) {
     Long assignmentId = hashidService.decodeOrThrow(id);
     Long groupId =
@@ -243,6 +245,7 @@ public class AssignmentController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PatchMapping("/assignments/{id}/publish")
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
   public ResponseEntity<ApiResponse<AssignmentResponse>> publish(
       @PathVariable String id, @AuthenticationPrincipal ReviewFlowUserDetails user) {
     Long assignmentId = hashidService.decodeOrThrow(id);
@@ -302,11 +305,12 @@ public class AssignmentController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @DeleteMapping("/assignments/{id}")
-  public ResponseEntity<ApiResponse<Map<String, String>>> delete(
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
+  public ResponseEntity<Void> delete(
       @PathVariable String id, @AuthenticationPrincipal ReviewFlowUserDetails user) {
     Long assignmentId = hashidService.decodeOrThrow(id);
     assignmentService.deleteAssignment(assignmentId, user.getUserId());
-    return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Assignment deleted")));
+    return ResponseEntity.noContent().build();
   }
 
   @Operation(
@@ -336,6 +340,7 @@ public class AssignmentController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PostMapping("/assignments/{id}/rubric")
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
   public ResponseEntity<ApiResponse<AssignmentResponse.RubricCriterionResponse>> addRubric(
       @PathVariable String id,
       @Valid @RequestBody AddRubricRequest body,
@@ -384,10 +389,11 @@ public class AssignmentController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PutMapping("/assignments/{id}/rubric/{criterionId}")
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
   public ResponseEntity<ApiResponse<AssignmentResponse.RubricCriterionResponse>> updateRubric(
       @PathVariable String id,
       @PathVariable String criterionId,
-      @RequestBody UpdateRubricRequest body,
+      @Valid @RequestBody UpdateRubricRequest body,
       @AuthenticationPrincipal ReviewFlowUserDetails user) {
     Long assignmentId = hashidService.decodeOrThrow(id);
     Long criterionIdLong = hashidService.decodeOrThrow(criterionId);
@@ -427,14 +433,15 @@ public class AssignmentController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @DeleteMapping("/assignments/{id}/rubric/{criterionId}")
-  public ResponseEntity<ApiResponse<Map<String, String>>> deleteRubric(
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
+  public ResponseEntity<Void> deleteRubric(
       @PathVariable String id,
       @PathVariable String criterionId,
       @AuthenticationPrincipal ReviewFlowUserDetails user) {
     Long assignmentId = hashidService.decodeOrThrow(id);
     Long criterionIdLong = hashidService.decodeOrThrow(criterionId);
     assignmentService.deleteRubricCriterion(assignmentId, criterionIdLong, user.getUserId());
-    return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Criterion deleted")));
+    return ResponseEntity.noContent().build();
   }
 
   @Operation(

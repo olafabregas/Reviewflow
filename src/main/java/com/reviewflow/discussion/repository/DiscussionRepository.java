@@ -4,6 +4,8 @@ import com.reviewflow.shared.domain.Discussion;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,6 +16,8 @@ public interface DiscussionRepository extends JpaRepository<Discussion, Long> {
   Optional<Discussion> findWithCourseById(@Param("id") Long id);
 
   List<Discussion> findByCourseIdOrderByDueAtAsc(Long courseId);
+
+  Page<Discussion> findByCourseIdOrderByDueAtAsc(Long courseId, Pageable pageable);
 
   @Query(
       value =

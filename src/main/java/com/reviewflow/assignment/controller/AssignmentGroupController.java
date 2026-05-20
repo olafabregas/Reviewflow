@@ -1,6 +1,5 @@
 package com.reviewflow.assignment.controller;
 
-import com.reviewflow.shared.exception.ValidationException;
 import com.reviewflow.assignment.dto.request.CreateAssignmentGroupRequest;
 import com.reviewflow.assignment.dto.request.MoveAssignmentGroupRequest;
 import com.reviewflow.shared.exception.ApiResponse;
@@ -20,6 +19,7 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -58,6 +58,7 @@ public class AssignmentGroupController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PostMapping("/courses/{courseId}/assignment-groups")
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
   public ResponseEntity<ApiResponse<AssignmentGroupResponse>> create(
       @PathVariable String courseId,
       @Valid @RequestBody CreateAssignmentGroupRequest request,
@@ -99,6 +100,7 @@ public class AssignmentGroupController {
         content = @Content(schema = @Schema(implementation = AssignmentGroupResponse.class)))
   })
   @PutMapping("/assignment-groups/{id}")
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
   public ResponseEntity<ApiResponse<AssignmentGroupResponse>> update(
       @PathVariable String id,
       @Valid @RequestBody CreateAssignmentGroupRequest request,
@@ -122,10 +124,11 @@ public class AssignmentGroupController {
         content = @Content(schema = @Schema(implementation = Map.class)))
   })
   @DeleteMapping("/assignment-groups/{id}")
-  public ResponseEntity<ApiResponse<Map<String, String>>> delete(
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
+  public ResponseEntity<Void> delete(
       @PathVariable String id, @AuthenticationPrincipal ReviewFlowUserDetails user) {
     assignmentGroupService.delete(hashidService.decodeOrThrow(id), user.getUserId());
-    return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Assignment group deleted")));
+    return ResponseEntity.noContent().build();
   }
 
   @Operation(
@@ -138,14 +141,11 @@ public class AssignmentGroupController {
         content = @Content(schema = @Schema(implementation = AssignmentGroupMoveResponse.class)))
   })
   @PatchMapping("/assignments/{id}/group")
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
   public ResponseEntity<ApiResponse<AssignmentGroupMoveResponse>> moveAssignment(
       @PathVariable String id,
-      @RequestBody MoveAssignmentGroupRequest request,
+      @Valid @RequestBody MoveAssignmentGroupRequest request,
       @AuthenticationPrincipal ReviewFlowUserDetails user) {
-    if (request == null || request.getGroupId() == null || request.getGroupId().isBlank()) {
-      throw new ValidationException("groupId is required", "INVALID_REQUEST");
-    }
-
     AssignmentGroupMoveResponse response =
         assignmentGroupService.moveAssignment(
             hashidService.decodeOrThrow(id),

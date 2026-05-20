@@ -11,7 +11,6 @@ import com.reviewflow.shared.exception.ApiResponse;
 import com.reviewflow.shared.dto.PreviewResponseDto;
 import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.domain.UserRole;
-import com.reviewflow.grading.repository.RubricScoreRepository;
 import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
 import com.reviewflow.evaluation.service.EvaluationService;
 import com.reviewflow.shared.util.HashidService;
@@ -32,14 +31,12 @@ class EvaluationControllerPreviewTest {
 
   @Mock private HashidService hashidService;
 
-  @Mock private RubricScoreRepository rubricScoreRepository;
-
   private ReviewFlowUserDetails mockStudent;
   private ReviewFlowUserDetails mockInstructor;
 
   @BeforeEach
   void setUp() {
-    controller = new EvaluationController(evaluationService, rubricScoreRepository, hashidService);
+    controller = new EvaluationController(evaluationService, hashidService);
     User studentUser =
         User.builder()
             .id(100L)

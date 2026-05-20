@@ -19,9 +19,12 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import com.reviewflow.shared.util.PaginationHeaders;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -70,9 +73,15 @@ public class AdminUserController {
       @RequestParam(required = false) Boolean active,
       @RequestParam(required = false) String search,
       @PageableDefault(size = 20) Pageable pageable) {
-    Page<User> page = userService.listUsersFiltered(role, active, search, pageable);
+    Pageable capped =
+        PageRequest.of(
+            pageable.getPageNumber(),
+            Math.min(pageable.getPageSize(), 100),
+            pageable.getSort());
+    Page<User> page = userService.listUsersFiltered(role, active, search, capped);
     Page<AuthUserResponse> data = page.map(this::toResponse);
-    return ResponseEntity.ok(ApiResponse.ok(data));
+    HttpHeaders headers = PaginationHeaders.forPage(data);
+    return ResponseEntity.ok().headers(headers).body(ApiResponse.ok(data));
   }
 
   @Operation(
@@ -172,7 +181,7 @@ public class AdminUserController {
   @PatchMapping("/{id}")
   @RequiresStepUp(maxAgeSeconds = 300)
   public ResponseEntity<ApiResponse<AuthUserResponse>> update(
-      @PathVariable String id, @RequestBody UpdateUserRequest body) {
+      @PathVariable String id, @Valid @RequestBody UpdateUserRequest body) {
     Long userId = hashidService.decodeOrThrow(id);
     User user =
         userService.updateUser(userId, body.getFirstName(), body.getLastName(), body.getRole());

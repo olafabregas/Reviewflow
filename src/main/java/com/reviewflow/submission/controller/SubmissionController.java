@@ -19,6 +19,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -69,7 +70,8 @@ public class SubmissionController {
         description = "Payload Too Large - file exceeds maximum size",
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
-  @PostMapping
+  @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @PreAuthorize("hasAnyRole('STUDENT', 'INSTRUCTOR')")
   public ResponseEntity<ApiResponse<SubmissionResponse>> upload(
       @RequestParam(required = false) String teamId,
       @RequestParam String assignmentId,

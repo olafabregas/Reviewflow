@@ -1,7 +1,9 @@
 package com.reviewflow.system.controller;
 
 import com.reviewflow.auth.annotation.RequiresStepUp;
+import com.reviewflow.shared.exception.ApiResponse;
 import com.reviewflow.shared.dto.CacheEvictResponse;
+import jakarta.validation.Valid;
 import com.reviewflow.shared.dto.CacheStatsDto;
 import com.reviewflow.shared.dto.ForceLogoutResponse;
 import com.reviewflow.shared.dto.ReopenEvaluationResponse;
@@ -64,9 +66,8 @@ public class SystemController {
         description = "Forbidden - SYSTEM_ADMIN role required",
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
-  public ResponseEntity<List<CacheStatsDto>> getCacheStats() {
-    List<CacheStatsDto> stats = systemService.getCacheStats();
-    return ResponseEntity.ok(stats);
+  public ResponseEntity<ApiResponse<List<CacheStatsDto>>> getCacheStats() {
+    return ResponseEntity.ok(ApiResponse.ok(systemService.getCacheStats()));
   }
 
   /** PRD-09 Flow B: Evict a cache with 60-second throttle protection */
@@ -96,12 +97,11 @@ public class SystemController {
         description = "Forbidden - SYSTEM_ADMIN role required",
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
-  public ResponseEntity<CacheEvictResponse> evictCache(
+  public ResponseEntity<ApiResponse<CacheEvictResponse>> evictCache(
       @PathVariable String cacheName, Authentication authentication) {
 
     Long actorId = extractUserIdFromAuthentication(authentication);
-    CacheEvictResponse result = systemService.evictCache(cacheName, actorId);
-    return ResponseEntity.ok(result);
+    return ResponseEntity.ok(ApiResponse.ok(systemService.evictCache(cacheName, actorId)));
   }
 
   /** PRD-09 Flow C: Get safe (non-secret) configuration */
@@ -124,39 +124,40 @@ public class SystemController {
         description = "Forbidden - SYSTEM_ADMIN role required",
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
-  public ResponseEntity<Map<String, String>> getSafeConfig() {
-    Map<String, String> config = systemService.getSafeConfig();
-    return ResponseEntity.ok(config);
+  public ResponseEntity<ApiResponse<Map<String, String>>> getSafeConfig() {
+    return ResponseEntity.ok(ApiResponse.ok(systemService.getSafeConfig()));
   }
 
   /** PRD-18: moderation — list all conversations in a course. */
   @GetMapping("/courses/{courseId}/conversations")
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @Operation(summary = "List course conversations (moderation)")
-  public ResponseEntity<Map<String, Object>> moderationListCourseConversations(
+  public ResponseEntity<ApiResponse<Map<String, Object>>> moderationListCourseConversations(
       @PathVariable String courseId,
       Authentication authentication,
       HttpServletRequest request) {
     Long courseIdLong = hashidService.decodeOrThrow(courseId);
     Long actorId = extractUserIdFromAuthentication(authentication);
     return ResponseEntity.ok(
-        systemService.moderationListCourseConversations(
-            courseIdLong, actorId, clientIp(request)));
+        ApiResponse.ok(
+            systemService.moderationListCourseConversations(
+                courseIdLong, actorId, clientIp(request))));
   }
 
   /** PRD-18: moderation — full message history for a conversation. */
   @GetMapping("/conversations/{conversationId}/messages")
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @Operation(summary = "List conversation messages (moderation)")
-  public ResponseEntity<Map<String, Object>> moderationListConversationMessages(
+  public ResponseEntity<ApiResponse<Map<String, Object>>> moderationListConversationMessages(
       @PathVariable String conversationId,
       Authentication authentication,
       HttpServletRequest request) {
     Long convId = hashidService.decodeOrThrow(conversationId);
     Long actorId = extractUserIdFromAuthentication(authentication);
     return ResponseEntity.ok(
-        systemService.moderationListConversationMessages(
-            convId, actorId, clientIp(request)));
+        ApiResponse.ok(
+            systemService.moderationListConversationMessages(
+                convId, actorId, clientIp(request))));
   }
 
   /** PRD-09 Flow D: Get security events */
@@ -179,11 +180,10 @@ public class SystemController {
         description = "Forbidden - SYSTEM_ADMIN role required",
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
-  public ResponseEntity<List<SecurityEventDto>> getSecurityEvents(
+  public ResponseEntity<ApiResponse<List<SecurityEventDto>>> getSecurityEvents(
       @RequestParam(defaultValue = "50") int limit) {
-
-    List<SecurityEventDto> events = systemService.getSecurityEvents(Math.min(limit, 500));
-    return ResponseEntity.ok(events);
+    return ResponseEntity.ok(
+        ApiResponse.ok(systemService.getSecurityEvents(Math.min(limit, 500))));
   }
 
   /** PRD-09 Flow E: Force logout a user */
@@ -215,15 +215,15 @@ public class SystemController {
         description = "Not Found - user does not exist",
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
-  public ResponseEntity<ForceLogoutResponse> forceLogout(
+  public ResponseEntity<ApiResponse<ForceLogoutResponse>> forceLogout(
       @PathVariable String targetUserId,
-      @RequestBody ForceLogoutRequest request,
+      @Valid @RequestBody ForceLogoutRequest request,
       Authentication authentication) {
 
     Long actorId = extractUserIdFromAuthentication(authentication);
-    ForceLogoutResponse result =
-        systemService.forceLogout(targetUserId, actorId, request.getReason());
-    return ResponseEntity.ok(result);
+    return ResponseEntity.ok(
+        ApiResponse.ok(
+            systemService.forceLogout(targetUserId, actorId, request.getReason())));
   }
 
   /** PRD-09 Flow F: Unlock a team (system override) */
@@ -252,14 +252,14 @@ public class SystemController {
         description = "Not Found - team does not exist",
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
-  public ResponseEntity<UnlockTeamResponse> unlockTeam(
+  public ResponseEntity<ApiResponse<UnlockTeamResponse>> unlockTeam(
       @PathVariable String teamId,
-      @RequestBody UnlockTeamRequest request,
+      @Valid @RequestBody UnlockTeamRequest request,
       Authentication authentication) {
 
     Long actorId = extractUserIdFromAuthentication(authentication);
-    UnlockTeamResponse result = systemService.unlockTeam(teamId, actorId, request.getReason());
-    return ResponseEntity.ok(result);
+    return ResponseEntity.ok(
+        ApiResponse.ok(systemService.unlockTeam(teamId, actorId, request.getReason())));
   }
 
   /** PRD-09 Flow G: Reopen an evaluation (system override) */
@@ -291,15 +291,15 @@ public class SystemController {
         description = "Not Found - evaluation does not exist",
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
-  public ResponseEntity<ReopenEvaluationResponse> reopenEvaluation(
+  public ResponseEntity<ApiResponse<ReopenEvaluationResponse>> reopenEvaluation(
       @PathVariable String evaluationId,
-      @RequestBody ReopenEvaluationRequest request,
+      @Valid @RequestBody ReopenEvaluationRequest request,
       Authentication authentication) {
 
     Long actorId = extractUserIdFromAuthentication(authentication);
-    ReopenEvaluationResponse result =
-        systemService.reopenEvaluation(evaluationId, actorId, request.getReason());
-    return ResponseEntity.ok(result);
+    return ResponseEntity.ok(
+        ApiResponse.ok(
+            systemService.reopenEvaluation(evaluationId, actorId, request.getReason())));
   }
 
   /** Extract user ID from Spring Security authentication */
@@ -322,6 +322,7 @@ public class SystemController {
   // Request DTOs
   public static class ForceLogoutRequest {
 
+    @jakarta.validation.constraints.NotBlank
     private String reason;
 
     public String getReason() {
@@ -335,6 +336,7 @@ public class SystemController {
 
   public static class UnlockTeamRequest {
 
+    @jakarta.validation.constraints.NotBlank
     private String reason;
 
     public String getReason() {
@@ -348,6 +350,7 @@ public class SystemController {
 
   public static class ReopenEvaluationRequest {
 
+    @jakarta.validation.constraints.NotBlank
     private String reason;
 
     public String getReason() {

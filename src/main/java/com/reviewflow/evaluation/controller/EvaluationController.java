@@ -9,7 +9,6 @@ import com.reviewflow.evaluation.dto.response.EvaluationResponse;
 import com.reviewflow.shared.dto.PreviewResponseDto;
 import com.reviewflow.shared.domain.Evaluation;
 import com.reviewflow.shared.domain.RubricScore;
-import com.reviewflow.grading.repository.RubricScoreRepository;
 import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
 import com.reviewflow.evaluation.service.EvaluationService;
 import com.reviewflow.shared.util.HashidService;
@@ -51,7 +50,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class EvaluationController {
 
   private final EvaluationService evaluationService;
-  private final RubricScoreRepository rubricScoreRepository;
   private final HashidService hashidService;
 
   @Operation(
@@ -240,7 +238,7 @@ public class EvaluationController {
   @SuppressWarnings("NullableProblems")
   public ResponseEntity<ApiResponse<EvaluationResponse>> setComment(
       @PathVariable String id,
-      @RequestBody PatchCommentRequest request,
+      @Valid @RequestBody PatchCommentRequest request,
       @AuthenticationPrincipal ReviewFlowUserDetails user) {
     Long evalId = hashidService.decodeOrThrow(id);
     Evaluation ev =
@@ -416,7 +414,7 @@ public class EvaluationController {
   }
 
   private EvaluationResponse toResponse(Evaluation ev) {
-    List<RubricScore> scores = rubricScoreRepository.findByEvaluationId(ev.getId());
+    List<RubricScore> scores = evaluationService.getRubricScoresForEvaluation(ev.getId());
     BigDecimal maxPossible =
         scores.stream()
             .map(

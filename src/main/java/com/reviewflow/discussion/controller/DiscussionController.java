@@ -15,10 +15,14 @@ import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
 import com.reviewflow.shared.domain.UserRole;
 import com.reviewflow.shared.exception.ApiResponse;
 import com.reviewflow.shared.util.HashidService;
+import com.reviewflow.shared.util.PaginationHeaders;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -66,12 +70,18 @@ public class DiscussionController {
 
   @GetMapping("/courses/{courseId}/discussions")
   @PreAuthorize("hasAnyRole('STUDENT','INSTRUCTOR','ADMIN','SYSTEM_ADMIN')")
-  public ResponseEntity<ApiResponse<List<DiscussionSummaryResponse>>> listDiscussions(
-      @PathVariable String courseId, @AuthenticationPrincipal ReviewFlowUserDetails user) {
+  public ResponseEntity<ApiResponse<Page<DiscussionSummaryResponse>>> listDiscussions(
+      @PathVariable String courseId,
+      @AuthenticationPrincipal ReviewFlowUserDetails user,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size) {
     Long cid = hashidService.decodeOrThrow(courseId);
-    List<DiscussionSummaryResponse> data =
-        discussionService.listDiscussionsForCourse(cid, user.getUserId(), user.getRole());
-    return ResponseEntity.ok(ApiResponse.ok(data));
+    Pageable pageable = PageRequest.of(page, Math.min(size, 100));
+    Page<DiscussionSummaryResponse> data =
+        discussionService.listDiscussionsForCourse(
+            cid, user.getUserId(), user.getRole(), pageable);
+    HttpHeaders headers = PaginationHeaders.forPage(data);
+    return ResponseEntity.ok().headers(headers).body(ApiResponse.ok(data));
   }
 
   @GetMapping("/discussions/{discussionId}")
@@ -85,11 +95,11 @@ public class DiscussionController {
 
   @DeleteMapping("/discussions/{discussionId}")
   @PreAuthorize("hasAnyRole('INSTRUCTOR','ADMIN','SYSTEM_ADMIN')")
-  public ResponseEntity<ApiResponse<Void>> deleteDiscussion(
+  public ResponseEntity<Void> deleteDiscussion(
       @PathVariable String discussionId, @AuthenticationPrincipal ReviewFlowUserDetails user) {
     Long did = hashidService.decodeOrThrow(discussionId);
     discussionService.deleteDiscussion(did, user.getUserId(), user.getRole());
-    return ResponseEntity.ok(ApiResponse.ok(null));
+    return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/discussions/{discussionId}/posts")

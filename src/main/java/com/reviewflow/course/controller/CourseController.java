@@ -1,6 +1,9 @@
 package com.reviewflow.course.controller;
 
+import com.reviewflow.course.dto.request.AssignInstructorRequest;
 import com.reviewflow.course.dto.request.BulkEnrollRequest;
+import com.reviewflow.course.dto.request.EnrollStudentRequest;
+import com.reviewflow.shared.util.PaginationHeaders;
 import com.reviewflow.course.dto.request.CreateCourseRequest;
 import com.reviewflow.course.dto.request.UpdateCourseRequest;
 import com.reviewflow.course.dto.response.CourseResponse;
@@ -25,6 +28,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -242,13 +246,9 @@ public class CourseController {
   @PreAuthorize("hasAnyRole('ADMIN', 'SYSTEM_ADMIN')")
   @PostMapping("/{id}/instructors")
   public ResponseEntity<ApiResponse<Map<String, String>>> assignInstructor(
-      @PathVariable String id, @RequestBody Map<String, String> body) {
+      @PathVariable String id, @Valid @RequestBody AssignInstructorRequest body) {
     Long courseId = hashidService.decodeOrThrow(id);
-    String instructorIdHash = body.get("instructorId");
-    if (instructorIdHash == null) {
-      throw new IllegalArgumentException("instructorId required");
-    }
-    Long instructorId = hashidService.decodeOrThrow(instructorIdHash);
+    Long instructorId = hashidService.decodeOrThrow(body.getInstructorId());
     courseService.assignInstructor(courseId, instructorId);
     return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Instructor assigned")));
   }
@@ -274,12 +274,12 @@ public class CourseController {
   })
   @PreAuthorize("hasAnyRole('ADMIN', 'SYSTEM_ADMIN')")
   @DeleteMapping("/{id}/instructors/{userId}")
-  public ResponseEntity<ApiResponse<Map<String, String>>> removeInstructor(
+  public ResponseEntity<Void> removeInstructor(
       @PathVariable String id, @PathVariable String userId) {
     Long courseId = hashidService.decodeOrThrow(id);
     Long userIdLong = hashidService.decodeOrThrow(userId);
     courseService.removeInstructor(courseId, userIdLong);
-    return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Instructor removed")));
+    return ResponseEntity.noContent().build();
   }
 
   @Operation(
@@ -304,13 +304,9 @@ public class CourseController {
   @PreAuthorize("hasRole('ADMIN')")
   @PostMapping("/{id}/enroll")
   public ResponseEntity<ApiResponse<Map<String, String>>> enroll(
-      @PathVariable String id, @RequestBody Map<String, String> body) {
+      @PathVariable String id, @Valid @RequestBody EnrollStudentRequest body) {
     Long courseId = hashidService.decodeOrThrow(id);
-    String studentIdHash = body.get("studentId");
-    if (studentIdHash == null) {
-      throw new IllegalArgumentException("studentId required");
-    }
-    Long studentId = hashidService.decodeOrThrow(studentIdHash);
+    Long studentId = hashidService.decodeOrThrow(body.getStudentId());
     courseService.enrollStudent(courseId, studentId);
     return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Student enrolled")));
   }
@@ -364,12 +360,12 @@ public class CourseController {
   })
   @PreAuthorize("hasRole('ADMIN')")
   @DeleteMapping("/{id}/enroll/{userId}")
-  public ResponseEntity<ApiResponse<Map<String, String>>> unenroll(
+  public ResponseEntity<Void> unenroll(
       @PathVariable String id, @PathVariable String userId) {
     Long courseId = hashidService.decodeOrThrow(id);
     Long userIdLong = hashidService.decodeOrThrow(userId);
     courseService.unenrollStudent(courseId, userIdLong);
-    return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Student removed")));
+    return ResponseEntity.noContent().build();
   }
 
   @Operation(
@@ -393,25 +389,27 @@ public class CourseController {
   })
   @PreAuthorize("hasRole('ADMIN') or hasRole('INSTRUCTOR')")
   @GetMapping("/{id}/students")
-  public ResponseEntity<ApiResponse<List<StudentResponse>>> getStudents(
-      @PathVariable String id, @AuthenticationPrincipal ReviewFlowUserDetails user) {
+  public ResponseEntity<ApiResponse<Page<StudentResponse>>> getStudents(
+      @PathVariable String id,
+      @AuthenticationPrincipal ReviewFlowUserDetails user,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size) {
     Long courseId = hashidService.decodeOrThrow(id);
     courseService.checkInstructorAccess(courseId, user.getUserId(), user.getRole());
 
-    List<CourseEnrollment> enrollments = courseService.getEnrollmentsForCourse(courseId);
-    List<StudentResponse> data =
-        enrollments.stream()
-            .map(
-                e ->
-                    StudentResponse.builder()
-                        .userId(hashidService.encode(e.getUser().getId()))
-                        .email(e.getUser().getEmail())
-                        .firstName(e.getUser().getFirstName())
-                        .lastName(e.getUser().getLastName())
-                        .enrolledAt(e.getEnrolledAt())
-                        .build())
-            .collect(Collectors.toList());
-    return ResponseEntity.ok(ApiResponse.ok(data));
+    Pageable pageable = PageRequest.of(page, Math.min(size, 100));
+    Page<StudentResponse> data =
+        courseService.getEnrollmentsForCourse(courseId, pageable).map(
+            e ->
+                StudentResponse.builder()
+                    .userId(hashidService.encode(e.getUser().getId()))
+                    .email(e.getUser().getEmail())
+                    .firstName(e.getUser().getFirstName())
+                    .lastName(e.getUser().getLastName())
+                    .enrolledAt(e.getEnrolledAt())
+                    .build());
+    HttpHeaders headers = PaginationHeaders.forPage(data);
+    return ResponseEntity.ok().headers(headers).body(ApiResponse.ok(data));
   }
 
   private CourseResponse toResponse(Course c) {
