@@ -65,11 +65,11 @@ class SystemControllerMessagingTest {
                         .participants(List.of())
                         .build())));
 
-    ResponseEntity<Map<String, Object>> response =
+    ResponseEntity<com.reviewflow.shared.exception.ApiResponse<Map<String, Object>>> response =
         controller().moderationListCourseConversations("CRS1", adminAuth(), request);
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertEquals(1, ((List<?>) response.getBody().get("conversations")).size());
+    assertEquals(1, ((List<?>) response.getBody().getData().get("conversations")).size());
   }
 
   @Test
@@ -80,10 +80,10 @@ class SystemControllerMessagingTest {
     when(systemService.moderationListConversationMessages(eq(55L), eq(1L), eq("127.0.0.1")))
         .thenReturn(Map.of("messages", List.of(MessageDto.builder().id("m1").build())));
 
-    ResponseEntity<Map<String, Object>> response =
+    ResponseEntity<com.reviewflow.shared.exception.ApiResponse<Map<String, Object>>> response =
         controller().moderationListConversationMessages("CNV1", adminAuth(), request);
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertEquals(1, ((List<?>) response.getBody().get("messages")).size());
+    assertEquals(1, ((List<?>) response.getBody().getData().get("messages")).size());
   }
 }
