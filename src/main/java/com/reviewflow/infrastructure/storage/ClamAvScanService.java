@@ -1,28 +1,28 @@
 package com.reviewflow.infrastructure.storage;
 
+import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
+import com.reviewflow.shared.domain.ClamAvScanResult;
+import com.reviewflow.submission.exception.MalwareDetectedException;
+import fi.solita.clamav.ClamAVClient;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
-
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
-import com.reviewflow.submission.exception.MalwareDetectedException;
-import com.reviewflow.infrastructure.monitoring.SecurityMetrics;
-import com.reviewflow.shared.domain.ClamAvScanResult;
-
-import fi.solita.clamav.ClamAVClient;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
 public class ClamAvScanService {
 
   private final ClamAVClient clamAVClient;
-  private final SecurityMetrics securityMetrics;
+  private final ReviewFlowMetrics metrics;
   private final boolean enabled;
 
   public ClamAvScanService(
@@ -30,9 +30,9 @@ public class ClamAvScanService {
       @Value("${clamav.port:3310}") int port,
       @Value("${clamav.timeout-ms:5000}") int timeoutMs,
       @Value("${clamav.enabled:false}") boolean enabled,
-      SecurityMetrics securityMetrics) {
+      ReviewFlowMetrics metrics) {
     this.enabled = enabled;
-    this.securityMetrics = securityMetrics;
+    this.metrics = metrics;
 
     if (enabled) {
       this.clamAVClient = new ClamAVClient(host, port, timeoutMs);
@@ -40,6 +40,19 @@ public class ClamAvScanService {
     } else {
       this.clamAVClient = null;
       log.info("ClamAV scanning is DISABLED");
+    }
+  }
+
+  public boolean ping() {
+    if (!enabled || clamAVClient == null) {
+      return false;
+    }
+    try {
+      clamAVClient.ping();
+      return true;
+    } catch (Exception e) {
+      log.debug("ClamAV ping failed: {}", e.getMessage());
+      return false;
     }
   }
 
@@ -59,17 +72,17 @@ public class ClamAvScanService {
 
       if (isClean) {
         log.info("ClamAV: File clean — {}", filePath.getFileName());
-        securityMetrics.recordClamavClean();
+        metrics.recordClamAvScanResult("clean");
         return CompletableFuture.completedFuture(ClamAvScanResult.CLEAN);
       } else {
         String virusName = new String(response).trim();
         log.warn("ClamAV: INFECTED — {} — virus={}", filePath.getFileName(), virusName);
-        securityMetrics.recordClamavInfected();
+        metrics.recordClamAvScanResult("infected");
         return CompletableFuture.completedFuture(ClamAvScanResult.INFECTED);
       }
     } catch (IOException e) {
-      log.error("ClamAV scan error for file={}: {}", filePath.getFileName(), e.getMessage());
-      securityMetrics.recordClamavError();
+      log.error("ClamAV scan error for file={}", filePath.getFileName(), e);
+      metrics.recordClamAvScanResult("error");
       return CompletableFuture.completedFuture(ClamAvScanResult.ERROR);
     }
   }
@@ -81,18 +94,18 @@ public class ClamAvScanService {
   public void scanAndThrow(Path filePath, long timeoutMs) {
     ClamAvScanResult result;
     try {
-      result = scanAsync(filePath).get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
-    } catch (java.util.concurrent.TimeoutException e) {
+      result = scanAsync(filePath).get(timeoutMs, TimeUnit.MILLISECONDS);
+    } catch (TimeoutException e) {
       log.warn("ClamAV scan timeout for file={}", filePath.getFileName());
-      securityMetrics.recordClamavError();
+      metrics.recordClamAvScanResult("error");
       throw new RuntimeException("ClamAV scan timeout");
-    } catch (java.util.concurrent.RejectedExecutionException e) {
+    } catch (RejectedExecutionException e) {
+      metrics.recordScanRejected();
       log.warn("ClamAV scan rejected for file={}: queue full", filePath.getFileName());
-      securityMetrics.recordClamavError();
       throw new RuntimeException("ClamAV scan queue full", e);
     } catch (Exception e) {
-      log.error("ClamAV scan failed for file={}: {}", filePath.getFileName(), e.getMessage());
-      securityMetrics.recordClamavError();
+      log.error("ClamAV scan failed for file={}", filePath.getFileName(), e);
+      metrics.recordClamAvScanResult("error");
       throw new RuntimeException("ClamAV scan failed", e);
     }
 

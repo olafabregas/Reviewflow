@@ -48,7 +48,7 @@ public class S3Service {
       log.debug("S3 upload successful: {}", key);
       return buildUrl(key);
     } catch (S3Exception e) {
-      log.error("S3 upload failed for key {}: {}", key, e.getMessage());
+      log.error("S3 upload failed for key {}", key, e);
       throw new StorageException("File upload failed. Please try again.", e);
     }
   }
@@ -62,7 +62,7 @@ public class S3Service {
       log.debug("S3 upload successful: {}", key);
       return buildUrl(key);
     } catch (S3Exception e) {
-      log.error("S3 upload failed for key {}: {}", key, e.getMessage());
+      log.error("S3 upload failed for key {}", key, e);
       throw new StorageException("File upload failed. Please try again.", e);
     }
   }
@@ -75,7 +75,7 @@ public class S3Service {
     } catch (NoSuchKeyException e) {
       throw new StorageNotFoundException("File not found: " + key);
     } catch (S3Exception e) {
-      log.error("S3 download failed for key {}: {}", key, e.getMessage());
+      log.error("S3 download failed for key {}", key, e);
       throw new StorageException("File download failed. Please try again.", e);
     }
   }
@@ -136,7 +136,7 @@ public class S3Service {
           .url()
           .toString();
     } catch (S3Exception e) {
-      log.error("Presigned preview URL generation failed for key {}: {}", key, e.getMessage());
+      log.error("Presigned preview URL generation failed for key {}", key, e);
       throw new StorageException("Could not generate preview link. Please try again.", e);
     }
   }
@@ -149,7 +149,7 @@ public class S3Service {
     } catch (NoSuchKeyException e) {
       throw new StorageNotFoundException("File not found: " + key);
     } catch (S3Exception e) {
-      log.error("Failed to get object size for key {}: {}", key, e.getMessage());
+      log.error("Failed to get object size for key {}", key, e);
       throw new StorageException("Could not retrieve file size. Please try again.", e);
     }
   }
@@ -169,7 +169,7 @@ public class S3Service {
           .url()
           .toString();
     } catch (S3Exception e) {
-      log.error("Presigned URL generation failed for key {}: {}", key, e.getMessage());
+      log.error("Presigned URL generation failed for key {}", key, e);
       throw new StorageException("Could not generate download link. Please try again.", e);
     }
   }

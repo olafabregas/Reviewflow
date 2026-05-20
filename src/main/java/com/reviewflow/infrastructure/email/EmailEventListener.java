@@ -326,6 +326,7 @@ public class EmailEventListener {
       String html = templateService.renderHtml(template, variables);
       String text = templateService.renderText(template, variables);
       emailService.send(event.getRecipientEmail(), subject, html, text);
+      metrics.recordEmailSent(event.getClass().getSimpleName());
       log.info(
           "Email sent: event={}, recipient={}",
           event.getClass().getSimpleName(),

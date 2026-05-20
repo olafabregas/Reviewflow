@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.cache.support.SimpleCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -68,14 +69,12 @@ public class CacheConfig {
   }
 
   private Cache buildCache(String name, int ttlSeconds, int maxSize) {
-    return new org.springframework.cache.concurrent.ConcurrentMapCache(
-        name,
+    com.github.benmanes.caffeine.cache.Cache<Object, Object> nativeCache =
         Caffeine.newBuilder()
             .maximumSize(maxSize)
             .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
             .recordStats()
-            .<Object, Object>build()
-            .asMap(),
-        false);
+            .build();
+    return new CaffeineCache(name, nativeCache);
   }
 }

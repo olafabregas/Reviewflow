@@ -27,6 +27,7 @@ import com.reviewflow.shared.exception.ResourceNotFoundException;
 import com.reviewflow.shared.exception.StorageException;
 import com.reviewflow.shared.exception.ValidationException;
 import com.reviewflow.shared.util.HashidService;
+import org.slf4j.MDC;
 import com.reviewflow.team.repository.TeamRepository;
 import com.reviewflow.user.repository.UserRepository;
 import java.io.BufferedReader;
@@ -218,6 +219,15 @@ public class CsvImportService {
   }
 
   public void runValidation(String jobId) {
+    MDC.put("jobId", jobId);
+    try {
+      runValidationInternal(jobId);
+    } finally {
+      MDC.remove("jobId");
+    }
+  }
+
+  private void runValidationInternal(String jobId) {
     JobState state =
         asyncJobService
             .getJob(jobId)
@@ -366,6 +376,15 @@ public class CsvImportService {
   }
 
   public void runCommit(String jobId) {
+    MDC.put("jobId", jobId);
+    try {
+      runCommitInternal(jobId);
+    } finally {
+      MDC.remove("jobId");
+    }
+  }
+
+  private void runCommitInternal(String jobId) {
     JobState state =
         asyncJobService
             .getJob(jobId)

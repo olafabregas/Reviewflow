@@ -38,6 +38,7 @@ import com.reviewflow.infrastructure.email.event.ForceLogoutEmailEvent;
 import com.reviewflow.infrastructure.email.event.SubmissionReceivedEmailEvent;
 import com.reviewflow.infrastructure.email.event.TeamInviteReceivedEmailEvent;
 import com.reviewflow.infrastructure.email.event.TeamUnlockedEmailEvent;
+import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
 import com.reviewflow.notification.dto.response.NotificationDto;
 import com.reviewflow.notification.service.NotificationService;
 import com.reviewflow.course.service.CourseService;
@@ -66,6 +67,7 @@ public class NotificationEventListener {
   private final CourseService courseService;
   private final NotificationService notificationService;
   private final ApplicationEventPublisher eventPublisher;
+  private final ReviewFlowMetrics metrics;
 
   // -- ANNOUNCEMENT PUBLISHED ------------------------------------
   @Async("notificationExecutor")
@@ -490,6 +492,7 @@ public class NotificationEventListener {
       Long targetId) {
     Notification saved =
         notificationService.create(userId, type, title, message, actionUrl, targetId);
+    metrics.recordNotificationSent(type.name());
     pushNotification(userId, saved);
   }
 

@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
@@ -38,6 +39,7 @@ public class PdfGenerationListener {
   @EventListener
   public void handleEvaluationPublished(EvaluationPublishedEvent event) {
     String hashedEvalId = hashidService.encode(event.evaluationId());
+    MDC.put("evaluationId", hashedEvalId);
     try {
       Evaluation evaluation =
           evaluationRepository.findByIdWithPdfRelations(event.evaluationId()).orElse(null);
@@ -78,6 +80,8 @@ public class PdfGenerationListener {
           e.getMessage(),
           e);
       metrics.recordPdfGenerationFailed();
+    } finally {
+      MDC.remove("evaluationId");
     }
   }
 }

@@ -13,7 +13,7 @@ import com.reviewflow.auth.exception.TokenVersionMismatchException;
 import com.reviewflow.auth.service.SessionPolicyResolver;
 import com.reviewflow.auth.service.TokenVersionService;
 import com.reviewflow.auth.service.UserDetailsCacheService;
-import com.reviewflow.infrastructure.monitoring.SecurityMetrics;
+import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
 import com.reviewflow.infrastructure.security.HttpErrorJsonWriter;
 import com.reviewflow.infrastructure.security.JwtAuthenticationFilter;
 import com.reviewflow.infrastructure.security.JwtService;
@@ -43,7 +43,7 @@ class JwtAuthenticationFilterTest {
   @Mock private UserDetailsCacheService userDetailsCacheService;
   @Mock private RateLimitService rateLimitService;
   @Mock private IpAddressExtractor ipAddressExtractor;
-  @Mock private SecurityMetrics securityMetrics;
+  @Mock private ReviewFlowMetrics metrics;
   @Mock private HashidService hashidService;
   @Mock private TokenVersionService tokenVersionService;
   @Mock private SessionPolicyResolver sessionPolicyResolver;
@@ -86,7 +86,7 @@ class JwtAuthenticationFilterTest {
     filter.doFilter(request, response, filterChain);
 
     verify(filterChain).doFilter(request, response);
-    verify(securityMetrics).recordAuthTokenFromBearer();
+    verify(metrics).recordAuthTokenFromBearer();
   }
 
   @Test
@@ -124,7 +124,7 @@ class JwtAuthenticationFilterTest {
 
     filter.doFilter(request, response, filterChain);
 
-    verify(securityMetrics).recordTokenRateLimited();
+    verify(metrics).recordTokenRateLimited();
     verify(httpErrorJsonWriter)
         .writeTooManyRequests(
             eq(response),

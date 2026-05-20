@@ -36,7 +36,6 @@ import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.domain.UserRole;
 import com.reviewflow.shared.domain.ExtensionRequestStatus;
 import com.reviewflow.shared.domain.SubmissionType;
-import com.reviewflow.infrastructure.monitoring.SecurityMetrics;
 import com.reviewflow.assignment.repository.AssignmentRepository;
 import com.reviewflow.course.repository.CourseEnrollmentRepository;
 import com.reviewflow.course.repository.CourseInstructorRepository;
@@ -82,9 +81,10 @@ class SubmissionServiceTest {
   @Mock private FileSecurityValidator fileSecurityValidator;
   @Mock private AdminStatsService adminStatsService;
   @Mock private ClamAvScanService clamAvScanService;
-  @Mock private SecurityMetrics securityMetrics;
   @Mock private AuditService auditService;
   @Mock private HashidService hashidService;
+  @Mock private com.reviewflow.infrastructure.storage.S3Service s3Service;
+  @Mock private com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics reviewFlowMetrics;
 
   @InjectMocks private SubmissionService submissionService;
 
@@ -465,7 +465,7 @@ class SubmissionServiceTest {
         () ->
             submissionService.upload(null, assignmentId, null, validFile("essay.pdf"), uploaderId));
 
-    verify(securityMetrics).recordFileBlocked();
+    verify(reviewFlowMetrics).recordBlockedFileUpload("extension");
   }
 
   @Test

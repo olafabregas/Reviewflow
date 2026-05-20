@@ -62,6 +62,7 @@ public class AuthService {
     Optional<User> userOpt = userRepository.findByEmail(normalizedEmail);
     if (userOpt.isEmpty()) {
       passwordEncoder.matches(password, AuthTimingConstants.DUMMY_PASSWORD_HASH);
+      metrics.recordLoginResult("unknown_user");
       rateLimitService.consumeOnFailure(ipAddress, AUTH_LOGIN, null);
       auditService.log(
           null,
@@ -95,7 +96,7 @@ public class AuthService {
 
     if (!passwordEncoder.matches(password, user.getPasswordHash())) {
       rateLimitService.consumeOnFailure(ipAddress, AUTH_LOGIN, null);
-      metrics.recordFailedLogin();
+      metrics.recordLoginResult("failed");
       loginLockoutService.recordLoginFailure(user, ipAddress);
       auditService.log(
           user.getId(), "USER_LOGIN_FAILED", "User", user.getId(), "Invalid password", ipAddress);
@@ -103,7 +104,7 @@ public class AuthService {
     }
 
     rateLimitService.reset(ipAddress, AUTH_LOGIN);
-    metrics.recordUserLogin();
+    metrics.recordLoginResult("success");
     loginLockoutService.clearFailures(user);
 
     SessionPolicyResolver.SessionPolicy policy = sessionPolicyResolver.resolveFor(user.getRole());
@@ -158,6 +159,16 @@ public class AuthService {
   }
 
   public RefreshResult refresh(
+      String refreshTokenValue, String clientIp, String userAgent) {
+    try {
+      return doRefresh(refreshTokenValue, clientIp, userAgent);
+    } catch (BadCredentialsException e) {
+      metrics.recordLoginResult("refresh_failed");
+      throw e;
+    }
+  }
+
+  private RefreshResult doRefresh(
       String refreshTokenValue, String clientIp, String userAgent) {
     if (refreshTokenValue == null || refreshTokenValue.isBlank()) {
       throw new BadCredentialsException("Invalid refresh token");

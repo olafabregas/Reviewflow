@@ -50,8 +50,11 @@ public class SystemController {
   @Operation(
       summary = "Get cache statistics",
       description =
-          "Returns hit/miss stats for all 5 caches (adminStats, unreadCount, userCourses,"
-              + " assignmentDetail, courseGradeGroups)")
+          "Returns real-time Caffeine cache statistics. "
+              + "This is the authoritative REST endpoint for cache metrics. "
+              + "The WebSocket system dashboard also exposes cache data via "
+              + "collectAndPushMetrics() — both use the same live Caffeine source "
+              + "after the OBS01 fix.")
   @ApiResponses({
     @io.swagger.v3.oas.annotations.responses.ApiResponse(
         responseCode = "200",
