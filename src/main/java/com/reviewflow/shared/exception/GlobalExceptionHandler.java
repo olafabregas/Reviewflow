@@ -35,6 +35,7 @@ import com.reviewflow.submission.exception.IndividualSubmissionOnlyException;
 import com.reviewflow.submission.exception.InvalidFileStructureException;
 import com.reviewflow.submission.exception.InvalidFileTypeException;
 import com.reviewflow.submission.exception.InvalidMimeTypeException;
+import com.reviewflow.infrastructure.storage.MalwareScanUnavailableException;
 import com.reviewflow.submission.exception.MalwareDetectedException;
 import com.reviewflow.submission.exception.NoSubmissionsFoundException;
 import com.reviewflow.submission.exception.PdfEncryptedException;
@@ -691,6 +692,23 @@ public class GlobalExceptionHandler {
             .timestamp(Instant.now())
             .build();
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+  }
+
+  @ExceptionHandler(MalwareScanUnavailableException.class)
+  public ResponseEntity<ErrorResponse> handleMalwareScanUnavailable(
+      MalwareScanUnavailableException ex) {
+    ErrorResponse body =
+        ErrorResponse.builder()
+            .error(
+                ErrorResponse.ErrorDetail.builder()
+                    .code("MALWARE_SCAN_UNAVAILABLE")
+                    .message(ex.getMessage())
+                    .build())
+            .timestamp(Instant.now())
+            .build();
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+        .header("Retry-After", "60")
+        .body(body);
   }
 
   @ExceptionHandler(AvatarInvalidTypeException.class)

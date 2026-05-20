@@ -141,17 +141,19 @@ public class S3Service {
     }
   }
 
-  public long getObjectSize(String key) {
+  public HeadObjectResponse headObject(String key) {
     try {
-      HeadObjectResponse response =
-          s3Client.headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build());
-      return response.contentLength();
+      return s3Client.headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build());
     } catch (NoSuchKeyException e) {
       throw new StorageNotFoundException("File not found: " + key);
     } catch (S3Exception e) {
-      log.error("Failed to get object size for key {}", key, e);
-      throw new StorageException("Could not retrieve file size. Please try again.", e);
+      log.error("S3 headObject failed for key {}: {}", key, e.getMessage());
+      throw new StorageException("Could not retrieve file metadata. Please try again.", e);
     }
+  }
+
+  public long getObjectSize(String key) {
+    return headObject(key).contentLength();
   }
 
   private String generatePresignedDownloadUrl(String key, Duration expiry) {

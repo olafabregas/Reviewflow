@@ -91,10 +91,15 @@ class SubmissionServiceTest {
   @BeforeEach
   void setUp() throws Exception {
     ReflectionTestUtils.setField(submissionService, "submissionMaxFileSizeBytes", 104857600L);
+    ReflectionTestUtils.setField(
+        submissionService, "uploadExecutor", (java.util.concurrent.Executor) Runnable::run);
     lenient()
         .doNothing()
         .when(fileSecurityValidator)
         .validateFromPath(any(), anyLong(), anyString());
+    lenient()
+        .when(fileSecurityValidator.detectMimeType(any()))
+        .thenReturn("application/pdf");
     lenient().doNothing().when(clamAvScanService).scanAndThrow(any(), anyLong());
     lenient().when(hashidService.encode(anyLong())).thenAnswer(inv -> "H" + inv.getArgument(0));
     lenient()

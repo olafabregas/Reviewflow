@@ -107,6 +107,9 @@ public class SubmissionService {
   @Value("${file.validation.submission.max-size-bytes:104857600}")
   private long submissionMaxFileSizeBytes;
 
+  @Value("${clamav.timeout-ms:5000}")
+  private long clamAvTimeoutMs;
+
   @Value("${async.upload.timeout-seconds:60}")
   private int uploadTimeoutSeconds;
 
@@ -153,7 +156,7 @@ public class SubmissionService {
       fileSecurityValidator.validateFromPath(tempFile, uploaderId, "unknown");
 
       // GATE 4: ClamAV Malware Scan (if enabled) using the same temp file
-      clamAvScanService.scanAndThrow(tempFile, 30000); // 30-second timeout
+      clamAvScanService.scanAndThrow(tempFile, clamAvTimeoutMs);
 
     } catch (IOException e) {
       log.error(
@@ -177,8 +180,14 @@ public class SubmissionService {
       } catch (IOException ex) {
         log.warn("Failed to delete temp file after malware detection: {}", tempFile, ex);
       }
-      throw new ValidationException(
-          "File failed security validation: " + e.getMessage(), "MALWARE_DETECTED");
+      throw e;
+    } catch (com.reviewflow.infrastructure.storage.MalwareScanUnavailableException e) {
+      try {
+        java.nio.file.Files.deleteIfExists(tempFile);
+      } catch (IOException ex) {
+        log.warn("Failed to delete temp file after scanner unavailable: {}", tempFile, ex);
+      }
+      throw e;
     } catch (RuntimeException e) {
       // Catch BlockedFileTypeException, InvalidMimeTypeException, InvalidFileStructureException,
       // etc.
@@ -525,8 +534,18 @@ public class SubmissionService {
       throw new FileTooLargeForPreviewException(fileSizeBytes, MAX_PREVIEW_FILE_SIZE_BYTES);
     }
 
-    // Determine MIME type from filename
-    String mimeType = MimeTypeResolver.getMimeType(submission.getFileName());
+    String mimeType;
+    try {
+      mimeType = s3Service.headObject(s3Key).contentType();
+    } catch (Exception e) {
+      mimeType = null;
+    }
+    if (mimeType == null || mimeType.isBlank()) {
+      mimeType = MimeTypeResolver.getMimeType(submission.getFileName());
+      log.warn(
+          "S3 HeadObject returned no Content-Type for key={}, falling back to extension",
+          s3Key);
+    }
     if (mimeType == null) {
       throw new PreviewNotSupportedException("Unknown");
     }
@@ -559,8 +578,9 @@ public class SubmissionService {
                   MDC.setContextMap(mdcContext);
                 }
                 try (InputStream is = java.nio.file.Files.newInputStream(tempFile)) {
+                  String detectedMime = fileSecurityValidator.detectMimeType(tempFile);
                   return storageService.store(
-                      relativePath, is, file.getSize(), file.getContentType());
+                      relativePath, is, file.getSize(), detectedMime);
                 } catch (IOException e) {
                   throw new StorageException("Failed to store file", e);
                 }

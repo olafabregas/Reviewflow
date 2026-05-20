@@ -12,6 +12,7 @@ import com.reviewflow.infrastructure.ratelimit.RateLimitResult;
 import com.reviewflow.infrastructure.ratelimit.RateLimitService;
 import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.MSG_CREATE;
 import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.MSG_SEND;
+import com.reviewflow.infrastructure.storage.ClamAvScanService;
 import com.reviewflow.infrastructure.storage.FileSecurityValidator;
 import com.reviewflow.infrastructure.storage.S3KeyBuilder;
 import com.reviewflow.infrastructure.storage.S3Service;
@@ -49,6 +50,8 @@ import com.reviewflow.shared.exception.StorageException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -96,6 +99,7 @@ public class MessagingService {
   private final AuditService auditService;
   private final S3Service s3Service;
   private final FileSecurityValidator fileSecurityValidator;
+  private final ClamAvScanService clamAvScanService;
   private final HashidService hashidService;
   private final SimpMessagingTemplate messagingTemplate;
   private final RateLimitService rateLimitService;
@@ -120,6 +124,9 @@ public class MessagingService {
 
   @Value("${message.max-attachments-per-message:5}")
   private int maxAttachmentsPerMessage;
+
+  @Value("${clamav.timeout-ms:5000}")
+  private long clamAvTimeoutMs;
 
   @Value("${async.upload.timeout-seconds:60}")
   private int uploadTimeoutSeconds;
@@ -642,24 +649,27 @@ public class MessagingService {
       throws IOException {
     List<PendingMessageAttachment> staged = new ArrayList<>();
     for (MultipartFile f : fileList) {
-      byte[] bytes;
-      long size = f.getSize();
-      if (size >= 0) {
-        try (InputStream in = f.getInputStream()) {
-          bytes = in.readAllBytes();
+      Path tempPath = null;
+      try {
+        tempPath = Files.createTempFile("msg-attach-", "-scan");
+        f.transferTo(tempPath);
+        clamAvScanService.scanAndThrow(tempPath, clamAvTimeoutMs);
+
+        byte[] bytes = Files.readAllBytes(tempPath);
+        long size = bytes.length;
+        String contentType =
+            f.getContentType() != null ? f.getContentType() : "application/octet-stream";
+        staged.add(
+            new PendingMessageAttachment(
+                f.getOriginalFilename() != null ? f.getOriginalFilename() : "file",
+                size,
+                contentType,
+                bytes));
+      } finally {
+        if (tempPath != null) {
+          Files.deleteIfExists(tempPath);
         }
-      } else {
-        bytes = f.getBytes();
-        size = bytes.length;
       }
-      String contentType =
-          f.getContentType() != null ? f.getContentType() : "application/octet-stream";
-      staged.add(
-          new PendingMessageAttachment(
-              f.getOriginalFilename() != null ? f.getOriginalFilename() : "file",
-              size,
-              contentType,
-              bytes));
     }
     return staged;
   }

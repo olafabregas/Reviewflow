@@ -406,4 +406,16 @@ public class ReviewFlowMetrics {
   public void recordScanRejected() {
     meterRegistry.counter("reviewflow.clamav.scan.rejected").increment();
   }
+
+  public void recordScanError() {
+    meterRegistry.counter("reviewflow.clamav.scan.error").increment();
+  }
+
+  public void recordScanClean() {
+    meterRegistry.counter("reviewflow.clamav.scan.clean").increment();
+  }
+
+  public void recordMalwareDetected() {
+    meterRegistry.counter("reviewflow.clamav.malware.detected").increment();
+  }
 }

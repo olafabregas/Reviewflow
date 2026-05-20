@@ -42,7 +42,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import com.reviewflow.infrastructure.storage.S3Service;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 
 @ExtendWith(MockitoExtension.class)
 class SubmissionServicePreviewTest {
@@ -88,6 +88,8 @@ class SubmissionServicePreviewTest {
 
   @BeforeEach
   void setUp() {
+    org.springframework.test.util.ReflectionTestUtils.setField(
+        submissionService, "uploadExecutor", (java.util.concurrent.Executor) Runnable::run);
     // Create test data
     course = Course.builder().id(1L).code("CS101").build();
 
@@ -128,6 +130,8 @@ class SubmissionServicePreviewTest {
     when(hashidService.encode(10L)).thenReturn("assign10");
     when(hashidService.encode(100L)).thenReturn("user100");
     when(s3Service.getObjectSize(anyString())).thenReturn(1024L);
+    when(s3Service.headObject(anyString()))
+        .thenReturn(HeadObjectResponse.builder().contentType("application/pdf").build());
     when(s3Service.generatePresignedPreviewUrl(anyString(), eq("application/pdf")))
         .thenReturn("https://s3.amazonaws.com/presigned-url");
 
@@ -153,6 +157,8 @@ class SubmissionServicePreviewTest {
     when(hashidService.encode(10L)).thenReturn("assign10");
     when(hashidService.encode(100L)).thenReturn("user100");
     when(s3Service.getObjectSize(anyString())).thenReturn(1024L);
+    when(s3Service.headObject(anyString()))
+        .thenReturn(HeadObjectResponse.builder().contentType("application/zip").build());
 
     // Act & Assert
     assertThrows(
@@ -209,6 +215,8 @@ class SubmissionServicePreviewTest {
     when(hashidService.encode(10L)).thenReturn("assign10");
     when(hashidService.encode(100L)).thenReturn("user100");
     when(s3Service.getObjectSize(anyString())).thenReturn(1024L);
+    when(s3Service.headObject(anyString()))
+        .thenReturn(HeadObjectResponse.builder().contentType("application/pdf").build());
     when(s3Service.generatePresignedPreviewUrl(anyString(), eq("application/pdf")))
         .thenReturn("https://s3.amazonaws.com/presigned-url");
 
@@ -230,6 +238,8 @@ class SubmissionServicePreviewTest {
     when(hashidService.encode(10L)).thenReturn("assign10");
     when(hashidService.encode(100L)).thenReturn("user100");
     when(s3Service.getObjectSize(anyString())).thenReturn(1024L);
+    when(s3Service.headObject(anyString()))
+        .thenReturn(HeadObjectResponse.builder().contentType("application/pdf").build());
     when(s3Service.generatePresignedPreviewUrl(anyString(), eq("application/pdf")))
         .thenReturn("https://s3.amazonaws.com/presigned-url");
 
@@ -250,6 +260,8 @@ class SubmissionServicePreviewTest {
     when(hashidService.encode(10L)).thenReturn("assign10");
     when(hashidService.encode(100L)).thenReturn("user100");
     when(s3Service.getObjectSize(anyString())).thenReturn(2048L);
+    when(s3Service.headObject(anyString()))
+        .thenReturn(HeadObjectResponse.builder().contentType("image/png").build());
     when(s3Service.generatePresignedPreviewUrl(anyString(), eq("image/png")))
         .thenReturn("https://s3.amazonaws.com/presigned-image");
 
@@ -279,6 +291,8 @@ class SubmissionServicePreviewTest {
     when(teamMemberRepository.findByTeamIdAndUserId(50L, 100L))
         .thenReturn(Optional.of(TeamMember.builder().id(1L).user(student).team(team).build()));
     when(s3Service.getObjectSize(anyString())).thenReturn(1024L);
+    when(s3Service.headObject(anyString()))
+        .thenReturn(HeadObjectResponse.builder().contentType("application/pdf").build());
     when(s3Service.generatePresignedPreviewUrl(anyString(), eq("application/pdf")))
         .thenReturn("https://s3.amazonaws.com/presigned-url");
 

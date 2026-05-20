@@ -223,6 +223,9 @@ public class FileSecurityValidator {
   private static final Set<String> STRICT_MIME_EXTENSIONS =
       Set.of("zip", "rar", "gz", "tar", "7z", "pdf", "docx", "xlsx", "pptx");
 
+  private static final Set<String> MESSAGE_STRUCTURAL_EXTENSIONS =
+      Set.of("pdf", "zip", "docx", "doc", "pptx", "ppt", "xlsx", "xls");
+
   private static final Set<String> EXECUTABLE_MIME_TYPES =
       Set.of(
           "application/x-msdownload",
@@ -291,7 +294,7 @@ public class FileSecurityValidator {
     }
   }
 
-  /** PRD-18: message attachment allowlist + MIME (no structural PDF/ZIP gates). */
+  /** PRD-18: message attachment allowlist, MIME, and structural validation (Gate 3). */
   public void validateMessageAttachment(MultipartFile file, ValidationConfig config)
       throws IOException {
     String filename = file.getOriginalFilename();
@@ -315,6 +318,30 @@ public class FileSecurityValidator {
       throw new InvalidFileTypeException(
           "MIME type " + detectedMime + " is not allowed for message attachments",
           "UNSUPPORTED_FILE_TYPE");
+    }
+    if (MESSAGE_STRUCTURAL_EXTENSIONS.contains(extension)) {
+      validateMessageStructure(file, extension);
+    }
+  }
+
+  /** Returns Tika-detected MIME for a file on disk (e.g. after validation temp copy). */
+  public String detectMimeType(Path filePath) throws IOException {
+    String filename = filePath.getFileName().toString();
+    try (InputStream is = Files.newInputStream(filePath)) {
+      return tika.detect(is, filename);
+    }
+  }
+
+  private void validateMessageStructure(MultipartFile file, String extension) throws IOException {
+    try (InputStream is = file.getInputStream()) {
+      switch (extension) {
+        case "zip" -> validateArchive(is, extension);
+        case "pdf" -> validatePdf(is);
+        case "docx", "xlsx", "pptx" -> validateOfficeFile(is, extension);
+        default -> {
+          // Legacy Office (.doc/.ppt/.xls): MIME gate only — no OOXML structure validator
+        }
+      }
     }
   }
 

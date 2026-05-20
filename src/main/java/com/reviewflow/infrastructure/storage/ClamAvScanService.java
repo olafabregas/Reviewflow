@@ -16,14 +16,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
 @Slf4j
 @Service
 public class ClamAvScanService {
 
   private final ClamAVClient clamAVClient;
   private final ReviewFlowMetrics metrics;
-  private final boolean enabled;
+  private final boolean clamavEnabled;
 
   public ClamAvScanService(
       @Value("${clamav.host:localhost}") String host,
@@ -31,7 +30,7 @@ public class ClamAvScanService {
       @Value("${clamav.timeout-ms:5000}") int timeoutMs,
       @Value("${clamav.enabled:false}") boolean enabled,
       ReviewFlowMetrics metrics) {
-    this.enabled = enabled;
+    this.clamavEnabled = enabled;
     this.metrics = metrics;
 
     if (enabled) {
@@ -44,7 +43,7 @@ public class ClamAvScanService {
   }
 
   public boolean ping() {
-    if (!enabled || clamAVClient == null) {
+    if (!clamavEnabled || clamAVClient == null) {
       return false;
     }
     try {
@@ -62,7 +61,7 @@ public class ClamAvScanService {
    */
   @Async("scanExecutor")
   public CompletableFuture<ClamAvScanResult> scanAsync(Path filePath) {
-    if (!enabled) {
+    if (!clamavEnabled) {
       return CompletableFuture.completedFuture(ClamAvScanResult.DISABLED);
     }
 
@@ -72,45 +71,86 @@ public class ClamAvScanService {
 
       if (isClean) {
         log.info("ClamAV: File clean — {}", filePath.getFileName());
-        metrics.recordClamAvScanResult("clean");
+        metrics.recordScanClean();
         return CompletableFuture.completedFuture(ClamAvScanResult.CLEAN);
       } else {
         String virusName = new String(response).trim();
         log.warn("ClamAV: INFECTED — {} — virus={}", filePath.getFileName(), virusName);
-        metrics.recordClamAvScanResult("infected");
+        metrics.recordMalwareDetected();
         return CompletableFuture.completedFuture(ClamAvScanResult.INFECTED);
       }
     } catch (IOException e) {
-      log.error("ClamAV scan error for file={}", filePath.getFileName(), e);
-      metrics.recordClamAvScanResult("error");
+      log.error("ClamAV scan error for file={}: {}", filePath.getFileName(), e.getMessage());
+      metrics.recordScanError();
       return CompletableFuture.completedFuture(ClamAvScanResult.ERROR);
     }
   }
 
   /**
    * Synchronous scan with timeout — blocks until scan completes or times out. Throws
-   * MalwareDetectedException if infected.
+   * MalwareDetectedException if infected; MalwareScanUnavailableException when scanner is
+   * unavailable in production.
    */
   public void scanAndThrow(Path filePath, long timeoutMs) {
     ClamAvScanResult result;
+
     try {
       result = scanAsync(filePath).get(timeoutMs, TimeUnit.MILLISECONDS);
     } catch (TimeoutException e) {
-      log.warn("ClamAV scan timeout for file={}", filePath.getFileName());
-      metrics.recordClamAvScanResult("error");
-      throw new RuntimeException("ClamAV scan timeout");
+      handleScanError("ClamAV scan timed out", e, filePath);
+      return;
     } catch (RejectedExecutionException e) {
       metrics.recordScanRejected();
-      log.warn("ClamAV scan rejected for file={}: queue full", filePath.getFileName());
-      throw new RuntimeException("ClamAV scan queue full", e);
+      handleScanError("ClamAV scan rejected: queue full", e, filePath);
+      return;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      handleScanError("ClamAV scan interrupted", e, filePath);
+      return;
     } catch (Exception e) {
-      log.error("ClamAV scan failed for file={}", filePath.getFileName(), e);
-      metrics.recordClamAvScanResult("error");
-      throw new RuntimeException("ClamAV scan failed", e);
+      handleScanError("ClamAV scan threw unexpected exception", e, filePath);
+      return;
     }
 
-    if (result == ClamAvScanResult.INFECTED) {
-      throw new MalwareDetectedException("Malware detected in file: " + filePath.getFileName());
+    switch (result) {
+      case INFECTED -> {
+        metrics.recordMalwareDetected();
+        log.warn("Malware detected in file: {}", filePath.getFileName());
+        throw new MalwareDetectedException("File rejected: malware detected");
+      }
+      case ERROR ->
+          handleScanError(
+              "ClamAV returned ERROR for file: " + filePath.getFileName(), null, filePath);
+      case DISABLED -> {
+        if (clamavEnabled) {
+          handleScanError(
+              "ClamAV is enabled but scanner reports DISABLED", null, filePath);
+        } else {
+          log.debug("ClamAV disabled — skipping scan for {}", filePath.getFileName());
+        }
+      }
+      case CLEAN -> {
+        metrics.recordScanClean();
+        log.debug("ClamAV scan clean: {}", filePath.getFileName());
+      }
+    }
+  }
+
+  private void handleScanError(String message, Exception cause, Path filePath) {
+    metrics.recordScanError();
+    if (clamavEnabled) {
+      if (cause != null) {
+        log.error("{} — rejecting upload (fail-closed in prod)", message, cause);
+      } else {
+        log.error("{} — rejecting upload (fail-closed in prod)", message);
+      }
+      throw new MalwareScanUnavailableException(
+          "File upload rejected: virus scanner is unavailable. Please try again.");
+    } else {
+      log.warn("{} — allowing upload (fail-open in non-prod)", message);
+      if (cause != null) {
+        log.warn("Scan error cause: {}", cause.getMessage());
+      }
     }
   }
 }

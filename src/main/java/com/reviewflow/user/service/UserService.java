@@ -184,6 +184,16 @@ public class UserService {
 
   @Transactional
   public AuthUserResponse uploadAvatar(Long userId, MultipartFile file, String ipAddress) {
+    // SECURITY NOTE: ClamAV is intentionally NOT applied to avatar uploads.
+    // Compensating controls in place:
+    //   1. Extension allowlist: JPEG, PNG, WebP only (FileSecurityValidator)
+    //   2. Tika MIME verification: structural MIME check (FileSecurityValidator)
+    //   3. ImageIO re-encode: forces full decode → re-encode, destroying
+    //      any embedded payload that is not valid image data (PRD-02)
+    // This provides equivalent protection for image-only files without
+    // requiring ClamAV on a low-risk path. If non-image types are ever
+    // added to avatar uploads, ClamAV must be added.
+    // Reviewed: 2026-05-18 | Accepted by: Roqeeb Olamide Ayorinde
     User user = getUserById(userId);
 
     ValidationConfig config =
