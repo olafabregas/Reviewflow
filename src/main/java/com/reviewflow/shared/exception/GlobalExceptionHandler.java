@@ -577,7 +577,12 @@ public class GlobalExceptionHandler {
                     .build())
             .timestamp(Instant.now())
             .build();
-    return ResponseEntity.status(ex.getHttpStatus()).body(body);
+    ResponseEntity.BodyBuilder builder = ResponseEntity.status(ex.getHttpStatus());
+    if (ex.getRetryAfterSeconds() > 0) {
+      builder.header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()));
+      builder.header("X-RateLimit-Remaining", "0");
+    }
+    return builder.body(body);
   }
 
   @ExceptionHandler(com.reviewflow.shared.exception.AccessDeniedException.class)
@@ -806,7 +811,10 @@ public class GlobalExceptionHandler {
                     .build())
             .timestamp(Instant.now())
             .build();
-    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(body);
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+        .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+        .header("X-RateLimit-Remaining", "0")
+        .body(body);
   }
 
   @ExceptionHandler(AnnouncementNotFoundException.class)

@@ -1,8 +1,14 @@
 package com.reviewflow.auth.service;
 
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.AUTH_WS_TICKET;
+
 import com.reviewflow.auth.dto.response.WsTicketResponse;
+import com.reviewflow.infrastructure.ratelimit.RateLimitResult;
+import com.reviewflow.infrastructure.ratelimit.RateLimitService;
 import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.domain.UserRole;
+import com.reviewflow.shared.exception.TooManyRequestsException;
+import com.reviewflow.shared.util.HashidService;
 import com.reviewflow.user.repository.UserRepository;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -20,15 +26,21 @@ public class WsTicketService {
 
   private final UserRepository userRepository;
   private final TokenVersionService tokenVersionService;
+  private final RateLimitService rateLimitService;
+  private final HashidService hashidService;
   private final Cache<String, WsTicketPayload> cache;
   private final int ttlSeconds;
 
   public WsTicketService(
       UserRepository userRepository,
       TokenVersionService tokenVersionService,
+      RateLimitService rateLimitService,
+      HashidService hashidService,
       @Value("${auth.ws-ticket.ttl-seconds:30}") int ttlSeconds) {
     this.userRepository = userRepository;
     this.tokenVersionService = tokenVersionService;
+    this.rateLimitService = rateLimitService;
+    this.hashidService = hashidService;
     this.ttlSeconds = ttlSeconds;
     this.cache =
         Caffeine.newBuilder()
@@ -40,8 +52,21 @@ public class WsTicketService {
   public WsTicketResponse issueTicket(Long userId) {
     User user =
         userRepository.findById(userId).orElseThrow(() -> new IllegalStateException("User missing"));
-    int ver = tokenVersionService.getCurrentVersion(userId);
     UserRole role = user.getRole();
+    String hashedUserId = hashidService.encode(userId);
+
+    RateLimitResult result =
+        rateLimitService.tryConsume(String.valueOf(userId), AUTH_WS_TICKET, role);
+    if (!result.allowed()) {
+      log.warn("WS ticket rate limit exceeded for userId={}", hashedUserId);
+      throw new TooManyRequestsException(
+          "Too many WebSocket ticket requests. Please try again in "
+              + result.retryAfterSeconds()
+              + " seconds.",
+          result.retryAfterSeconds());
+    }
+
+    int ver = tokenVersionService.getCurrentVersion(userId);
     byte[] raw = new byte[32];
     new SecureRandom().nextBytes(raw);
     String ticket = HexFormat.of().formatHex(raw);

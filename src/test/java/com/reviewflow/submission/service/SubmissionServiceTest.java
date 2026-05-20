@@ -20,7 +20,11 @@ import com.reviewflow.submission.event.SubmissionUploadedEvent;
 import com.reviewflow.shared.exception.AccessDeniedException;
 import com.reviewflow.shared.exception.DuplicateResourceException;
 import com.reviewflow.submission.exception.IndividualSubmissionOnlyException;
-import com.reviewflow.shared.exception.RateLimitException;
+import com.reviewflow.infrastructure.ratelimit.RateLimitService;
+import com.reviewflow.infrastructure.ratelimit.RateLimitStrategy;
+import com.reviewflow.infrastructure.ratelimit.RateLimitTestFixtures;
+import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.UPLOAD_BLOCK;
+import com.reviewflow.shared.exception.TooManyRequestsException;
 import com.reviewflow.shared.exception.ResourceNotFoundException;
 import com.reviewflow.team.exception.TeamSubmissionRequiredException;
 import com.reviewflow.shared.exception.ValidationException;
@@ -85,6 +89,9 @@ class SubmissionServiceTest {
   @Mock private SecurityMetrics securityMetrics;
   @Mock private AuditService auditService;
   @Mock private HashidService hashidService;
+  @Mock private com.reviewflow.infrastructure.storage.S3Service s3Service;
+  @Mock private com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics reviewFlowMetrics;
+  @Mock private RateLimitService rateLimitService;
 
   @InjectMocks private SubmissionService submissionService;
 
@@ -114,6 +121,35 @@ class SubmissionServiceTest {
                 .findTopByAssignmentIdAndTeamIdAndStatusOrderByRespondedAtDesc(
                     anyLong(), anyLong(), eq(ExtensionRequestStatus.APPROVED)))
         .thenReturn(Optional.empty());
+    lenient()
+        .when(userRepository.findById(anyLong()))
+        .thenAnswer(inv -> Optional.of(user(inv.getArgument(0, Long.class), "Test", "User")));
+    lenient()
+        .when(rateLimitService.tryConsume(anyString(), any(RateLimitStrategy.class), any()))
+        .thenAnswer(
+            inv ->
+                RateLimitTestFixtures.allowed(
+                    inv.getArgument(1, RateLimitStrategy.class)));
+  }
+
+  @Test
+  void upload_whenUploadBlockDenied_throwsTooManyRequestsAndRecordsMetric() throws Exception {
+    Long uploaderId = 77L;
+    when(userRepository.findById(uploaderId))
+        .thenReturn(Optional.of(user(uploaderId, "Alice", "Lee")));
+    when(rateLimitService.tryConsume(eq("77"), eq(UPLOAD_BLOCK), eq(UserRole.STUDENT)))
+        .thenReturn(RateLimitTestFixtures.denied(UPLOAD_BLOCK));
+
+    TooManyRequestsException ex =
+        assertThrows(
+            TooManyRequestsException.class,
+            () ->
+                submissionService.upload(
+                    null, 10L, null, validFile("essay.pdf"), uploaderId));
+
+    assertEquals(60, ex.getRetryAfterSeconds());
+    verify(reviewFlowMetrics).recordUploadBlockRateLimited();
+    verify(fileSecurityValidator, never()).validateFromPath(any(), anyLong(), anyString());
   }
 
   @Test
@@ -157,9 +193,6 @@ class SubmissionServiceTest {
   void upload_whenUploaderMissing_throwsResourceNotFound() {
     Long assignmentId = 10L;
     Long uploaderId = 77L;
-    when(assignmentRepository.findById(assignmentId))
-        .thenReturn(
-            Optional.of(individualAssignment(assignmentId, 99L, Instant.now().plusSeconds(7200))));
     when(userRepository.findById(uploaderId)).thenReturn(Optional.empty());
 
     assertThrows(

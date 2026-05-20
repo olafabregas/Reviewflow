@@ -107,10 +107,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
   }
 
   private boolean isExportPath(String path, String method) {
-    return !("GET".equals(method))
-        && (path.contains("/import")
-            || path.contains("/export")
-            || (path.contains("/pdf") && !path.contains("/preview")));
+    if ("GET".equals(method) || "HEAD".equals(method)) {
+      return path.contains("/export")
+          || (path.contains("/pdf") && !path.contains("/preview"));
+    }
+    return path.contains("/import")
+        || path.contains("/export")
+        || (path.contains("/pdf") && !path.contains("/preview"))
+        || (path.contains("/jobs/") && path.endsWith("/commit"));
   }
 
   private void addRateLimitHeaders(HttpServletResponse response, RateLimitResult result) {

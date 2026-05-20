@@ -109,8 +109,10 @@ public class DefaultRateLimitService implements RateLimitService {
           "reviewflow:ratelimit:auth:pwreset:confirm:" + identifier;
       case AUTH_STEP_UP -> "reviewflow:ratelimit:auth:stepup:" + identifier;
       case AUTH_JWT_FAILURE -> "reviewflow:ratelimit:auth:jwt:" + identifier;
+      case AUTH_WS_TICKET -> "reviewflow:ratelimit:auth:wsticket:" + identifier;
       case MSG_SEND -> "reviewflow:ratelimit:msg:send:" + identifier;
       case MSG_CREATE -> "reviewflow:ratelimit:msg:create:" + identifier;
+      case UPLOAD_BLOCK -> "reviewflow:ratelimit:upload:" + identifier;
       case API_PUBLIC -> "reviewflow:ratelimit:public:" + identifier;
       case API_READ -> "reviewflow:ratelimit:api:read:" + identifier;
       case API_WRITE -> "reviewflow:ratelimit:api:write:" + identifier;
