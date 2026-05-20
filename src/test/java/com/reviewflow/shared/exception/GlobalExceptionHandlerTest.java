@@ -31,7 +31,9 @@ import com.reviewflow.shared.exception.StorageNotFoundException;
 import com.reviewflow.user.exception.AvatarInvalidTypeException;
 import com.reviewflow.user.exception.AvatarNotFoundException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -309,5 +311,15 @@ class GlobalExceptionHandlerTest {
 
     assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
     assertEquals("COURSE_NOT_OWNED", response.getBody().getError().getCode());
+  }
+
+  @Test
+  void optimisticLockingFailure_mapsTo409WithConcurrentModification() {
+    ResponseEntity<ErrorResponse> response =
+        handler.handleOptimisticLockingFailure(new OptimisticLockingFailureException("stale"));
+
+    assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+    assertEquals("CONCURRENT_MODIFICATION", response.getBody().getError().getCode());
+    assertNotNull(response.getBody().getError().getDetails().get("conflictedAt"));
   }
 }

@@ -40,7 +40,9 @@ public class Team {
   @Column(name = "created_at")
   private Instant createdAt;
 
-  @OneToMany(mappedBy = "team", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OneToMany(
+      mappedBy = "team",
+      cascade = {CascadeType.PERSIST, CascadeType.MERGE})
   @Builder.Default
   private List<TeamMember> members = new ArrayList<>();
 }

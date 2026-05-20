@@ -77,11 +77,15 @@ class SystemControllerMessagingTest {
     when(request.getHeader("X-Forwarded-For")).thenReturn(null);
     when(request.getRemoteAddr()).thenReturn("127.0.0.1");
     when(hashidService.decodeOrThrow("CNV1")).thenReturn(55L);
-    when(systemService.moderationListConversationMessages(eq(55L), eq(1L), eq("127.0.0.1")))
-        .thenReturn(Map.of("messages", List.of(MessageDto.builder().id("m1").build())));
+    var messagePage =
+        new org.springframework.data.domain.PageImpl<>(
+            List.of(MessageDto.builder().id("m1").build()));
+    when(systemService.moderationListConversationMessages(
+            eq(55L), eq(1L), eq("127.0.0.1"), eq(0), eq(50)))
+        .thenReturn(messagePage);
 
     ResponseEntity<com.reviewflow.shared.exception.ApiResponse<Map<String, Object>>> response =
-        controller().moderationListConversationMessages("CNV1", adminAuth(), request);
+        controller().moderationListConversationMessages("CNV1", 0, 50, adminAuth(), request);
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
     assertEquals(1, ((List<?>) response.getBody().getData().get("messages")).size());

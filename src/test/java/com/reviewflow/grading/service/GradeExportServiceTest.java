@@ -103,8 +103,8 @@ class GradeExportServiceTest {
     when(userRepository.findById(actorId)).thenReturn(Optional.of(actor));
     when(courseInstructorRepository.existsByCourseIdAndUserId(courseId, actorId))
         .thenReturn(true);
-    when(submissionRepository.findLatestTeamSubmissionsByAssignmentId(assignmentId))
-        .thenReturn(List.of(submission));
+    when(submissionRepository.findLatestTeamSubmissionsByAssignmentId(assignmentId, org.springframework.data.domain.Pageable.unpaged()))
+        .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(submission)));
     when(evaluationRepository.findPublishedBySubmissionIds(List.of(501L)))
         .thenReturn(List.of(evaluation));
     when(teamMemberRepository.findByTeamIdsAndStatusWithUser(
@@ -152,8 +152,8 @@ class GradeExportServiceTest {
     when(hashidService.decodeOrThrow("A21")).thenReturn(assignmentId);
     when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
     when(userRepository.findById(actorId)).thenReturn(Optional.of(actor));
-    when(submissionRepository.findLatestIndividualSubmissionsByAssignmentId(assignmentId))
-        .thenReturn(List.of(submission));
+    when(submissionRepository.findLatestIndividualSubmissionsByAssignmentId(assignmentId, org.springframework.data.domain.Pageable.unpaged()))
+        .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(submission)));
     when(evaluationRepository.findPublishedBySubmissionIds(List.of(700L))).thenReturn(List.of());
 
     GradeExportService.ExportResult result = gradeExportService.export("C10", "A21", actorId);
@@ -208,8 +208,8 @@ class GradeExportServiceTest {
     when(hashidService.decodeOrThrow("A20")).thenReturn(assignmentId);
     when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
     when(userRepository.findById(actorId)).thenReturn(Optional.of(actor));
-    when(submissionRepository.findLatestTeamSubmissionsByAssignmentId(assignmentId))
-        .thenReturn(List.of());
+    when(submissionRepository.findLatestTeamSubmissionsByAssignmentId(assignmentId, org.springframework.data.domain.Pageable.unpaged()))
+        .thenReturn(org.springframework.data.domain.Page.empty());
 
     assertThrows(
         NoSubmissionsFoundException.class, () -> gradeExportService.export("C10", "A20", actorId));
@@ -247,8 +247,8 @@ class GradeExportServiceTest {
     when(hashidService.decodeOrThrow("A30")).thenReturn(assignmentId);
     when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
     when(userRepository.findById(actorId)).thenReturn(Optional.of(actor));
-    when(submissionRepository.findLatestIndividualSubmissionsByAssignmentId(assignmentId))
-        .thenReturn(List.of(submission));
+    when(submissionRepository.findLatestIndividualSubmissionsByAssignmentId(assignmentId, org.springframework.data.domain.Pageable.unpaged()))
+        .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(submission)));
     when(evaluationRepository.findPublishedBySubmissionIds(List.of(702L))).thenReturn(List.of());
 
     GradeExportService.ExportResult result = gradeExportService.export("C20", "A30", actorId);
@@ -292,8 +292,8 @@ class GradeExportServiceTest {
     when(userRepository.findById(actorId)).thenReturn(Optional.of(actor));
     when(courseInstructorRepository.existsByCourseIdAndUserId(courseId, actorId))
         .thenReturn(true);
-    when(submissionRepository.findLatestTeamSubmissionsByAssignmentId(assignmentId))
-        .thenReturn(List.of(submission));
+    when(submissionRepository.findLatestTeamSubmissionsByAssignmentId(assignmentId, org.springframework.data.domain.Pageable.unpaged()))
+        .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(submission)));
     when(evaluationRepository.findPublishedBySubmissionIds(List.of(501L)))
         .thenReturn(List.of(evaluation));
     when(teamMemberRepository.findByTeamIdsAndStatusWithUser(
@@ -327,8 +327,8 @@ class GradeExportServiceTest {
     when(hashidService.decodeOrThrow("A31")).thenReturn(assignmentId);
     when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
     when(userRepository.findById(actorId)).thenReturn(Optional.of(actor));
-    when(submissionRepository.findLatestIndividualSubmissionsByAssignmentId(assignmentId))
-        .thenReturn(List.of());
+    when(submissionRepository.findLatestIndividualSubmissionsByAssignmentId(assignmentId, org.springframework.data.domain.Pageable.unpaged()))
+        .thenReturn(org.springframework.data.domain.Page.empty());
 
     assertThrows(
         NoSubmissionsFoundException.class, () -> gradeExportService.export("C10", "A31", actorId));
@@ -410,8 +410,8 @@ class GradeExportServiceTest {
     when(hashidService.decodeOrThrow("A32")).thenReturn(assignmentId);
     when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
     when(userRepository.findById(actorId)).thenReturn(Optional.of(actor));
-    when(submissionRepository.findLatestIndividualSubmissionsByAssignmentId(assignmentId))
-        .thenReturn(List.of(sub1, sub2, sub3, sub4));
+    when(submissionRepository.findLatestIndividualSubmissionsByAssignmentId(assignmentId, org.springframework.data.domain.Pageable.unpaged()))
+        .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(sub1, sub2, sub3, sub4)));
     when(evaluationRepository.findPublishedBySubmissionIds(List.of(1L, 2L, 3L, 4L)))
         .thenReturn(List.of());
 
@@ -483,8 +483,8 @@ class GradeExportServiceTest {
     when(hashidService.decodeOrThrow("A33")).thenReturn(assignmentId);
     when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
     when(userRepository.findById(actorId)).thenReturn(Optional.of(actor));
-    when(submissionRepository.findLatestIndividualSubmissionsByAssignmentId(assignmentId))
-        .thenReturn(List.of(sub1, sub2));
+    when(submissionRepository.findLatestIndividualSubmissionsByAssignmentId(assignmentId, org.springframework.data.domain.Pageable.unpaged()))
+        .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(sub1, sub2)));
     when(evaluationRepository.findPublishedBySubmissionIds(List.of(1L, 2L)))
         .thenReturn(List.of(publishedEval));
 

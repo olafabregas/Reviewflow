@@ -43,11 +43,15 @@ public class Course {
   @Column(name = "created_at")
   private Instant createdAt;
 
-  @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OneToMany(
+      mappedBy = "course",
+      cascade = {CascadeType.PERSIST, CascadeType.MERGE})
   @Builder.Default
   private Set<CourseInstructor> instructors = new HashSet<>();
 
-  @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OneToMany(
+      mappedBy = "course",
+      cascade = {CascadeType.PERSIST, CascadeType.MERGE})
   @Builder.Default
   private Set<CourseEnrollment> enrollments = new HashSet<>();
 }

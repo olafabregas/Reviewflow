@@ -3,6 +3,7 @@ package com.reviewflow.messaging.repository;
 import com.reviewflow.shared.domain.Message;
 import java.util.Collection;
 import java.util.List;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -103,6 +104,6 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
   @EntityGraph(attributePaths = {"sender", "attachments"})
   @Query(
       "SELECT m FROM Message m WHERE m.conversation.id = :conversationId ORDER BY m.sentAt ASC, m.id ASC")
-  List<Message> findAllByConversationIdForModerationWithDetails(
-      @Param("conversationId") Long conversationId);
+  Page<Message> findAllByConversationIdForModerationWithDetails(
+      @Param("conversationId") Long conversationId, Pageable pageable);
 }

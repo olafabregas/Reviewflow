@@ -3,6 +3,8 @@ package com.reviewflow.submission.repository;
 import com.reviewflow.shared.domain.Submission;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -53,8 +55,8 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
           )
       ORDER BY t.name ASC
       """)
-  List<Submission> findLatestTeamSubmissionsByAssignmentId(
-      @Param("assignmentId") Long assignmentId);
+  Page<Submission> findLatestTeamSubmissionsByAssignmentId(
+      @Param("assignmentId") Long assignmentId, Pageable pageable);
 
   @Query(
       """
@@ -71,8 +73,41 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
           )
       ORDER BY st.lastName ASC, st.firstName ASC
       """)
-  List<Submission> findLatestIndividualSubmissionsByAssignmentId(
-      @Param("assignmentId") Long assignmentId);
+  Page<Submission> findLatestIndividualSubmissionsByAssignmentId(
+      @Param("assignmentId") Long assignmentId, Pageable pageable);
+
+  @Query(
+      """
+      SELECT s
+      FROM Submission s
+      WHERE s.assignment.id IN :assignmentIds
+          AND s.student.id IN :studentIds
+          AND s.versionNumber = (
+              SELECT MAX(s2.versionNumber)
+              FROM Submission s2
+              WHERE s2.assignment.id = s.assignment.id
+                  AND s2.student.id = s.student.id
+          )
+      """)
+  List<Submission> findLatestByAssignmentIdsAndStudentIds(
+      @Param("assignmentIds") List<Long> assignmentIds,
+      @Param("studentIds") List<Long> studentIds);
+
+  @Query(
+      """
+      SELECT s
+      FROM Submission s
+      WHERE s.assignment.id IN :assignmentIds
+          AND s.team.id IN :teamIds
+          AND s.versionNumber = (
+              SELECT MAX(s2.versionNumber)
+              FROM Submission s2
+              WHERE s2.assignment.id = s.assignment.id
+                  AND s2.team.id = s.team.id
+          )
+      """)
+  List<Submission> findLatestByAssignmentIdsAndTeamIds(
+      @Param("assignmentIds") List<Long> assignmentIds, @Param("teamIds") List<Long> teamIds);
 
   @Query(
       "SELECT s FROM Submission s WHERE s.team.id IN (SELECT tm.team.id FROM TeamMember tm WHERE"

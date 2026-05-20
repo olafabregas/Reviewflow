@@ -518,11 +518,13 @@ public class MessagingService {
   }
 
   @Transactional(readOnly = true)
-  public List<MessageDto> listMessagesForModeration(Long conversationId) {
+  public org.springframework.data.domain.Page<MessageDto> listMessagesForModeration(
+      Long conversationId, int page, int size) {
     loadConversation(conversationId);
-    List<Message> msgs =
-        messageRepository.findAllByConversationIdForModerationWithDetails(conversationId);
-    return msgs.stream().map(m -> toMessageDto(m, true, true)).collect(Collectors.toList());
+    var messages =
+        messageRepository.findAllByConversationIdForModerationWithDetails(
+            conversationId, org.springframework.data.domain.PageRequest.of(page, size));
+    return messages.map(m -> toMessageDto(m, true, true));
   }
 
   private Conversation loadConversation(Long id) {

@@ -54,6 +54,10 @@ public class Evaluation {
   @Column(name = "created_at")
   private Instant createdAt;
 
+  @Version
+  @Column(name = "lock_version")
+  private Long lockVersion;
+
   @OneToMany(mappedBy = "evaluation", cascade = CascadeType.ALL, orphanRemoval = true)
   @Builder.Default
   private List<RubricScore> rubricScores = new ArrayList<>();

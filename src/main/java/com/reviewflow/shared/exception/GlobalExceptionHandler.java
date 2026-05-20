@@ -57,8 +57,11 @@ import com.reviewflow.system.exception.UnknownCacheException;
 import com.reviewflow.team.exception.TeamNotFoundException;
 import com.reviewflow.shared.dto.ValidationFieldError;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -962,6 +965,31 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
   }
 
+  @ExceptionHandler(OptimisticLockingFailureException.class)
+  public ResponseEntity<ErrorResponse> handleOptimisticLockingFailure(
+      OptimisticLockingFailureException ex) {
+    Long currentVersion = extractCurrentVersion(ex);
+    Map<String, Object> details = new LinkedHashMap<>();
+    if (currentVersion != null) {
+      details.put("currentVersion", currentVersion);
+    }
+    details.put("conflictedAt", Instant.now().toString());
+
+    ErrorResponse body =
+        ErrorResponse.builder()
+            .error(
+                ErrorResponse.ErrorDetail.builder()
+                    .code("CONCURRENT_MODIFICATION")
+                    .message(
+                        "This record was modified by another user. "
+                            + "Please review the latest version and resubmit.")
+                    .details(details)
+                    .build())
+            .timestamp(Instant.now())
+            .build();
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+  }
+
   @ExceptionHandler(DiscussionException.class)
   public ResponseEntity<ApiResponse<Object>> handleDiscussion(DiscussionException ex) {
     ApiResponse<Object> body =
@@ -983,6 +1011,10 @@ public class GlobalExceptionHandler {
             .timestamp(Instant.now())
             .build();
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+  }
+
+  private static Long extractCurrentVersion(OptimisticLockingFailureException ex) {
+    return null;
   }
 
   private static ResponseEntity<ErrorResponse> errorResponse(

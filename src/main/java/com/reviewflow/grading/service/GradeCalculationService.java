@@ -581,13 +581,17 @@ public class GradeCalculationService {
 
     List<CourseEnrollment> enrollments =
         courseEnrollmentRepository.findWithUserByCourseId(courseId);
+    List<Long> studentIds = enrollments.stream().map(e -> e.getUser().getId()).toList();
+    RosterBulkContext bulkContext =
+        studentIds.isEmpty() ? null : loadRosterBulkContext(courseId, studentIds);
+
     List<ClassRosterDto.StudentStandingDto> students = new ArrayList<>();
     List<BigDecimal> standings = new ArrayList<>();
 
     for (CourseEnrollment enrollment : enrollments) {
       Long studentId = enrollment.getUser().getId();
-      GradeOverviewDto overview = calculateOverviewCached(courseId, studentId);
-      BigDecimal standing = overview.getCurrentStanding();
+      BigDecimal standing =
+          bulkContext == null ? null : computeStandingFromContext(bulkContext, studentId);
       if (standing != null) {
         standings.add(standing);
       }
@@ -634,6 +638,159 @@ public class GradeCalculationService {
         .students(students)
         .build();
   }
+
+  private RosterBulkContext loadRosterBulkContext(Long courseId, List<Long> studentIds) {
+    List<AssignmentGroup> groups = assignmentGroupRepository.findDetailedByCourseId(courseId);
+    List<Long> assignmentIds =
+        groups.stream()
+            .flatMap(group -> group.getAssignments().stream())
+            .map(Assignment::getId)
+            .toList();
+
+    Map<Long, Map<Long, Team>> teamByStudentAndAssignment = new HashMap<>();
+    if (!assignmentIds.isEmpty()) {
+      List<Team> teams =
+          teamRepository.findByAssignmentIdsAndMemberUserIds(assignmentIds, studentIds);
+      for (Team team : teams) {
+        Long assignmentId = team.getAssignment().getId();
+        team.getMembers().stream()
+            .filter(member -> studentIds.contains(member.getUser().getId()))
+            .forEach(
+                member ->
+                    teamByStudentAndAssignment
+                        .computeIfAbsent(member.getUser().getId(), ignored -> new HashMap<>())
+                        .put(assignmentId, team));
+      }
+    }
+
+    Map<Long, Map<Long, Submission>> latestIndividualByStudent = new HashMap<>();
+    if (!assignmentIds.isEmpty()) {
+      submissionRepository
+          .findLatestByAssignmentIdsAndStudentIds(assignmentIds, studentIds)
+          .forEach(
+              submission ->
+                  latestIndividualByStudent
+                      .computeIfAbsent(submission.getStudent().getId(), ignored -> new HashMap<>())
+                      .put(submission.getAssignment().getId(), submission));
+    }
+
+    List<Long> teamIds =
+        teamByStudentAndAssignment.values().stream()
+            .flatMap(map -> map.values().stream())
+            .map(Team::getId)
+            .distinct()
+            .toList();
+
+    Map<Long, Map<Long, Submission>> latestTeamByStudent = new HashMap<>();
+    if (!assignmentIds.isEmpty() && !teamIds.isEmpty()) {
+      Map<String, Submission> teamSubmissionByAssignmentAndTeam =
+          submissionRepository.findLatestByAssignmentIdsAndTeamIds(assignmentIds, teamIds).stream()
+              .collect(
+                  Collectors.toMap(
+                      submission ->
+                          submission.getAssignment().getId() + ":" + submission.getTeam().getId(),
+                      submission -> submission,
+                      (a, b) -> a));
+
+      teamByStudentAndAssignment.forEach(
+          (studentId, teamsByAssignment) ->
+              teamsByAssignment.forEach(
+                  (assignmentId, team) -> {
+                    Submission submission =
+                        teamSubmissionByAssignmentAndTeam.get(
+                            assignmentId + ":" + team.getId());
+                    if (submission != null) {
+                      latestTeamByStudent
+                          .computeIfAbsent(studentId, ignored -> new HashMap<>())
+                          .put(assignmentId, submission);
+                    }
+                  }));
+    }
+
+    Set<Long> submissionIds = new HashSet<>();
+    latestIndividualByStudent
+        .values()
+        .forEach(map -> map.values().forEach(submission -> submissionIds.add(submission.getId())));
+    latestTeamByStudent
+        .values()
+        .forEach(map -> map.values().forEach(submission -> submissionIds.add(submission.getId())));
+
+    Map<Long, Evaluation> publishedEvaluationBySubmissionId =
+        submissionIds.isEmpty()
+            ? Map.of()
+            : evaluationRepository.findPublishedFinalBySubmissionIds(new ArrayList<>(submissionIds))
+                .stream()
+                .collect(
+                    Collectors.toMap(
+                        evaluation -> evaluation.getSubmission().getId(), evaluation -> evaluation));
+
+    Map<Long, Map<Long, InstructorScore>> instructorScoreByStudentAndAssignment = new HashMap<>();
+    if (!assignmentIds.isEmpty()) {
+      instructorScoreRepository
+          .findPublishedByAssignmentIdsAndStudentIds(assignmentIds, studentIds)
+          .forEach(
+              score ->
+                  instructorScoreByStudentAndAssignment
+                      .computeIfAbsent(score.getStudent().getId(), ignored -> new HashMap<>())
+                      .put(score.getAssignment().getId(), score));
+    }
+
+    return new RosterBulkContext(
+        groups,
+        latestIndividualByStudent,
+        latestTeamByStudent,
+        publishedEvaluationBySubmissionId,
+        instructorScoreByStudentAndAssignment);
+  }
+
+  private BigDecimal computeStandingFromContext(RosterBulkContext context, Long studentId) {
+    Map<Long, Submission> latestIndividual =
+        context.latestIndividualByStudent().getOrDefault(studentId, Map.of());
+    Map<Long, Submission> latestTeam =
+        context.latestTeamByStudent().getOrDefault(studentId, Map.of());
+    Map<Long, InstructorScore> instructorScores =
+        context.instructorScoreByStudentAndAssignment().getOrDefault(studentId, Map.of());
+
+    List<GroupGradeDto> groupDtos = new ArrayList<>();
+    for (AssignmentGroup group : context.groups()) {
+      groupDtos.add(
+          calculateGroup(
+              group,
+              latestIndividual,
+              latestTeam,
+              context.publishedEvaluationBySubmissionId(),
+              instructorScores));
+    }
+
+    List<GroupGradeDto> completedGroups =
+        groupDtos.stream().filter(group -> group.getGroupScorePercent() != null).toList();
+
+    if (completedGroups.isEmpty()) {
+      return null;
+    }
+
+    BigDecimal completedWeight =
+        completedGroups.stream()
+            .map(group -> group.getWeight() == null ? BigDecimal.ZERO : group.getWeight())
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+    if (completedWeight.compareTo(BigDecimal.ZERO) == 0) {
+      return null;
+    }
+
+    BigDecimal weightedSum =
+        completedGroups.stream()
+            .map(group -> group.getWeight().multiply(group.getGroupScorePercent()))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    return weightedSum.divide(completedWeight, 2, RoundingMode.HALF_UP);
+  }
+
+  private record RosterBulkContext(
+      List<AssignmentGroup> groups,
+      Map<Long, Map<Long, Submission>> latestIndividualByStudent,
+      Map<Long, Map<Long, Submission>> latestTeamByStudent,
+      Map<Long, Evaluation> publishedEvaluationBySubmissionId,
+      Map<Long, Map<Long, InstructorScore>> instructorScoreByStudentAndAssignment) {}
 
   private BigDecimal median(List<BigDecimal> values) {
     int size = values.size();

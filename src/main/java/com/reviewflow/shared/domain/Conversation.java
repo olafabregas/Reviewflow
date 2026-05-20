@@ -51,7 +51,9 @@ public class Conversation {
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
-  @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OneToMany(
+      mappedBy = "conversation",
+      cascade = {CascadeType.PERSIST, CascadeType.MERGE})
   @Builder.Default
   private Set<ConversationParticipant> participants = new HashSet<>();
 }

@@ -2,6 +2,8 @@ package com.reviewflow.user.repository;
 
 import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.domain.UserRole;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,6 +15,8 @@ import org.springframework.data.repository.query.Param;
 public interface UserRepository extends JpaRepository<User, Long> {
 
   Optional<User> findByEmail(String email);
+
+  List<User> findByEmailIn(Collection<String> emails);
 
   @Query("SELECT u.emailNotificationsEnabled FROM User u WHERE u.email = :email")
   Optional<Boolean> findEmailPreferenceByEmail(@Param("email") String email);

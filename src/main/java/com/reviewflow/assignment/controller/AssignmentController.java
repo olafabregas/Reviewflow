@@ -470,13 +470,19 @@ public class AssignmentController {
   @PreAuthorize("hasRole('INSTRUCTOR') or hasRole('ADMIN')")
   @GetMapping("/assignments/{id}/submissions")
   public ResponseEntity<ApiResponse<List<SubmissionResponse>>> getSubmissions(
-      @PathVariable String id, @AuthenticationPrincipal ReviewFlowUserDetails user) {
+      @PathVariable String id,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size,
+      @AuthenticationPrincipal ReviewFlowUserDetails user) {
     Long assignmentId = hashidService.decodeOrThrow(id);
-    List<Submission> submissions =
-        assignmentService.getSubmissionsForAssignment(assignmentId, user.getUserId());
+    var submissions =
+        assignmentService.getSubmissionsForAssignment(
+            assignmentId, user.getUserId(), page, size);
     List<SubmissionResponse> data =
-        submissions.stream().map(this::toSubmissionResponse).collect(Collectors.toList());
-    return ResponseEntity.ok(ApiResponse.ok(data));
+        submissions.getContent().stream().map(this::toSubmissionResponse).toList();
+    return ResponseEntity.ok()
+        .headers(com.reviewflow.shared.util.PaginationHeaders.forPage(submissions))
+        .body(ApiResponse.ok(data));
   }
 
   @Operation(

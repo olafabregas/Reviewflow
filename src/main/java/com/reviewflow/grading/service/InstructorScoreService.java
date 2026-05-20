@@ -25,8 +25,11 @@ import com.reviewflow.shared.util.HashidService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import com.reviewflow.grading.event.GradePublishedEvent;
+import com.reviewflow.grading.job.ValidatedRow;
 import com.reviewflow.grading.event.GradeStructureChangedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -135,6 +138,67 @@ public class InstructorScoreService {
         null);
     gradeCalculationService.evictCourseGradeCaches(assignment.getCourse().getId());
     return toResponse(saved);
+  }
+
+  /** Builds instructor score entities for CSV import without persisting (caller uses saveAll). */
+  public List<InstructorScore> buildScoresForCsvImport(
+      Long assignmentId,
+      Long actorId,
+      List<ValidatedRow> rows,
+      Map<String, User> usersByEmail) {
+    Assignment assignment = getAssignment(assignmentId);
+    validateInstructorGraded(assignment);
+    ensureCanManage(assignment.getCourse().getId(), actorId);
+    User actor = getUser(actorId);
+
+    List<InstructorScore> scores = new ArrayList<>();
+    for (ValidatedRow row : rows) {
+      User student = usersByEmail.get(row.studentEmail());
+      if (student == null) {
+        throw new ResourceNotFoundException("User", row.studentEmail());
+      }
+      validateScore(row.score(), assignment.getMaxScore());
+      if (!courseEnrollmentRepository.existsByCourseIdAndUserId(
+          assignment.getCourse().getId(), student.getId())) {
+        throw new AccessDeniedException("Student is not enrolled in this course");
+      }
+
+      InstructorScore existing =
+          instructorScoreRepository
+              .findByAssignmentIdAndStudentId(assignmentId, student.getId())
+              .orElse(null);
+      if (existing != null && Boolean.TRUE.equals(existing.getIsPublished())) {
+        throw new AlreadyPublishedException("Use the reopen endpoint to modify a published score");
+      }
+
+      InstructorScore target =
+          existing != null
+              ? existing
+              : InstructorScore.builder()
+                  .assignment(assignment)
+                  .student(student)
+                  .enteredBy(actor)
+                  .enteredAt(Instant.now())
+                  .isPublished(false)
+                  .build();
+      target.setScore(row.score());
+      target.setMaxScore(assignment.getMaxScore());
+      target.setComment(row.comment());
+      target.setUpdatedAt(Instant.now());
+      scores.add(target);
+    }
+    return scores;
+  }
+
+  public void afterCsvImportCommitted(Long courseId, Long actorId, int rowCount) {
+    auditService.log(
+        actorId,
+        "INSTRUCTOR_SCORE_CSV_IMPORTED",
+        "Course",
+        courseId,
+        "Committed " + rowCount + " instructor scores from CSV import",
+        null);
+    gradeCalculationService.evictCourseGradeCaches(courseId);
   }
 
   @Transactional

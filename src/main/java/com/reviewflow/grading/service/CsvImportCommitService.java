@@ -6,16 +6,21 @@ import com.reviewflow.assignment.repository.AssignmentRepository;
 import com.reviewflow.grading.job.JobState;
 import com.reviewflow.grading.job.JobStatus;
 import com.reviewflow.grading.job.ValidatedRow;
+import com.reviewflow.grading.repository.InstructorScoreRepository;
 import com.reviewflow.infrastructure.jobs.AsyncJobService;
 import com.reviewflow.infrastructure.storage.S3Service;
 import com.reviewflow.shared.domain.Assignment;
+import com.reviewflow.shared.domain.InstructorScore;
 import com.reviewflow.shared.domain.SubmissionType;
 import com.reviewflow.shared.domain.User;
-import com.reviewflow.shared.exception.ResourceNotFoundException;
 import com.reviewflow.shared.util.HashidService;
 import com.reviewflow.user.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,6 +37,7 @@ public class CsvImportCommitService {
   private final ObjectMapper objectMapper;
   private final AssignmentRepository assignmentRepository;
   private final UserRepository userRepository;
+  private final InstructorScoreRepository instructorScoreRepository;
   private final InstructorScoreService instructorScoreService;
   private final HashidService hashidService;
 
@@ -62,22 +68,32 @@ public class CsvImportCommitService {
     Assignment assignment =
         assignmentRepository
             .findWithDetailsById(assignmentId)
-            .orElseThrow(() -> new ResourceNotFoundException("Assignment", assignmentId));
+            .orElseThrow(
+                () ->
+                    new com.reviewflow.shared.exception.ResourceNotFoundException(
+                        "Assignment", assignmentId));
     boolean teamMode = assignment.getSubmissionType() == SubmissionType.TEAM;
 
-    for (ValidatedRow row : rows) {
-      if (teamMode) {
+    if (teamMode) {
+      for (ValidatedRow row : rows) {
         Long teamId = parseTeamId(row.teamId());
         instructorScoreService.create(
             assignmentId, actorId, null, teamId, row.score(), row.comment());
-      } else {
-        User student =
-            userRepository
-                .findByEmail(row.studentEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User", row.studentEmail()));
-        instructorScoreService.create(
-            assignmentId, actorId, student.getId(), null, row.score(), row.comment());
       }
+    } else {
+      Set<String> emails =
+          rows.stream().map(ValidatedRow::studentEmail).collect(Collectors.toSet());
+      Map<String, User> usersByEmail =
+          userRepository.findByEmailIn(emails).stream()
+              .collect(Collectors.toMap(User::getEmail, Function.identity()));
+
+      List<InstructorScore> scores =
+          instructorScoreService.buildScoresForCsvImport(
+              assignmentId, actorId, rows, usersByEmail);
+      // saveAll reduces application round trips; IDENTITY keys still emit one INSERT per row.
+      instructorScoreRepository.saveAll(scores);
+      instructorScoreService.afterCsvImportCommitted(
+          assignment.getCourse().getId(), actorId, scores.size());
     }
 
     asyncJobService.updateStatus(jobId, JobStatus.COMPLETED);

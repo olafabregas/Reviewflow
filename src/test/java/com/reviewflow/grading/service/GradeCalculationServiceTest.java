@@ -215,37 +215,19 @@ class GradeCalculationServiceTest {
     AssignmentGroup group = group(10L, "Exams", 100, 0, List.of(assignment));
     when(assignmentGroupRepository.findDetailedByCourseId(courseId)).thenReturn(List.of(group));
 
-    when(teamRepository.findByAssignmentIdsAndMemberUserId(anyList(), eq(101L)))
-        .thenReturn(List.of());
-    when(teamRepository.findByAssignmentIdsAndMemberUserId(anyList(), eq(102L)))
+    when(teamRepository.findByAssignmentIdsAndMemberUserIds(anyList(), anyList()))
         .thenReturn(List.of());
 
     Submission lowSubmission = submission(1001L, assignment, 101L);
     Submission highSubmission = submission(1002L, assignment, 102L);
-    when(submissionRepository.findLatestByAssignmentIdsAndStudentId(anyList(), eq(101L)))
-        .thenReturn(List.of(lowSubmission));
-    when(submissionRepository.findLatestByAssignmentIdsAndStudentId(anyList(), eq(102L)))
-        .thenReturn(List.of(highSubmission));
+    when(submissionRepository.findLatestByAssignmentIdsAndStudentIds(anyList(), anyList()))
+        .thenReturn(List.of(lowSubmission, highSubmission));
 
     Evaluation lowEval = evaluation(2001L, lowSubmission, 60);
     Evaluation highEval = evaluation(2002L, highSubmission, 90);
     when(evaluationRepository.findPublishedFinalBySubmissionIds(anyList()))
-        .thenAnswer(
-            invocation -> {
-              List<Long> submissionIds = invocation.getArgument(0);
-              if (submissionIds.contains(1001L)) {
-                return List.of(lowEval);
-              }
-              if (submissionIds.contains(1002L)) {
-                return List.of(highEval);
-              }
-              return List.of();
-            });
-    when(instructorScoreRepository.findByAssignmentIdInAndStudentIdAndIsPublishedTrue(
-            anyList(), eq(101L)))
-        .thenReturn(List.of());
-    when(instructorScoreRepository.findByAssignmentIdInAndStudentIdAndIsPublishedTrue(
-            anyList(), eq(102L)))
+        .thenReturn(List.of(lowEval, highEval));
+    when(instructorScoreRepository.findPublishedByAssignmentIdsAndStudentIds(anyList(), anyList()))
         .thenReturn(List.of());
 
     ClassRosterDto roster =
