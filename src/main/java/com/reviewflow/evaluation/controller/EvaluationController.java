@@ -1,5 +1,6 @@
 package com.reviewflow.evaluation.controller;
 
+import com.reviewflow.evaluation.mapper.EvaluationResponseMapper;
 import com.reviewflow.evaluation.dto.request.CreateEvaluationRequest;
 import com.reviewflow.evaluation.dto.request.PatchCommentRequest;
 import com.reviewflow.evaluation.dto.request.PatchScoreRequest;
@@ -18,10 +19,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -415,61 +414,6 @@ public class EvaluationController {
 
   private EvaluationResponse toResponse(Evaluation ev) {
     List<RubricScore> scores = evaluationService.getRubricScoresForEvaluation(ev.getId());
-    BigDecimal maxPossible =
-        scores.stream()
-            .map(
-                s ->
-                    s.getCriterion() != null && s.getCriterion().getMaxScore() != null
-                        ? BigDecimal.valueOf(s.getCriterion().getMaxScore())
-                        : BigDecimal.ZERO)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-    return getEvaluationResponse(ev, scores, maxPossible, hashidService);
-  }
-
-  public static EvaluationResponse getEvaluationResponse(
-      Evaluation ev,
-      List<RubricScore> scores,
-      BigDecimal maxPossible,
-      HashidService hashidService) {
-    List<EvaluationResponse.RubricScoreResponse> scoreResponses =
-        scores.stream()
-            .map(
-                s -> {
-                  BigDecimal maxScore =
-                      s.getCriterion() != null && s.getCriterion().getMaxScore() != null
-                          ? BigDecimal.valueOf(s.getCriterion().getMaxScore())
-                          : BigDecimal.ZERO;
-                  return EvaluationResponse.RubricScoreResponse.builder()
-                      .id(hashidService.encode(s.getId()))
-                      .criterionId(
-                          s.getCriterion() != null
-                              ? hashidService.encode(s.getCriterion().getId())
-                              : null)
-                      .criterionName(s.getCriterion() != null ? s.getCriterion().getName() : null)
-                      .maxScore(maxScore)
-                      .score(s.getScore())
-                      .comment(s.getComment())
-                      .build();
-                })
-            .collect(Collectors.toList());
-    return EvaluationResponse.builder()
-        .id(hashidService.encode(ev.getId()))
-        .submissionId(
-            ev.getSubmission() != null ? hashidService.encode(ev.getSubmission().getId()) : null)
-        .instructorId(
-            ev.getInstructor() != null ? hashidService.encode(ev.getInstructor().getId()) : null)
-        .instructorName(
-            ev.getInstructor() != null
-                ? ev.getInstructor().getFirstName() + " " + ev.getInstructor().getLastName()
-                : null)
-        .overallComment(ev.getOverallComment())
-        .totalScore(ev.getTotalScore())
-        .maxPossibleScore(maxPossible)
-        .isDraft(ev.getIsDraft())
-        .publishedAt(ev.getPublishedAt())
-        .createdAt(ev.getCreatedAt())
-        .hasPdf(ev.getPdfPath() != null)
-        .rubricScores(scoreResponses)
-        .build();
+    return EvaluationResponseMapper.toResponse(ev, scores, hashidService);
   }
 }

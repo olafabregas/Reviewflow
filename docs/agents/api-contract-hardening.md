@@ -46,7 +46,8 @@ You are a senior Spring Boot engineer executing a structured fix pass on ReviewF
 | GlobalExceptionHandler | `com.reviewflow.shared.exception.GlobalExceptionHandler` |
 | HttpErrorJsonWriter | `com.reviewflow.infrastructure.security.HttpErrorJsonWriter` |
 | JwtAuthenticationFilter | `com.reviewflow.infrastructure.security.JwtAuthenticationFilter` |
-| ApiResponse | `com.reviewflow.shared.api.ApiResponse` |
+| ApiResponse | `com.reviewflow.shared.exception.ApiResponse` |
+| ValidationFieldError | `com.reviewflow.shared.dto.ValidationFieldError` |
 
 ---
 

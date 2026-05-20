@@ -1,7 +1,6 @@
 package com.reviewflow.grading.controller;
 
-import static com.reviewflow.evaluation.controller.EvaluationController.getEvaluationResponse;
-
+import com.reviewflow.evaluation.mapper.EvaluationResponseMapper;
 import com.reviewflow.shared.exception.ApiResponse;
 import com.reviewflow.evaluation.dto.response.EvaluationResponse;
 import com.reviewflow.submission.dto.response.SubmissionResponse;
@@ -20,7 +19,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -151,14 +149,6 @@ public class StudentController {
 
   private EvaluationResponse toEvalResponse(Evaluation ev) {
     List<RubricScore> scores = evaluationService.getRubricScoresForEvaluation(ev.getId());
-    BigDecimal maxPossible =
-        scores.stream()
-            .map(
-                s ->
-                    s.getCriterion() != null && s.getCriterion().getMaxScore() != null
-                        ? BigDecimal.valueOf(s.getCriterion().getMaxScore())
-                        : BigDecimal.ZERO)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-    return getEvaluationResponse(ev, scores, maxPossible, hashidService);
+    return EvaluationResponseMapper.toResponse(ev, scores, hashidService);
   }
 }
