@@ -56,6 +56,24 @@ public class RateLimitConfigurationProvider {
   @Value("${rate-limit.auth.jwt-failure.window-seconds:60}")
   private int authJwtFailureWindowSeconds;
 
+  @Value("${rate-limit.auth.ws-ticket.limit:30}")
+  private long wsTicketLimit;
+
+  @Value("${rate-limit.auth.ws-ticket.window-minutes:15}")
+  private long wsTicketWindowMinutes;
+
+  @Value("${rate-limit.upload.student.limit:10}")
+  private long uploadBlockStudentLimit;
+
+  @Value("${rate-limit.upload.instructor.limit:30}")
+  private long uploadBlockInstructorLimit;
+
+  @Value("${rate-limit.upload.admin.limit:60}")
+  private long uploadBlockAdminLimit;
+
+  @Value("${rate-limit.upload.window-hours:1}")
+  private long uploadBlockWindowHours;
+
   @Value("${rate-limit.messaging.send.limit:30}")
   private int messagingSendLimit;
 
@@ -129,9 +147,12 @@ public class RateLimitConfigurationProvider {
       case AUTH_STEP_UP -> sliding(authStepUpLimit, Duration.ofMinutes(authStepUpWindowMinutes));
       case AUTH_JWT_FAILURE ->
           sliding(authJwtFailureLimit, Duration.ofSeconds(authJwtFailureWindowSeconds));
+      case AUTH_WS_TICKET -> sliding(wsTicketLimit, Duration.ofMinutes(wsTicketWindowMinutes));
       case MSG_SEND -> sliding(messagingSendLimit, Duration.ofSeconds(messagingSendWindowSeconds));
       case MSG_CREATE ->
           sliding(messagingCreateLimit, Duration.ofHours(messagingCreateWindowHours));
+      case UPLOAD_BLOCK ->
+          sliding(uploadBlockCapacity(role), Duration.ofHours(uploadBlockWindowHours));
       case API_PUBLIC -> tokenBucket(apiPublicCapacity, apiPublicRefill);
       case API_READ -> tokenBucket(readCapacity(tier), readRefill(tier));
       case API_WRITE -> tokenBucket(writeCapacity(tier), writeRefill(tier));
@@ -150,8 +171,10 @@ public class RateLimitConfigurationProvider {
       case AUTH_PASSWORD_RESET_CONFIRM_IP -> passwordResetConfirmIpLimit;
       case AUTH_STEP_UP -> authStepUpLimit;
       case AUTH_JWT_FAILURE -> authJwtFailureLimit;
+      case AUTH_WS_TICKET -> wsTicketLimit;
       case MSG_SEND -> messagingSendLimit;
       case MSG_CREATE -> messagingCreateLimit;
+      case UPLOAD_BLOCK -> uploadBlockCapacity(role);
       case API_PUBLIC -> apiPublicCapacity;
       case API_READ -> readCapacity(tier);
       case API_WRITE -> writeCapacity(tier);
@@ -164,6 +187,17 @@ public class RateLimitConfigurationProvider {
       return BucketTier.ELEVATED;
     }
     return BucketTier.DEFAULT;
+  }
+
+  private long uploadBlockCapacity(UserRole role) {
+    if (role == null) {
+      return uploadBlockStudentLimit;
+    }
+    return switch (role) {
+      case SYSTEM_ADMIN, ADMIN -> uploadBlockAdminLimit;
+      case INSTRUCTOR -> uploadBlockInstructorLimit;
+      default -> uploadBlockStudentLimit;
+    };
   }
 
   private BucketConfiguration sliding(long limit, Duration window) {

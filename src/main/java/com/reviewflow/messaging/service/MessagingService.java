@@ -215,7 +215,8 @@ public class MessagingService {
     if (!createLimit.allowed()) {
       throw MessagingClientException.tooManyRequests(
           "MESSAGING_RATE_LIMIT_EXCEEDED",
-          "Too many new conversations. Retry after " + createLimit.retryAfterSeconds() + " seconds.");
+          "Too many new conversations. Retry after " + createLimit.retryAfterSeconds() + " seconds.",
+          createLimit.retryAfterSeconds());
     }
     Conversation conv =
         Conversation.builder()
@@ -260,7 +261,8 @@ public class MessagingService {
     if (!sendLimit.allowed()) {
       throw MessagingClientException.tooManyRequests(
           "MESSAGING_RATE_LIMIT_EXCEEDED",
-          "Too many messages. Retry after " + sendLimit.retryAfterSeconds() + " seconds.");
+          "Too many messages. Retry after " + sendLimit.retryAfterSeconds() + " seconds.",
+          sendLimit.retryAfterSeconds());
     }
     String trimmedContent = content != null && !content.isBlank() ? content.trim() : null;
     List<PendingMessageAttachment> pendingAttachments = stageAttachments(fileList);

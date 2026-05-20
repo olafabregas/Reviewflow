@@ -36,7 +36,10 @@ import com.reviewflow.submission.exception.FileTooLargeForPreviewException;
 import com.reviewflow.submission.exception.IndividualSubmissionOnlyException;
 import com.reviewflow.submission.exception.MalwareDetectedException;
 import com.reviewflow.submission.exception.PreviewNotSupportedException;
-import com.reviewflow.shared.exception.RateLimitException;
+import com.reviewflow.infrastructure.ratelimit.RateLimitResult;
+import com.reviewflow.infrastructure.ratelimit.RateLimitService;
+import com.reviewflow.infrastructure.ratelimit.RateLimitStrategy;
+import com.reviewflow.shared.exception.TooManyRequestsException;
 import com.reviewflow.shared.exception.ResourceNotFoundException;
 import com.reviewflow.grading.exception.SubmissionNotRequiredException;
 import com.reviewflow.team.exception.TeamSubmissionRequiredException;
@@ -103,6 +106,7 @@ public class SubmissionService {
   private final HashidService hashidService;
   private final S3Service s3Service;
   private final ReviewFlowMetrics reviewFlowMetrics;
+  private final RateLimitService rateLimitService;
 
   @Value("${file.validation.submission.max-size-bytes:104857600}")
   private long submissionMaxFileSizeBytes;
@@ -119,6 +123,22 @@ public class SubmissionService {
   @Transactional
   public Submission upload(
       Long teamId, Long assignmentId, String changeNote, MultipartFile file, Long uploaderId) {
+    User uploader =
+        userRepository
+            .findById(uploaderId)
+            .orElseThrow(() -> new ResourceNotFoundException("User", uploaderId));
+    RateLimitResult uploadLimit =
+        rateLimitService.tryConsume(
+            String.valueOf(uploaderId), RateLimitStrategy.UPLOAD_BLOCK, uploader.getRole());
+    if (!uploadLimit.allowed()) {
+      reviewFlowMetrics.recordUploadBlockRateLimited();
+      throw new TooManyRequestsException(
+          "Upload limit reached. Please try again in "
+              + uploadLimit.retryAfterSeconds()
+              + " seconds.",
+          uploadLimit.retryAfterSeconds());
+    }
+
     // Validate file is present
     if (file == null || file.isEmpty()) {
       throw new ValidationException("File is required", "VALIDATION_ERROR");
@@ -212,11 +232,6 @@ public class SubmissionService {
         assignmentRepository
             .findById(assignmentId)
             .orElseThrow(() -> new ResourceNotFoundException("Assignment", assignmentId));
-
-    User uploader =
-        userRepository
-            .findById(uploaderId)
-            .orElseThrow(() -> new ResourceNotFoundException("User", uploaderId));
 
     SubmissionType submissionType =
         assignment.getSubmissionType() != null

@@ -37,12 +37,14 @@ class GlobalExceptionHandlerMessagingTest {
   void messagingClientException_mapsMessagingRateLimitTo429() {
     MessagingClientException ex =
         MessagingClientException.tooManyRequests(
-            "MESSAGING_RATE_LIMIT_EXCEEDED", "Too many messages. Retry after 5 seconds.");
+            "MESSAGING_RATE_LIMIT_EXCEEDED", "Too many messages. Retry after 5 seconds.", 5);
 
     ResponseEntity<ErrorResponse> res = handler.handleMessagingClient(ex);
 
     assertEquals(HttpStatus.TOO_MANY_REQUESTS, res.getStatusCode());
     assertEquals("MESSAGING_RATE_LIMIT_EXCEEDED", res.getBody().getError().getCode());
+    assertEquals("5", res.getHeaders().getFirst("Retry-After"));
+    assertEquals("0", res.getHeaders().getFirst("X-RateLimit-Remaining"));
   }
 
   @Test
