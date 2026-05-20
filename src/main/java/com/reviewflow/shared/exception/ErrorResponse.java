@@ -1,7 +1,9 @@
 package com.reviewflow.shared.exception;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.reviewflow.shared.dto.ValidationFieldError;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import lombok.Builder;
 import lombok.Value;
@@ -19,9 +21,11 @@ public class ErrorResponse {
 
   @Value
   @Builder
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class ErrorDetail {
     String code;
     String message;
     Map<String, Object> details;
+    List<ValidationFieldError> fields;
   }
 }

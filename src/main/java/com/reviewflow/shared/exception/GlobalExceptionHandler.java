@@ -50,7 +50,14 @@ import com.reviewflow.user.exception.AvatarInvalidTypeException;
 import com.reviewflow.user.exception.AvatarNotFoundException;
 import com.reviewflow.user.exception.AvatarTooLargeException;
 import com.reviewflow.user.exception.AvatarUploadFailedException;
+import com.reviewflow.evaluation.exception.EvaluationNotFoundException;
+import com.reviewflow.system.exception.CacheEvictionThrottledException;
+import com.reviewflow.system.exception.ForceLogoutBlockedException;
+import com.reviewflow.system.exception.UnknownCacheException;
+import com.reviewflow.team.exception.TeamNotFoundException;
+import com.reviewflow.shared.dto.ValidationFieldError;
 import java.time.Instant;
+import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -67,17 +74,22 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
-    String message =
+    List<ValidationFieldError> fieldErrors =
         ex.getBindingResult().getFieldErrors().stream()
-                .map(FieldError::getField)
-                .collect(Collectors.joining(", "))
-            + " validation failed";
+            .map(
+                fe ->
+                    new ValidationFieldError(
+                        fe.getField(),
+                        fe.getDefaultMessage(),
+                        fe.getRejectedValue() != null ? fe.getRejectedValue().toString() : null))
+            .toList();
     ErrorResponse body =
         ErrorResponse.builder()
             .error(
                 ErrorResponse.ErrorDetail.builder()
                     .code("VALIDATION_ERROR")
-                    .message(message)
+                    .message("One or more fields failed validation")
+                    .fields(fieldErrors)
                     .build())
             .timestamp(Instant.now())
             .build();
@@ -163,11 +175,38 @@ public class GlobalExceptionHandler {
             .error(
                 ErrorResponse.ErrorDetail.builder()
                     .code("BAD_REQUEST")
-                    .message(ex.getMessage())
+                    .message("Invalid request parameters")
                     .build())
             .timestamp(Instant.now())
             .build();
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+  }
+
+  @ExceptionHandler(EvaluationNotFoundException.class)
+  public ResponseEntity<ErrorResponse> handleEvaluationNotFound(EvaluationNotFoundException ex) {
+    return errorResponse("EVALUATION_NOT_FOUND", ex.getMessage(), HttpStatus.NOT_FOUND);
+  }
+
+  @ExceptionHandler(TeamNotFoundException.class)
+  public ResponseEntity<ErrorResponse> handleTeamNotFound(TeamNotFoundException ex) {
+    return errorResponse("TEAM_NOT_FOUND", ex.getMessage(), HttpStatus.NOT_FOUND);
+  }
+
+  @ExceptionHandler(UnknownCacheException.class)
+  public ResponseEntity<ErrorResponse> handleUnknownCache(UnknownCacheException ex) {
+    return errorResponse("UNKNOWN_CACHE", ex.getMessage(), HttpStatus.BAD_REQUEST);
+  }
+
+  @ExceptionHandler(CacheEvictionThrottledException.class)
+  public ResponseEntity<ErrorResponse> handleCacheEvictionThrottled(
+      CacheEvictionThrottledException ex) {
+    return errorResponse("CACHE_EVICTION_THROTTLED", ex.getMessage(), HttpStatus.TOO_MANY_REQUESTS);
+  }
+
+  @ExceptionHandler(ForceLogoutBlockedException.class)
+  public ResponseEntity<ErrorResponse> handleForceLogoutBlocked(ForceLogoutBlockedException ex) {
+    return errorResponse(
+        "CANNOT_FORCE_LOGOUT_SYSTEM_ADMIN", ex.getMessage(), HttpStatus.FORBIDDEN);
   }
 
   @ExceptionHandler(ResourceNotFoundException.class)
@@ -725,7 +764,7 @@ public class GlobalExceptionHandler {
         ErrorResponse.builder()
             .error(
                 ErrorResponse.ErrorDetail.builder()
-                    .code("RATE_LIMITED")
+                    .code("TOO_MANY_REQUESTS")
                     .message(ex.getMessage())
                     .build())
             .timestamp(Instant.now())

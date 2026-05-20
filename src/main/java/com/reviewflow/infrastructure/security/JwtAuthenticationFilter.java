@@ -17,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Optional;
+import org.springframework.http.HttpStatus;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -146,9 +147,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
               extraction.fromBearer() ? "Bearer" : "Cookie");
         }
       }
+    } catch (TokenVersionMismatchException ex) {
+      log.warn("Token version mismatch for request {}: {}", request.getRequestURI(), ex.getMessage());
+      rateLimitService.consumeOnFailure(ip, AUTH_JWT_FAILURE, null);
+      httpErrorJsonWriter.writeError(
+          response,
+          HttpStatus.UNAUTHORIZED.value(),
+          "TOKEN_REVOKED",
+          "Your session has been invalidated. Please log in again.");
+      return;
     } catch (io.jsonwebtoken.JwtException
-        | org.springframework.security.core.userdetails.UsernameNotFoundException
-        | TokenVersionMismatchException e) {
+        | org.springframework.security.core.userdetails.UsernameNotFoundException e) {
       log.debug("Token validation failed for ip={}: {}", ip, e.getMessage());
       rateLimitService.consumeOnFailure(ip, AUTH_JWT_FAILURE, null);
     }

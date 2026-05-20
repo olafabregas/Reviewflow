@@ -20,6 +20,7 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -56,6 +57,7 @@ public class ModuleController {
         content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
   })
   @PostMapping("/courses/{courseId}/modules")
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
   public ResponseEntity<ApiResponse<AssignmentModuleResponse>> create(
       @PathVariable String courseId,
       @Valid @RequestBody CreateAssignmentModuleRequest request,
@@ -96,6 +98,7 @@ public class ModuleController {
         content = @Content(schema = @Schema(implementation = AssignmentModuleResponse.class)))
   })
   @PutMapping("/modules/{id}")
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
   public ResponseEntity<ApiResponse<AssignmentModuleResponse>> update(
       @PathVariable String id,
       @Valid @RequestBody CreateAssignmentModuleRequest request,
@@ -119,9 +122,10 @@ public class ModuleController {
         content = @Content(schema = @Schema(implementation = AssignmentModuleMoveResponse.class)))
   })
   @PatchMapping("/assignments/{id}/module")
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
   public ResponseEntity<ApiResponse<AssignmentModuleMoveResponse>> assignAssignmentToModule(
       @PathVariable String id,
-      @RequestBody AssignModuleRequest request,
+      @Valid @RequestBody AssignModuleRequest request,
       @AuthenticationPrincipal ReviewFlowUserDetails user) {
     Long moduleId =
         request.getModuleId() != null ? hashidService.decodeOrThrow(request.getModuleId()) : null;
@@ -140,6 +144,7 @@ public class ModuleController {
         content = @Content(schema = @Schema(implementation = CourseModulesResponse.class)))
   })
   @PatchMapping("/courses/{courseId}/modules/reorder")
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
   public ResponseEntity<ApiResponse<CourseModulesResponse>> reorder(
       @PathVariable String courseId,
       @Valid @RequestBody ReorderModulesRequest request,
@@ -162,9 +167,10 @@ public class ModuleController {
         content = @Content(schema = @Schema(implementation = Map.class)))
   })
   @DeleteMapping("/modules/{id}")
-  public ResponseEntity<ApiResponse<Map<String, Long>>> delete(
+  @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
+  public ResponseEntity<Void> delete(
       @PathVariable String id, @AuthenticationPrincipal ReviewFlowUserDetails user) {
-    long affected = moduleService.delete(hashidService.decodeOrThrow(id), user.getUserId());
-    return ResponseEntity.ok(ApiResponse.ok(Map.of("unmoduledAssignmentCount", affected)));
+    moduleService.delete(hashidService.decodeOrThrow(id), user.getUserId());
+    return ResponseEntity.noContent().build();
   }
 }

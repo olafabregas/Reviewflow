@@ -21,6 +21,19 @@ public class HttpErrorJsonWriter {
     writeTooManyRequests(response, retryAfterSeconds, message, 0, 0);
   }
 
+  public void writeError(HttpServletResponse response, int status, String code, String message)
+      throws IOException {
+    ErrorResponse body =
+        ErrorResponse.builder()
+            .error(ErrorResponse.ErrorDetail.builder().code(code).message(message).build())
+            .timestamp(Instant.now())
+            .build();
+    response.setStatus(status);
+    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+    response.setCharacterEncoding("UTF-8");
+    response.getWriter().write(objectMapper.writeValueAsString(body));
+  }
+
   public void writeTooManyRequests(
       HttpServletResponse response,
       long retryAfterSeconds,

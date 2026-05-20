@@ -16,7 +16,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -33,6 +35,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN', 'SYSTEM_ADMIN')")
 public class InstructorScoreController {
 
   private final InstructorScoreService instructorScoreService;
@@ -90,7 +93,9 @@ public class InstructorScoreController {
   }
 
   @Operation(summary = "Start async CSV score import")
-  @PostMapping("/assignments/{id}/instructor-scores/import")
+  @PostMapping(
+      value = "/assignments/{id}/instructor-scores/import",
+      consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<ApiResponse<ImportJobStartResponse>> startImport(
       @PathVariable String id,
       @RequestPart("file") MultipartFile file,
