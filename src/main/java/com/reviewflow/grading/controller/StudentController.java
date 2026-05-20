@@ -10,13 +10,10 @@ import com.reviewflow.shared.domain.Evaluation;
 import com.reviewflow.shared.domain.RubricScore;
 import com.reviewflow.shared.domain.Submission;
 import com.reviewflow.shared.domain.TeamMember;
-import com.reviewflow.shared.domain.User;
-import com.reviewflow.grading.repository.RubricScoreRepository;
-import com.reviewflow.team.repository.TeamMemberRepository;
 import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
-import com.reviewflow.shared.domain.TeamMemberStatus;
 import com.reviewflow.evaluation.service.EvaluationService;
 import com.reviewflow.submission.service.SubmissionService;
+import com.reviewflow.team.service.TeamService;
 import com.reviewflow.shared.util.HashidService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -42,10 +39,9 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Student", description = "Student personal dashboard and submissions")
 public class StudentController {
 
-  private final TeamMemberRepository teamMemberRepository;
+  private final TeamService teamService;
   private final SubmissionService submissionService;
   private final EvaluationService evaluationService;
-  private final RubricScoreRepository rubricScoreRepository;
   private final HashidService hashidService;
 
   @Operation(
@@ -67,8 +63,7 @@ public class StudentController {
   @SuppressWarnings("NullableProblems")
   public ResponseEntity<ApiResponse<List<TeamInviteResponse>>> myInvites(
       @AuthenticationPrincipal ReviewFlowUserDetails user) {
-    List<TeamMember> pending =
-        teamMemberRepository.findByUserIdAndStatus(user.getUserId(), TeamMemberStatus.PENDING);
+    List<TeamMember> pending = teamService.getPendingInvitesForUser(user.getUserId());
     List<TeamInviteResponse> data =
         pending.stream().map(this::toInviteResponse).collect(Collectors.toList());
     return ResponseEntity.ok(ApiResponse.ok(data));
@@ -155,7 +150,7 @@ public class StudentController {
   }
 
   private EvaluationResponse toEvalResponse(Evaluation ev) {
-    List<RubricScore> scores = rubricScoreRepository.findByEvaluationId(ev.getId());
+    List<RubricScore> scores = evaluationService.getRubricScoresForEvaluation(ev.getId());
     BigDecimal maxPossible =
         scores.stream()
             .map(

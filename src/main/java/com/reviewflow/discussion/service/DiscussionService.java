@@ -114,6 +114,21 @@ public class DiscussionService {
   }
 
   @Transactional(readOnly = true)
+  public org.springframework.data.domain.Page<DiscussionSummaryResponse> listDiscussionsForCourse(
+      Long courseId, Long userId, UserRole role, org.springframework.data.domain.Pageable pageable) {
+    assertUserHasCourseAccess(courseId, userId, role);
+    org.springframework.data.domain.Page<Discussion> page =
+        discussionRepository.findByCourseIdOrderByDueAtAsc(courseId, pageable);
+    java.util.List<DiscussionSummaryResponse> content =
+        page.getContent().stream()
+            .filter(d -> role != UserRole.STUDENT || Boolean.TRUE.equals(d.getIsPublished()))
+            .map(this::toSummary)
+            .collect(Collectors.toList());
+    return new org.springframework.data.domain.PageImpl<>(
+        content, pageable, page.getTotalElements());
+  }
+
+  @Transactional(readOnly = true)
   public DiscussionDetailResponse getDiscussion(Long discussionId, Long userId, UserRole role) {
     Discussion d = loadDiscussion(discussionId);
     assertCanAccessDiscussion(d, userId, role);

@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -59,7 +60,9 @@ public class MessagingController {
     return ResponseEntity.status(status).body(ApiResponse.ok(data));
   }
 
-  @PostMapping("/conversations/{conversationId}/messages")
+  @PostMapping(
+      value = "/conversations/{conversationId}/messages",
+      consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasAnyRole('STUDENT','INSTRUCTOR')")
   public ResponseEntity<ApiResponse<SendMessageResponse>> sendMessage(
       @PathVariable String conversationId,

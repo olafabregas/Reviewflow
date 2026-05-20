@@ -259,7 +259,12 @@ public class CourseService {
 
   public List<CourseEnrollment> getEnrollmentsForCourse(Long courseId) {
     getCourseById(courseId);
-    return courseEnrollmentRepository.findByCourseId(courseId);
+    return courseEnrollmentRepository.findWithUserByCourseId(courseId);
+  }
+
+  public Page<CourseEnrollment> getEnrollmentsForCourse(Long courseId, Pageable pageable) {
+    getCourseById(courseId);
+    return courseEnrollmentRepository.findWithUserByCourseId(courseId, pageable);
   }
 
   public List<User> getStudentsForCourse(Long courseId) {

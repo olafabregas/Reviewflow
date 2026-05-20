@@ -469,6 +469,11 @@ public class EvaluationService {
     return evaluationRepository.findPublishedByTeamMemberUserId(userId, pageable);
   }
 
+  @Transactional(readOnly = true)
+  public List<RubricScore> getRubricScoresForEvaluation(Long evaluationId) {
+    return rubricScoreRepository.findByEvaluationId(evaluationId);
+  }
+
   private void recalculateTotal(Evaluation evaluation) {
     List<RubricScore> scores = rubricScoreRepository.findByEvaluationId(evaluation.getId());
     BigDecimal total =

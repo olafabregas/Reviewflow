@@ -4,6 +4,8 @@ import com.reviewflow.shared.domain.CourseEnrollment;
 import com.reviewflow.shared.domain.CourseEnrollment.CourseEnrollmentId;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -46,4 +48,15 @@ public interface CourseEnrollmentRepository
       ORDER BY u.lastName ASC, u.firstName ASC
       """)
   List<CourseEnrollment> findWithUserByCourseId(@Param("courseId") Long courseId);
+
+  @Query(
+      """
+      SELECT e
+      FROM CourseEnrollment e
+      JOIN FETCH e.user u
+      WHERE e.course.id = :courseId
+      ORDER BY u.lastName ASC, u.firstName ASC
+      """)
+  Page<CourseEnrollment> findWithUserByCourseId(
+      @Param("courseId") Long courseId, Pageable pageable);
 }
