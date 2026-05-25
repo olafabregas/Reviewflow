@@ -44,11 +44,12 @@ public class LoginLockoutService {
     Instant now = Instant.now();
     Long userId = user.getId();
 
+    int count;
     if (user.getLastFailedLoginAt() == null
         || user.getLastFailedLoginAt().plus(windowMinutes, ChronoUnit.MINUTES).isBefore(now)) {
-      userRepository.resetFailedLoginCount(userId, now);
+      count = userRepository.resetFailedLoginCount(userId, now);
     } else {
-      userRepository.incrementFailedLoginCount(userId, now);
+      count = userRepository.incrementFailedLoginCount(userId, now);
     }
     user.setFailedLoginCount(count);
     user.setLastFailedLoginAt(now);
