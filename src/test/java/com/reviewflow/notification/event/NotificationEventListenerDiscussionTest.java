@@ -3,20 +3,20 @@ package com.reviewflow.notification.event;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.reviewflow.course.repository.CourseEnrollmentRepository;
+import com.reviewflow.course.service.CourseService;
 import com.reviewflow.discussion.event.DiscussionPublishedEvent;
 import com.reviewflow.discussion.event.DiscussionReminderBatchEvent;
 import com.reviewflow.discussion.event.DiscussionReplyEvent;
 import com.reviewflow.infrastructure.email.event.DiscussionInstructorReplyEmailEvent;
 import com.reviewflow.infrastructure.email.event.DiscussionPublishedEmailEvent;
 import com.reviewflow.infrastructure.email.event.DiscussionReminderEmailEvent;
-import com.reviewflow.notification.repository.NotificationRepository;
 import com.reviewflow.notification.service.NotificationService;
 import com.reviewflow.shared.domain.CourseEnrollment;
 import com.reviewflow.shared.domain.Notification;
@@ -24,57 +24,58 @@ import com.reviewflow.shared.domain.NotificationType;
 import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.domain.UserRole;
 import com.reviewflow.shared.util.HashidService;
-import com.reviewflow.user.repository.UserRepository;
+import com.reviewflow.user.service.UserService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.cache.CacheManager;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class NotificationEventListenerDiscussionTest {
 
-  @Mock private NotificationRepository notificationRepository;
   @Mock private SimpMessagingTemplate messagingTemplate;
-  @Mock private CacheManager cacheManager;
   @Mock private HashidService hashidService;
-  @Mock private UserRepository userRepository;
-  @Mock private CourseEnrollmentRepository courseEnrollmentRepository;
+  @Mock private UserService userService;
+  @Mock private CourseService courseService;
   @Mock private NotificationService notificationService;
   @Mock private ApplicationEventPublisher eventPublisher;
 
   @InjectMocks private NotificationEventListener listener;
 
-  private void stubHashids() {
+  @BeforeEach
+  void stubHashidsAndNotifications() {
     when(hashidService.encode(anyLong())).thenAnswer(inv -> "H" + inv.getArgument(0));
-  }
-
-  private void stubSaveAndPush() {
-    stubHashids();
-    when(cacheManager.getCache(any())).thenReturn(null);
     AtomicLong id = new AtomicLong(5000L);
-    when(notificationRepository.save(any(Notification.class)))
+    when(notificationService.create(
+            anyLong(), any(NotificationType.class), anyString(), anyString(), anyString(), any()))
         .thenAnswer(
-            inv -> {
-              Notification n = inv.getArgument(0);
-              if (n.getId() == null) {
-                n.setId(id.getAndIncrement());
-              }
-              return n;
-            });
+            inv ->
+                Notification.builder()
+                    .id(id.getAndIncrement())
+                    .userId(inv.getArgument(0))
+                    .type(inv.getArgument(1))
+                    .title(inv.getArgument(2))
+                    .message(inv.getArgument(3))
+                    .actionUrl(inv.getArgument(4))
+                    .targetId(inv.getArgument(5))
+                    .isRead(false)
+                    .build());
   }
 
   @Test
   void onDiscussionPublished_emailsEnrolledStudentsOnly() {
-    stubSaveAndPush();
     User student =
         User.builder()
             .id(10L)
@@ -91,7 +92,7 @@ class NotificationEventListenerDiscussionTest {
             .lastName("Hopper")
             .role(UserRole.INSTRUCTOR)
             .build();
-    when(courseEnrollmentRepository.findWithUserByCourseId(1L))
+    when(courseService.findEnrollmentsWithUserByCourseId(1L))
         .thenReturn(
             List.of(
                 CourseEnrollment.builder().user(student).build(),
@@ -101,7 +102,14 @@ class NotificationEventListenerDiscussionTest {
     listener.onDiscussionPublished(
         new DiscussionPublishedEvent(1L, "CSC301", 99L, "Week 3 Reflection", dueAt));
 
-    verify(notificationRepository, times(1)).save(any(Notification.class));
+    verify(notificationService, times(1))
+        .create(
+            eq(10L),
+            eq(NotificationType.DISCUSSION_PUBLISHED),
+            anyString(),
+            anyString(),
+            anyString(),
+            eq(99L));
 
     ArgumentCaptor<DiscussionPublishedEmailEvent> emailCaptor =
         ArgumentCaptor.forClass(DiscussionPublishedEmailEvent.class);
@@ -116,8 +124,7 @@ class NotificationEventListenerDiscussionTest {
 
   @Test
   void onDiscussionReply_instructorToStudent_publishesInstructorReplyEmail() {
-    stubSaveAndPush();
-    when(userRepository.findById(30L))
+    when(userService.findUserById(30L))
         .thenReturn(
             Optional.of(
                 User.builder()
@@ -139,7 +146,14 @@ class NotificationEventListenerDiscussionTest {
             "Week 3 Reflection",
             "Thanks for your post."));
 
-    verify(notificationRepository).save(any(Notification.class));
+    verify(notificationService)
+        .create(
+            eq(30L),
+            eq(NotificationType.DISCUSSION_REPLY),
+            anyString(),
+            anyString(),
+            anyString(),
+            eq(77L));
 
     ArgumentCaptor<DiscussionInstructorReplyEmailEvent> emailCaptor =
         ArgumentCaptor.forClass(DiscussionInstructorReplyEmailEvent.class);
@@ -153,7 +167,6 @@ class NotificationEventListenerDiscussionTest {
 
   @Test
   void onDiscussionReply_studentPeerReply_noEmail() {
-    stubSaveAndPush();
     listener.onDiscussionReply(
         new DiscussionReplyEvent(
             77L,
@@ -165,14 +178,20 @@ class NotificationEventListenerDiscussionTest {
             "Week 3 Reflection",
             "I agree."));
 
-    verify(notificationRepository).save(any(Notification.class));
+    verify(notificationService)
+        .create(
+            eq(30L),
+            eq(NotificationType.DISCUSSION_REPLY),
+            anyString(),
+            anyString(),
+            anyString(),
+            eq(77L));
     verify(eventPublisher, never()).publishEvent(any(DiscussionInstructorReplyEmailEvent.class));
     verify(eventPublisher, never()).publishEvent(any(DiscussionPublishedEmailEvent.class));
   }
 
   @Test
   void onDiscussionReminderBatch_newNotification_publishesReminderEmail() {
-    stubHashids();
     Instant dueAt = Instant.parse("2026-05-02T12:00:00Z");
     Notification saved =
         Notification.builder()

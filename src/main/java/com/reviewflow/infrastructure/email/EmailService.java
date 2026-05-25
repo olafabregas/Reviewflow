@@ -33,6 +33,8 @@ public class EmailService {
       log.debug("Email sent to {}: {}", to, subject);
     } catch (MessagingException e) {
       throw new org.springframework.mail.MailSendException("Failed to compose email", e);
+    } catch (org.springframework.mail.MailException e) {
+      log.warn("Email delivery failed for {} subject={}: {}", to, subject, e.getMessage());
     }
   }
 }
