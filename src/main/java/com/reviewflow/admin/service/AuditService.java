@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -27,6 +28,46 @@ public class AuditService {
   private final AuditLogRepository auditLogRepository;
   private final UserRepository userRepository;
   private final ObjectMapper objectMapper;
+
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void logSecurityEvent(
+      Long actorId, String action, String targetType, Long targetId, String metadata, String ip) {
+    log(actorId, action, targetType, targetId, metadata, ip);
+  }
+
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void logSecurityEvent(
+      Long actorId,
+      String action,
+      String targetType,
+      Long targetId,
+      Map<String, Object> metadata,
+      String ip) {
+    log(actorId, action, targetType, targetId, metadata, ip);
+  }
+
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void logSecurityEvent(
+      String action, String targetType, Long targetId, Map<String, Object> metadata, String ip) {
+    log(action, targetType, targetId, metadata, ip);
+  }
+
+  @Transactional
+  public void logBusinessEvent(
+      Long actorId, String action, String targetType, Long targetId, String metadata, String ip) {
+    log(actorId, action, targetType, targetId, metadata, ip);
+  }
+
+  @Transactional
+  public void logBusinessEvent(
+      Long actorId,
+      String action,
+      String targetType,
+      Long targetId,
+      Map<String, Object> metadata,
+      String ip) {
+    log(actorId, action, targetType, targetId, metadata, ip);
+  }
 
   @Transactional
   public void log(

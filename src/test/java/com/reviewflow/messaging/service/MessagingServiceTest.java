@@ -29,6 +29,7 @@ import com.reviewflow.infrastructure.ratelimit.RateLimitService;
 import com.reviewflow.infrastructure.ratelimit.RateLimitTestFixtures;
 import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.MSG_CREATE;
 import static com.reviewflow.infrastructure.ratelimit.RateLimitStrategy.MSG_SEND;
+import com.reviewflow.infrastructure.storage.ClamAvScanService;
 import com.reviewflow.infrastructure.storage.FileSecurityValidator;
 import com.reviewflow.infrastructure.storage.S3Service;
 import com.reviewflow.messaging.repository.ConversationListMetadataView;
@@ -62,12 +63,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class MessagingServiceTest {
 
   private static final long COURSE_ID = 42L;
@@ -84,6 +88,7 @@ class MessagingServiceTest {
   @Mock private UserRepository userRepository;
   @Mock private AuditService auditService;
   @Mock private S3Service s3Service;
+  @Mock private ClamAvScanService clamAvScanService;
   @Mock private FileSecurityValidator fileSecurityValidator;
   @Mock private HashidService hashidService;
   @Mock private SimpMessagingTemplate messagingTemplate;
@@ -100,6 +105,12 @@ class MessagingServiceTest {
     ReflectionTestUtils.setField(messagingService, "fetchPageSize", 50);
     ReflectionTestUtils.setField(messagingService, "previewMaxChars", 80);
     ReflectionTestUtils.setField(messagingService, "maxAttachmentsPerMessage", 5);
+    ReflectionTestUtils.setField(
+        messagingService, "uploadExecutor", (java.util.concurrent.Executor) Runnable::run);
+    lenient()
+        .doNothing()
+        .when(clamAvScanService)
+        .scanAndThrow(any(java.nio.file.Path.class), anyLong());
     lenient()
         .when(rateLimitService.tryConsume(anyString(), any(), any()))
         .thenAnswer(
@@ -700,7 +711,8 @@ class MessagingServiceTest {
 
     InOrder order = inOrder(messagingPersistenceService, s3Service);
     order.verify(messagingPersistenceService).persistMessageWithoutAttachments(conv, SENDER_ID, "see file");
-    order.verify(s3Service).putObject(anyString(), any(byte[].class), anyString());
+    order.verify(s3Service)
+        .putObject(anyString(), any(java.io.InputStream.class), anyLong(), anyString());
     order.verify(messagingPersistenceService).attachUploadedFiles(eq(persisted), any());
     verify(messageRepository, never()).save(any());
   }
@@ -730,7 +742,7 @@ class MessagingServiceTest {
             .build();
     when(messagingPersistenceService.persistMessageWithoutAttachments(conv, SENDER_ID, null))
         .thenReturn(persisted);
-    when(s3Service.putObject(anyString(), any(byte[].class), anyString()))
+    when(s3Service.putObject(anyString(), any(java.io.InputStream.class), anyLong(), anyString()))
         .thenThrow(new StorageException("upload failed", new RuntimeException("s3")));
     when(hashidService.encode(CONV_ID)).thenReturn("hc");
     when(hashidService.encode(500L)).thenReturn("hm");

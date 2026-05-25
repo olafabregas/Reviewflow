@@ -2,6 +2,7 @@ package com.reviewflow.user.repository;
 
 import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.domain.UserRole;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -11,6 +12,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
@@ -78,4 +80,31 @@ public interface UserRepository extends JpaRepository<User, Long> {
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("UPDATE User u SET u.tokenVersion = u.tokenVersion + 1 WHERE u.id = :id")
   void incrementTokenVersion(@Param("id") Long id);
+
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      """
+      UPDATE User u
+      SET u.failedLoginCount = u.failedLoginCount + 1,
+          u.lastFailedLoginAt = :now
+      WHERE u.id = :userId
+      """)
+  @Transactional
+  int incrementFailedLoginCount(@Param("userId") Long userId, @Param("now") Instant now);
+
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      """
+      UPDATE User u
+      SET u.failedLoginCount = 1,
+          u.lastFailedLoginAt = :now
+      WHERE u.id = :userId
+      """)
+  @Transactional
+  int resetFailedLoginCount(@Param("userId") Long userId, @Param("now") Instant now);
+
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("UPDATE User u SET u.lockedUntil = :lockedUntil WHERE u.id = :userId")
+  @Transactional
+  int lockUser(@Param("userId") Long userId, @Param("lockedUntil") Instant lockedUntil);
 }

@@ -261,14 +261,20 @@ class SystemServiceTest {
     assertEquals(3, result.getRevokedTokenCount(), "Should return actual revoked count");
     verify(refreshTokenRepository, times(1)).revokeAllForUser(targetUserId);
     verify(userRepository, times(1)).incrementTokenVersion(targetUserId);
-    verify(tokenVersionService, times(1)).invalidate(targetUserId);
+    verify(eventPublisher, times(1))
+        .publishEvent(any(com.reviewflow.infrastructure.security.TokenVersionInvalidatedEvent.class));
     verify(auditService, times(1))
-        .log(eq(actorId), eq("FORCE_LOGOUT"), eq("USER"), eq(targetUserId), argThat((Map<String, Object> map) -> 
-            map.get("revokedTokenCount").equals(3) && 
-            map.get("tokenVersionBumped").equals(true) &&
-            map.get("newTokenVersion") != null
-        ), isNull());
-    verify(eventPublisher, times(1)).publishEvent(any());
+        .logSecurityEvent(
+            eq(actorId),
+            eq("FORCE_LOGOUT"),
+            eq("USER"),
+            eq(targetUserId),
+            argThat(
+                (Map<String, Object> map) ->
+                    map.get("revokedTokenCount").equals(3)
+                        && map.get("tokenVersionBumped").equals(true)
+                        && map.get("newTokenVersion") != null),
+            isNull());
   }
 
   @Test

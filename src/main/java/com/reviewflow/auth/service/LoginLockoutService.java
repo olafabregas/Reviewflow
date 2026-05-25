@@ -42,12 +42,13 @@ public class LoginLockoutService {
   @Transactional
   public void recordLoginFailure(User user, String ipAddress) {
     Instant now = Instant.now();
-    int count = user.getFailedLoginCount() == null ? 0 : user.getFailedLoginCount();
+    Long userId = user.getId();
+
     if (user.getLastFailedLoginAt() == null
         || user.getLastFailedLoginAt().plus(windowMinutes, ChronoUnit.MINUTES).isBefore(now)) {
-      count = 1;
+      userRepository.resetFailedLoginCount(userId, now);
     } else {
-      count = count + 1;
+      userRepository.incrementFailedLoginCount(userId, now);
     }
     user.setFailedLoginCount(count);
     user.setLastFailedLoginAt(now);
@@ -64,11 +65,10 @@ public class LoginLockoutService {
           user.getId(),
           "ACCOUNT_LOCKED",
           "User",
-          user.getId(),
+          userId,
           "Too many failed login attempts",
           ipAddress);
     }
-    userRepository.save(user);
   }
 
   @Transactional
@@ -81,7 +81,7 @@ public class LoginLockoutService {
 
   @Transactional
   public void auditLoginDuringLockout(User user, String ipAddress) {
-    auditService.log(
+    auditService.logSecurityEvent(
         user.getId(),
         "LOGIN_DURING_LOCKOUT",
         "User",

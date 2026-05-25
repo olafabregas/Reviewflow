@@ -38,7 +38,8 @@ public class StepUpInterceptor implements HandlerInterceptor {
 
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth == null || !(auth.getPrincipal() instanceof ReviewFlowUserDetails)) {
-      return true;
+      response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      return false;
     }
 
     String token =

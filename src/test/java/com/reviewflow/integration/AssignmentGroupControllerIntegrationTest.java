@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.reviewflow.assignment.controller.AssignmentGroupController;
 import com.reviewflow.assignment.exception.GroupNotInCourseException;
-import com.reviewflow.shared.exception.ValidationException;
+import com.reviewflow.shared.exception.InvalidHashException;
 import com.reviewflow.assignment.dto.request.CreateAssignmentGroupRequest;
 import com.reviewflow.assignment.dto.request.MoveAssignmentGroupRequest;
 import com.reviewflow.assignment.dto.response.AssignmentGroupMoveResponse;
@@ -123,30 +123,26 @@ class AssignmentGroupControllerIntegrationTest {
   }
 
   @Test
-  void moveAssignment_missingGroupId_throwsInvalidRequest() {
+  void moveAssignment_missingGroupId_throwsInvalidHash() {
     MoveAssignmentGroupRequest request = new MoveAssignmentGroupRequest();
+    when(hashidService.decodeOrThrow("ASSIGN_HASH")).thenReturn(100L);
+    when(hashidService.decodeOrThrow(null)).thenThrow(new InvalidHashException(null));
 
-    ValidationException thrown =
-        assertThrows(
-            ValidationException.class,
-            () -> controller().moveAssignment("ASSIGN_HASH", request, instructorPrincipal()));
-
-    assertEquals("groupId is required", thrown.getMessage());
-    assertEquals("INVALID_REQUEST", thrown.getCode());
+    assertThrows(
+        InvalidHashException.class,
+        () -> controller().moveAssignment("ASSIGN_HASH", request, instructorPrincipal()));
   }
 
   @Test
-  void moveAssignment_blankGroupId_throwsInvalidRequest() {
+  void moveAssignment_blankGroupId_throwsInvalidHash() {
     MoveAssignmentGroupRequest request = new MoveAssignmentGroupRequest();
     request.setGroupId("   ");
+    when(hashidService.decodeOrThrow("ASSIGN_HASH")).thenReturn(100L);
+    when(hashidService.decodeOrThrow("   ")).thenThrow(new InvalidHashException("   "));
 
-    ValidationException thrown =
-        assertThrows(
-            ValidationException.class,
-            () -> controller().moveAssignment("ASSIGN_HASH", request, instructorPrincipal()));
-
-    assertEquals("groupId is required", thrown.getMessage());
-    assertEquals("INVALID_REQUEST", thrown.getCode());
+    assertThrows(
+        InvalidHashException.class,
+        () -> controller().moveAssignment("ASSIGN_HASH", request, instructorPrincipal()));
   }
 
   @Test

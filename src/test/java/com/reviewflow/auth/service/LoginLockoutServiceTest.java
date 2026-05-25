@@ -18,6 +18,7 @@ import com.reviewflow.shared.util.HashidService;
 import com.reviewflow.user.repository.UserRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -54,11 +55,19 @@ class LoginLockoutServiceTest {
             .lastFailedLoginAt(Instant.now().minus(20, ChronoUnit.MINUTES))
             .build();
 
+    User refreshed =
+        User.builder()
+            .id(1L)
+            .failedLoginCount(1)
+            .lastFailedLoginAt(Instant.now())
+            .build();
+    when(userRepository.findById(1L)).thenReturn(Optional.of(refreshed));
+
     loginLockoutService.recordLoginFailure(user, "1.1.1.1");
 
-    assertEquals(1, user.getFailedLoginCount());
+    verify(userRepository).resetFailedLoginCount(eq(1L), any(Instant.class));
     verify(auditService, never())
-        .log(any(), eq("ACCOUNT_LOCKED"), any(), any(), anyString(), anyString());
+        .logSecurityEvent(any(), eq("ACCOUNT_LOCKED"), any(), any(), anyString(), anyString());
   }
 
   @Test
@@ -81,9 +90,13 @@ class LoginLockoutServiceTest {
             .lastFailedLoginAt(lastFail)
             .build();
 
+    User refreshed = User.builder().id(1L).failedLoginCount(3).lastFailedLoginAt(Instant.now()).build();
+    when(userRepository.findById(1L)).thenReturn(Optional.of(refreshed));
+
     loginLockoutService.recordLoginFailure(user, "1.1.1.1");
 
-    assertEquals(3, user.getFailedLoginCount());
+    verify(userRepository).incrementFailedLoginCount(eq(1L), any(Instant.class));
+    assertEquals(3, refreshed.getFailedLoginCount());
   }
 
   @Test
@@ -114,7 +127,7 @@ class LoginLockoutServiceTest {
     assertTrue(user.getLockedUntil().isAfter(Instant.now()));
     verify(metrics).recordLockout();
     verify(auditService)
-        .log(7L, "ACCOUNT_LOCKED", "User", 7L, "Too many failed login attempts", "9.9.9.9");
+        .logSecurityEvent(7L, "ACCOUNT_LOCKED", "User", 7L, "Too many failed login attempts", "9.9.9.9");
   }
 
   @Test

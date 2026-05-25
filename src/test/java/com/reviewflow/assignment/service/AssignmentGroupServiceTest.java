@@ -23,7 +23,6 @@ import com.reviewflow.course.repository.CourseEnrollmentRepository;
 import com.reviewflow.course.repository.CourseInstructorRepository;
 import com.reviewflow.course.repository.CourseRepository;
 import com.reviewflow.admin.service.AuditService;
-import com.reviewflow.grading.service.GradeCalculationService;
 import com.reviewflow.user.repository.UserRepository;
 import com.reviewflow.shared.util.HashidService;
 import java.math.BigDecimal;
@@ -34,8 +33,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 import org.springframework.security.access.AccessDeniedException;
 
 @ExtendWith(MockitoExtension.class)
@@ -50,11 +47,7 @@ class AssignmentGroupServiceTest {
   @Mock private UserRepository userRepository;
   @Mock private AuditService auditService;
   @Mock private HashidService hashidService;
-  @Mock private CacheManager cacheManager;
-  @Mock private Cache assignmentGroupsCache;
-  @Mock private Cache assignmentCache;
-  @Mock private Cache gradeOverviewCache;
-  @Mock private GradeCalculationService gradeCalculationService;
+  @Mock private AssignmentGroupCacheEviction assignmentGroupCacheEviction;
 
   @InjectMocks private AssignmentGroupService assignmentGroupService;
 

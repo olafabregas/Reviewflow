@@ -31,6 +31,8 @@ class SystemControllerMessagingSecurityTest {
             .getMethod(
                 "moderationListConversationMessages",
                 String.class,
+                int.class,
+                int.class,
                 Authentication.class,
                 HttpServletRequest.class)
             .getAnnotation(PreAuthorize.class);

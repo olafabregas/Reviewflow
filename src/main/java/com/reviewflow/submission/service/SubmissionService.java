@@ -253,6 +253,13 @@ public class SubmissionService {
       }
       if (!courseEnrollmentRepository.existsByCourseIdAndUserId(
           assignment.getCourse().getId(), uploaderId)) {
+        auditService.logSecurityEvent(
+            uploaderId,
+            "SUBMISSION_IDOR_ATTEMPT",
+            "Course",
+            assignment.getCourse().getId(),
+            "Upload rejected: not enrolled in course",
+            null);
         throw new AccessDeniedException("You do not have access to this course");
       }
       lockKey = "student_" + uploaderId + "_assignment_" + assignmentId;
@@ -412,14 +419,17 @@ public class SubmissionService {
             .findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Submission", id));
 
-    // ADMIN can access any submission
-    if (role == UserRole.ADMIN) {
+    // ADMIN and SYSTEM_ADMIN can access any submission
+    if (role == UserRole.ADMIN || role == UserRole.SYSTEM_ADMIN) {
       return sub;
     }
 
-    // INSTRUCTOR can access if submission belongs to their course
+    // INSTRUCTOR can access only if they teach the submission's course
     if (role == UserRole.INSTRUCTOR) {
-      // This will be validated by the repository/service layer
+      Long courseId = sub.getAssignment().getCourse().getId();
+      if (!courseInstructorRepository.existsByCourseIdAndUserId(courseId, userId)) {
+        throw new AccessDeniedException("You do not have access to this submission");
+      }
       return sub;
     }
 
@@ -450,14 +460,23 @@ public class SubmissionService {
             .findById(teamId)
             .orElseThrow(() -> new ResourceNotFoundException("Team", teamId));
 
-    // ADMIN can access any team
-    if (role == UserRole.ADMIN) {
+    Assignment assignment =
+        assignmentRepository
+            .findById(assignmentId)
+            .orElseThrow(() -> new ResourceNotFoundException("Assignment", assignmentId));
+    Long courseId = assignment.getCourse().getId();
+
+    // ADMIN and SYSTEM_ADMIN can access any team
+    if (role == UserRole.ADMIN || role == UserRole.SYSTEM_ADMIN) {
       return submissionRepository.findByTeamIdAndAssignmentIdOrderByVersionNumberDesc(
           teamId, assignmentId);
     }
 
-    // INSTRUCTOR can access if team belongs to their course
+    // INSTRUCTOR can access only if they teach the assignment's course
     if (role == UserRole.INSTRUCTOR) {
+      if (!courseInstructorRepository.existsByCourseIdAndUserId(courseId, userId)) {
+        throw new AccessDeniedException("You do not have access to this submission");
+      }
       return submissionRepository.findByTeamIdAndAssignmentIdOrderByVersionNumberDesc(
           teamId, assignmentId);
     }

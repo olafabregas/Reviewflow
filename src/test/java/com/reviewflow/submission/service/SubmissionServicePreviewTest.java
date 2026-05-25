@@ -212,6 +212,8 @@ class SubmissionServicePreviewTest {
     Long instructorId = 200L;
     when(hashidService.decode("sub123")).thenReturn(1000L);
     when(submissionRepository.findById(1000L)).thenReturn(Optional.of(testSubmission));
+    when(courseInstructorRepository.existsByCourseIdAndUserId(course.getId(), instructorId))
+        .thenReturn(true);
     when(hashidService.encode(10L)).thenReturn("assign10");
     when(hashidService.encode(100L)).thenReturn("user100");
     when(s3Service.getObjectSize(anyString())).thenReturn(1024L);

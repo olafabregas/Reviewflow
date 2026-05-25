@@ -3,6 +3,7 @@ package com.reviewflow.auth.service;
 import com.reviewflow.admin.service.AuditService;
 import com.reviewflow.auth.exception.SessionExpiredException;
 import com.reviewflow.auth.repository.RefreshTokenRepository;
+import com.reviewflow.auth.repository.SessionContextRepository;
 import com.reviewflow.shared.domain.RefreshToken;
 import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.exception.InactiveUserException;
@@ -15,16 +16,19 @@ import java.util.HexFormat;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RefreshTokenService {
 
   private final RefreshTokenRepository refreshTokenRepository;
+  private final SessionContextRepository sessionContextRepository;
   private final AuditService auditService;
 
   public static String hashRefreshToken(String token) {
@@ -98,7 +102,8 @@ public class RefreshTokenService {
     if (Boolean.TRUE.equals(token.getRevoked())) {
       String familyId = token.getFamilyId();
       refreshTokenRepository.revokeActiveTokensInFamily(familyId);
-      auditService.log(
+      deleteSessionContextForFamily(familyId);
+      auditService.logSecurityEvent(
           user.getId(),
           "TOKEN_REUSE_ATTACK",
           "User",
@@ -192,6 +197,17 @@ public class RefreshTokenService {
   private static String truncateUserAgent(String ua) {
     if (ua == null) return null;
     return ua.length() > 500 ? ua.substring(0, 500) : ua;
+  }
+
+  private void deleteSessionContextForFamily(String familyId) {
+    if (familyId == null || familyId.isBlank()) {
+      return;
+    }
+    try {
+      sessionContextRepository.deleteByFamily_Id(UUID.fromString(familyId));
+    } catch (IllegalArgumentException e) {
+      log.warn("Invalid refresh token family id on reuse detection: {}", familyId);
+    }
   }
 
   public record RotationResult(User user, String newRefreshPlain) {}

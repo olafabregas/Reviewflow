@@ -5,6 +5,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -57,7 +59,9 @@ public class ActuatorKeyAuthFilter extends OncePerRequestFilter {
       return;
     }
 
-    if (!providedKey.equals(actuatorInternalKey)) {
+    byte[] provided = providedKey.getBytes(StandardCharsets.UTF_8);
+    byte[] expected = actuatorInternalKey.getBytes(StandardCharsets.UTF_8);
+    if (!MessageDigest.isEqual(provided, expected)) {
       log.warn(
           "Actuator access attempt with invalid X-Actuator-Key from ip={} endpoint={}",
           request.getRemoteAddr(),

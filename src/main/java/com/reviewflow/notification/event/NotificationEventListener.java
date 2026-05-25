@@ -7,6 +7,8 @@ import java.util.List;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -71,7 +73,7 @@ public class NotificationEventListener {
 
   // -- ANNOUNCEMENT PUBLISHED ------------------------------------
   @Async("notificationExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onAnnouncementPublished(AnnouncementPublishedEvent event) {
     List<Long> recipientUserIds;
 
@@ -114,7 +116,7 @@ public class NotificationEventListener {
 
   // -- DISCUSSION (PRD-17) ----------------------------------------
   @Async("notificationExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onDiscussionPublished(DiscussionPublishedEvent event) {
     String actionUrl = "/discussions/{id}";
     String title = "New discussion";
@@ -245,7 +247,7 @@ public class NotificationEventListener {
 
   // -- NEW SUBMISSION --------------------------------------------
   @Async("notificationExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onSubmissionUploaded(SubmissionUploadedEvent event) {
     String message =
         event.uploaderName()
@@ -278,7 +280,7 @@ public class NotificationEventListener {
 
   // -- FEEDBACK PUBLISHED ----------------------------------------
   @Async("notificationExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onEvaluationPublished(EvaluationPublishedEvent event) {
     String message =
         "Your evaluation for "
@@ -433,7 +435,7 @@ public class NotificationEventListener {
 
   // -- EXTENSION DECIDED -----------------------------------------
   @Async("notificationExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onExtensionDecided(ExtensionDecidedEvent event) {
     String title = event.approved() ? "Extension Approved" : "Extension Denied";
     String message =
@@ -517,7 +519,7 @@ public class NotificationEventListener {
 
   // -- PRD-09: SYSTEM ADMIN EVENTS --------------------------------
   @Async("notificationExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onForceLogout(ForceLogoutEvent event) {
     String message =
         "Your session has been terminated by platform administrators. Reason: " + event.getReason();

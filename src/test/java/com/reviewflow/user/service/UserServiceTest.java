@@ -37,7 +37,6 @@ class UserServiceTest {
 
   @Mock private UserRepository userRepository;
   @Mock private RefreshTokenRepository refreshTokenRepository;
-  @Mock private TokenVersionService tokenVersionService;
   @Mock private PasswordEncoder passwordEncoder;
   @Mock private TeamMemberRepository teamMemberRepository;
   @Mock private CourseEnrollmentRepository courseEnrollmentRepository;
@@ -67,7 +66,8 @@ class UserServiceTest {
     assertFalse(user.getIsActive());
     verify(refreshTokenRepository).revokeAllForUser(targetId);
     verify(userRepository).incrementTokenVersion(targetId);
-    verify(tokenVersionService).invalidate(targetId);
+    verify(eventPublisher)
+        .publishEvent(any(com.reviewflow.infrastructure.security.TokenVersionInvalidatedEvent.class));
     verify(auditService).log(eq(adminId), eq("USER_DEACTIVATED"), eq("User"), eq(targetId), argThat((Map<String, Object> map) -> 
         map.get("refreshTokensRevoked").equals(3) && map.get("tokenVersionBumped").equals(true)
     ), isNull());

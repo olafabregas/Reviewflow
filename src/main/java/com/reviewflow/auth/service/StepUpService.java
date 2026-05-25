@@ -1,5 +1,6 @@
 package com.reviewflow.auth.service;
 
+import com.reviewflow.admin.service.AuditService;
 import com.reviewflow.auth.AuthTimingConstants;
 import com.reviewflow.infrastructure.security.JwtService;
 import com.reviewflow.infrastructure.security.ReviewFlowUserDetails;
@@ -21,6 +22,7 @@ public class StepUpService {
   private final TokenVersionService tokenVersionService;
   private final PasswordPolicyService passwordPolicyService;
   private final LoginLockoutService loginLockoutService;
+  private final AuditService auditService;
 
   @Transactional
   public String completeStepUp(Long userId, String password, String ip, String userAgent) {
@@ -36,6 +38,8 @@ public class StepUpService {
     if (!passwordEncoder.matches(password, user.getPasswordHash())) {
       loginLockoutService.recordLoginFailure(user, ip);
       passwordEncoder.matches(password, AuthTimingConstants.DUMMY_PASSWORD_HASH);
+      auditService.logSecurityEvent(
+          userId, "STEP_UP_FAILED", "User", userId, "Invalid password", ip);
       throw new BadCredentialsException("Invalid credentials");
     }
 
