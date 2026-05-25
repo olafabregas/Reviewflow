@@ -21,7 +21,7 @@ import com.reviewflow.evaluation.event.EvaluationReopenedEvent;
 import com.reviewflow.shared.event.ForceLogoutEvent;
 import com.reviewflow.team.event.TeamUnlockedBySystemEvent;
 import com.reviewflow.admin.service.AuditService;
-import com.reviewflow.auth.service.TokenVersionService;
+import com.reviewflow.infrastructure.security.TokenVersionInvalidatedEvent;
 import com.reviewflow.system.exception.CacheEvictionThrottledException;
 import com.reviewflow.evaluation.exception.EvaluationNotFoundException;
 import com.reviewflow.system.exception.ForceLogoutBlockedException;
@@ -84,7 +84,6 @@ public class SystemService {
   @Autowired private SystemMessagingService systemMessagingService;
 
   @Autowired private Environment environment;
-  @Autowired private TokenVersionService tokenVersionService;
 
   @Value("${system.cache.eviction.throttle-seconds:60}")
   private int cacheEvictionThrottleSeconds;
@@ -272,10 +271,10 @@ public class SystemService {
 
     // Bump token version for immediate access token invalidation
     userRepository.incrementTokenVersion(targetUserId);
-    tokenVersionService.invalidate(targetUserId);
+    eventPublisher.publishEvent(new TokenVersionInvalidatedEvent(targetUserId));
 
     // Log to audit
-    auditService.log(
+    auditService.logSecurityEvent(
         actorId,
         "FORCE_LOGOUT",
         "USER",

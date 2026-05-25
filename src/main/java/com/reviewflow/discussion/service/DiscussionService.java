@@ -49,7 +49,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
@@ -75,7 +74,7 @@ public class DiscussionService {
   private final DiscussionParticipationService participationService;
   private final ApplicationEventPublisher eventPublisher;
   private final HashidService hashidService;
-  private final CacheManager cacheManager;
+  private final DiscussionListCacheEviction discussionListCacheEviction;
 
   private void assertUserHasCourseAccess(Long courseId, Long userId, UserRole role) {
     if (role == UserRole.ADMIN || role == UserRole.SYSTEM_ADMIN) {
@@ -89,16 +88,6 @@ public class DiscussionService {
     }
     if (!courseEnrollmentRepository.existsByCourseIdAndUserId(courseId, userId)) {
       throw new DiscussionException(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Not enrolled in this course");
-    }
-  }
-
-  private void evictCourseDiscussionList(Long courseId) {
-    var cache = cacheManager.getCache(CacheNames.CACHE_COURSE_DISCUSSIONS);
-    if (cache == null) {
-      return;
-    }
-    for (UserRole r : UserRole.values()) {
-      cache.evict(courseId + ":" + r.name());
     }
   }
 
@@ -185,7 +174,7 @@ public class DiscussionService {
             .updatedAt(now)
             .build();
     d = discussionRepository.save(d);
-    evictCourseDiscussionList(courseId);
+    discussionListCacheEviction.evictCourseDiscussionList(courseId);
     return new CreateDiscussionResponse(
         hashidService.encode(d.getId()), d.getTitle(), Boolean.TRUE.equals(d.getIsPublished()));
   }
@@ -202,7 +191,7 @@ public class DiscussionService {
     d.setPublishedAt(now);
     d.setUpdatedAt(now);
     discussionRepository.save(d);
-    evictCourseDiscussionList(d.getCourse().getId());
+    discussionListCacheEviction.evictCourseDiscussionList(d.getCourse().getId());
     eventPublisher.publishEvent(
         new DiscussionPublishedEvent(
             d.getCourse().getId(),
@@ -218,7 +207,7 @@ public class DiscussionService {
     assertInstructorOrAdmin(d.getCourse().getId(), actorId, role);
     Long courseId = d.getCourse().getId();
     discussionRepository.delete(d);
-    evictCourseDiscussionList(courseId);
+    discussionListCacheEviction.evictCourseDiscussionList(courseId);
   }
 
   @Transactional(readOnly = true)
@@ -459,7 +448,7 @@ public class DiscussionService {
     if (parentPostId == null) {
       participationService.evictParticipation(discussionId, authorId);
     }
-    evictCourseDiscussionList(d.getCourse().getId());
+    discussionListCacheEviction.evictCourseDiscussionList(d.getCourse().getId());
 
     if (resolvedParent != null) {
       eventPublisher.publishEvent(
@@ -501,7 +490,7 @@ public class DiscussionService {
     p.setWordCount(wordCount(req.getContent()));
     p.setUpdatedAt(now);
     discussionPostRepository.save(p);
-    evictCourseDiscussionList(d.getCourse().getId());
+    discussionListCacheEviction.evictCourseDiscussionList(d.getCourse().getId());
     participationService.evictParticipation(d.getId(), p.getAuthor().getId());
   }
 
@@ -523,7 +512,7 @@ public class DiscussionService {
     p.setContent(null);
     p.setUpdatedAt(Instant.now());
     discussionPostRepository.save(p);
-    evictCourseDiscussionList(d.getCourse().getId());
+    discussionListCacheEviction.evictCourseDiscussionList(d.getCourse().getId());
     if (p.getParentPost() == null && Boolean.TRUE.equals(d.getIsGraded())) {
       participationService.evictParticipation(d.getId(), p.getAuthor().getId());
     }
@@ -543,7 +532,7 @@ public class DiscussionService {
     p.setIsPinned(Boolean.TRUE.equals(req.getPinned()));
     p.setUpdatedAt(Instant.now());
     discussionPostRepository.save(p);
-    evictCourseDiscussionList(d.getCourse().getId());
+    discussionListCacheEviction.evictCourseDiscussionList(d.getCourse().getId());
   }
 
   @Transactional(readOnly = true)

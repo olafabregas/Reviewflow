@@ -63,7 +63,7 @@ public class AuthService {
     if (userOpt.isEmpty()) {
       passwordEncoder.matches(password, AuthTimingConstants.DUMMY_PASSWORD_HASH);
       rateLimitService.consumeOnFailure(ipAddress, AUTH_LOGIN, null);
-      auditService.log(
+      auditService.logSecurityEvent(
           null,
           "USER_LOGIN_FAILED",
           "User",
@@ -83,7 +83,7 @@ public class AuthService {
 
     if (!Boolean.TRUE.equals(user.getIsActive())) {
       rateLimitService.consumeOnFailure(ipAddress, AUTH_LOGIN, null);
-      auditService.log(
+      auditService.logSecurityEvent(
           user.getId(),
           "USER_LOGIN_FAILED",
           "User",
@@ -97,7 +97,7 @@ public class AuthService {
       rateLimitService.consumeOnFailure(ipAddress, AUTH_LOGIN, null);
       metrics.recordFailedLogin();
       loginLockoutService.recordLoginFailure(user, ipAddress);
-      auditService.log(
+      auditService.logSecurityEvent(
           user.getId(), "USER_LOGIN_FAILED", "User", user.getId(), "Invalid password", ipAddress);
       throw new BadCredentialsException("Invalid credentials");
     }
@@ -122,7 +122,7 @@ public class AuthService {
     refreshTokenService.createLoginSession(
         user, refreshTokenValue, now, expiresAt, ipAddress, userAgent, boundDeviceId);
 
-    auditService.log(
+    auditService.logSecurityEvent(
         user.getId(), "USER_LOGIN", "User", user.getId(), "Login successful", ipAddress);
 
     AuthUserResponse userResponse =

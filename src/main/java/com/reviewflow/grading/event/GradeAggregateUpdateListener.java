@@ -10,7 +10,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -27,7 +28,7 @@ public class GradeAggregateUpdateListener {
   private final Set<String> pendingRecomputes = ConcurrentHashMap.newKeySet();
 
   @Async("gradeAggregateExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handleGradePublished(GradePublishedEvent event) {
     String key = event.courseId() + ":" + event.studentId();
 
@@ -55,7 +56,7 @@ public class GradeAggregateUpdateListener {
   }
 
   @Async("gradeAggregateExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handleGradeStructureChanged(GradeStructureChangedEvent event) {
     try {
       List<Long> studentIds =

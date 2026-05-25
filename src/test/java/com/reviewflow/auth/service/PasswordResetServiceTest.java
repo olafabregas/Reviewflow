@@ -108,7 +108,8 @@ class PasswordResetServiceTest {
     verify(passwordResetTokenRepository).save(row);
     verify(refreshTokenRepository).revokeAllForUser(77L);
     verify(userRepository).incrementTokenVersion(77L);
-    verify(tokenVersionService).invalidate(77L);
+    verify(eventPublisher)
+        .publishEvent(any(com.reviewflow.infrastructure.security.TokenVersionInvalidatedEvent.class));
     verify(userDetailsCacheService).evict("user@example.com");
     verify(eventPublisher).publishEvent(any(PasswordResetCompletedEmailEvent.class));
     verify(auditService)

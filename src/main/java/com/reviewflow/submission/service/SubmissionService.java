@@ -255,6 +255,13 @@ public class SubmissionService {
       }
       if (!courseEnrollmentRepository.existsByCourseIdAndUserId(
           assignment.getCourse().getId(), uploaderId)) {
+        auditService.logSecurityEvent(
+            uploaderId,
+            "SUBMISSION_IDOR_ATTEMPT",
+            "Course",
+            assignment.getCourse().getId(),
+            "Upload rejected: not enrolled in course",
+            null);
         throw new AccessDeniedException("You do not have access to this course");
       }
       lockKey = "student_" + uploaderId + "_assignment_" + assignmentId;

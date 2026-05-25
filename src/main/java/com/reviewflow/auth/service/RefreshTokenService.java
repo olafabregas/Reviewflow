@@ -103,7 +103,7 @@ public class RefreshTokenService {
       String familyId = token.getFamilyId();
       refreshTokenRepository.revokeActiveTokensInFamily(familyId);
       deleteSessionContextForFamily(familyId);
-      auditService.log(
+      auditService.logSecurityEvent(
           user.getId(),
           "TOKEN_REUSE_ATTACK",
           "User",

@@ -17,7 +17,8 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -35,7 +36,7 @@ public class PdfGenerationListener {
   private final ReviewFlowMetrics metrics;
 
   @Async("pdfExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handleEvaluationPublished(EvaluationPublishedEvent event) {
     String hashedEvalId = hashidService.encode(event.evaluationId());
     try {

@@ -30,9 +30,7 @@ import java.util.Comparator;
 import java.util.List;
 import com.reviewflow.grading.event.GradeStructureChangedEvent;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.Cache;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -52,8 +50,7 @@ public class AssignmentGroupService {
   private final UserRepository userRepository;
   private final AuditService auditService;
   private final HashidService hashidService;
-  private final CacheManager cacheManager;
-  private final GradeCalculationService gradeCalculationService;
+  private final AssignmentGroupCacheEviction assignmentGroupCacheEviction;
   private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
@@ -92,8 +89,7 @@ public class AssignmentGroupService {
         "Created group: " + name,
         null);
 
-    evictCourseCaches(courseId);
-    gradeCalculationService.evictCourseGradeCaches(courseId);
+    assignmentGroupCacheEviction.evictForCourse(courseId);
     return toResponse(
         saved, countAssignments(saved.getId()), calculateWeightWarning(courseId), false);
   }
@@ -129,9 +125,8 @@ public class AssignmentGroupService {
         null);
 
     Long courseId = saved.getCourse().getId();
-    evictCourseCaches(courseId);
+    assignmentGroupCacheEviction.evictForCourse(courseId);
     eventPublisher.publishEvent(new GradeStructureChangedEvent(courseId));
-    gradeCalculationService.evictCourseGradeCaches(courseId);
     if (nameChanged) {
       evictAssignmentCachesForCourse(courseId);
     }
@@ -157,8 +152,7 @@ public class AssignmentGroupService {
     assignmentGroupRepository.delete(group);
     auditService.log(
         actorId, "ASSIGNMENT_GROUP_DELETED", "AssignmentGroup", groupId, "Deleted group", null);
-    evictCourseCaches(group.getCourse().getId());
-    gradeCalculationService.evictCourseGradeCaches(group.getCourse().getId());
+    assignmentGroupCacheEviction.evictForCourse(group.getCourse().getId());
   }
 
   @Transactional(readOnly = true)
@@ -224,11 +218,10 @@ public class AssignmentGroupService {
         "Moved to group: " + newGroup.getName(),
         null);
 
-    evictAssignmentCache(assignmentId);
+    assignmentGroupCacheEviction.evictAssignment(assignmentId);
     Long courseId = assignment.getCourse().getId();
-    evictCourseCaches(courseId);
+    assignmentGroupCacheEviction.evictForCourse(courseId);
     eventPublisher.publishEvent(new GradeStructureChangedEvent(courseId));
-    gradeCalculationService.evictCourseGradeCaches(courseId);
 
     return AssignmentGroupMoveResponse.builder()
         .assignmentId(hashidService.encode(assignmentId))
@@ -354,23 +347,9 @@ public class AssignmentGroupService {
     throw new AccessDeniedException("Not authorized to manage assignment groups for this course");
   }
 
-  private void evictCourseCaches(Long courseId) {
-    Cache cache = cacheManager.getCache(CacheNames.CACHE_ASSIGNMENT_GROUPS);
-    if (cache != null) {
-      cache.evict(courseId);
-    }
-  }
-
-  private void evictAssignmentCache(Long assignmentId) {
-    Cache cache = cacheManager.getCache(CacheNames.CACHE_ASSIGNMENT);
-    if (cache != null) {
-      cache.evict(assignmentId);
-    }
-  }
-
   private void evictAssignmentCachesForCourse(Long courseId) {
     assignmentRepository
         .findByCourseId(courseId)
-        .forEach(assignment -> evictAssignmentCache(assignment.getId()));
+        .forEach(assignment -> assignmentGroupCacheEviction.evictAssignment(assignment.getId()));
   }
 }

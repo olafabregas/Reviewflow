@@ -2,6 +2,7 @@ package com.reviewflow.auth.service;
 
 import com.reviewflow.admin.service.AuditService;
 import com.reviewflow.shared.domain.User;
+import com.reviewflow.shared.exception.ResourceNotFoundException;
 import com.reviewflow.user.repository.UserRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -36,26 +37,29 @@ public class LoginLockoutService {
   @Transactional
   public void recordLoginFailure(User user, String ipAddress) {
     Instant now = Instant.now();
-    int count = user.getFailedLoginCount() == null ? 0 : user.getFailedLoginCount();
+    Long userId = user.getId();
+
     if (user.getLastFailedLoginAt() == null
         || user.getLastFailedLoginAt().plus(windowMinutes, ChronoUnit.MINUTES).isBefore(now)) {
-      count = 1;
+      userRepository.resetFailedLoginCount(userId, now);
     } else {
-      count = count + 1;
+      userRepository.incrementFailedLoginCount(userId, now);
     }
-    user.setFailedLoginCount(count);
-    user.setLastFailedLoginAt(now);
-    if (count >= threshold) {
-      user.setLockedUntil(now.plus(durationMinutes, ChronoUnit.MINUTES));
-      auditService.log(
-          user.getId(),
+
+    User refreshed =
+        userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User", userId));
+
+    if (refreshed.getFailedLoginCount() != null && refreshed.getFailedLoginCount() >= threshold) {
+      Instant lockedUntil = now.plus(durationMinutes, ChronoUnit.MINUTES);
+      userRepository.lockUser(userId, lockedUntil);
+      auditService.logSecurityEvent(
+          userId,
           "ACCOUNT_LOCKED",
           "User",
-          user.getId(),
+          userId,
           "Too many failed login attempts",
           ipAddress);
     }
-    userRepository.save(user);
   }
 
   @Transactional
@@ -68,7 +72,7 @@ public class LoginLockoutService {
 
   @Transactional
   public void auditLoginDuringLockout(User user, String ipAddress) {
-    auditService.log(
+    auditService.logSecurityEvent(
         user.getId(),
         "LOGIN_DURING_LOCKOUT",
         "User",

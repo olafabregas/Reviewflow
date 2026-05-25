@@ -39,6 +39,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.reviewflow.user.event.AvatarOrphanedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -57,6 +59,7 @@ class UserServiceAvatarTest {
   @Mock private AuditService auditService;
   @Mock private AdminStatsService adminStatsService;
   @Mock private HashidService hashidService;
+  @Mock private ApplicationEventPublisher eventPublisher;
 
   @InjectMocks private UserService userService;
 
@@ -259,14 +262,16 @@ class UserServiceAvatarTest {
     AuthUserResponse response = userService.deleteAvatar(userId, "127.0.0.1");
 
     assertEquals(null, response.getAvatarUrl());
-    verify(storageService).delete("avatars/U14/avatar.jpg");
+    verify(eventPublisher)
+        .publishEvent(new AvatarOrphanedEvent("avatars/U14/avatar.jpg", "avatar_deleted"));
+    verify(storageService, never()).delete(anyString());
     verify(auditService)
         .log(
             eq(userId), eq("AVATAR_DELETED"), eq("User"), eq(userId), anyString(), eq("127.0.0.1"));
   }
 
   @Test
-  void deleteAvatar_storageDeleteFails_stillReturnsSuccess() {
+  void deleteAvatar_queuesOrphanCleanupEvent() {
     Long userId = 141L;
     User user =
         User.builder()
@@ -281,13 +286,12 @@ class UserServiceAvatarTest {
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     when(hashidService.encode(userId)).thenReturn("U141");
     when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-    doThrow(new RuntimeException("network issue"))
-        .when(storageService)
-        .delete("avatars/U141/avatar.jpg");
 
     AuthUserResponse response = userService.deleteAvatar(userId, "127.0.0.1");
 
     assertEquals(null, response.getAvatarUrl());
+    verify(eventPublisher)
+        .publishEvent(new AvatarOrphanedEvent("avatars/U141/avatar.jpg", "avatar_deleted"));
     verify(auditService)
         .log(
             eq(userId), eq("AVATAR_DELETED"), eq("User"), eq(userId), anyString(), eq("127.0.0.1"));
@@ -315,7 +319,8 @@ class UserServiceAvatarTest {
     AuthUserResponse response = userService.adminDeleteAvatar(targetUserId, adminId, "127.0.0.1");
 
     assertEquals(null, response.getAvatarUrl());
-    verify(storageService).delete("avatars/U16/avatar.png");
+    verify(eventPublisher)
+        .publishEvent(new AvatarOrphanedEvent("avatars/U16/avatar.png", "avatar_deleted"));
     verify(auditService)
         .log(
             eq(adminId),
@@ -369,7 +374,7 @@ class UserServiceAvatarTest {
   }
 
   @Test
-  void adminDeleteAvatar_storageDeleteFails_stillReturnsSuccess() {
+  void adminDeleteAvatar_queuesOrphanCleanupEvent() {
     Long targetUserId = 15L;
     Long adminId = 99L;
     User user =
@@ -386,13 +391,12 @@ class UserServiceAvatarTest {
     when(userRepository.findById(targetUserId)).thenReturn(Optional.of(user));
     when(hashidService.encode(targetUserId)).thenReturn("U15");
     when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-    doThrow(new RuntimeException("network issue"))
-        .when(storageService)
-        .delete("avatars/U15/avatar.webp");
 
     AuthUserResponse response = userService.adminDeleteAvatar(targetUserId, adminId, "127.0.0.1");
 
     assertEquals(null, response.getAvatarUrl());
+    verify(eventPublisher)
+        .publishEvent(new AvatarOrphanedEvent("avatars/U15/avatar.webp", "avatar_deleted"));
     verify(auditService)
         .log(
             eq(adminId),

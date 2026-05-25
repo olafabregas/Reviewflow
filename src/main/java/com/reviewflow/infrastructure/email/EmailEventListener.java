@@ -27,6 +27,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -44,7 +46,7 @@ public class EmailEventListener {
   private String appBaseUrl;
 
   @Async("emailTaskExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handleWelcome(WelcomeEmailEvent event) {
     sendEmail(
         event,
@@ -54,7 +56,7 @@ public class EmailEventListener {
   }
 
   @Async("emailTaskExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handleEvaluationPublished(EvaluationPublishedEmailEvent event) {
     sendEmail(
         event,
@@ -71,7 +73,7 @@ public class EmailEventListener {
   }
 
   @Async("emailTaskExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handleSubmissionReceived(SubmissionReceivedEmailEvent event) {
     if (!isEmailEnabled(event)) {
       return;
@@ -91,7 +93,7 @@ public class EmailEventListener {
   }
 
   @Async("emailTaskExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handleTeamInviteReceived(TeamInviteReceivedEmailEvent event) {
     if (!isEmailEnabled(event)) {
       return;
@@ -111,7 +113,7 @@ public class EmailEventListener {
   }
 
   @Async("emailTaskExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handleTeamInviteResponded(TeamInviteRespondedEmailEvent event) {
     if (!isEmailEnabled(event)) {
       return;
@@ -131,7 +133,7 @@ public class EmailEventListener {
   }
 
   @Async("emailTaskExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handleAssignmentDueSoon(AssignmentDueSoonEmailEvent event) {
     if (!isEmailEnabled(event)) {
       return;
@@ -151,7 +153,7 @@ public class EmailEventListener {
   }
 
   @Async("emailTaskExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handleAnnouncementPosted(AnnouncementPostedEmailEvent event) {
     sendEmail(
         event,
@@ -168,7 +170,7 @@ public class EmailEventListener {
   }
 
   @Async("emailTaskExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handleDiscussionPublished(DiscussionPublishedEmailEvent event) {
     if (!isEmailEnabled(event)) {
       return;
@@ -188,7 +190,7 @@ public class EmailEventListener {
   }
 
   @Async("emailTaskExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handleDiscussionInstructorReply(DiscussionInstructorReplyEmailEvent event) {
     if (!isEmailEnabled(event)) {
       return;
@@ -208,7 +210,7 @@ public class EmailEventListener {
   }
 
   @Async("emailTaskExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handleDiscussionReminder(DiscussionReminderEmailEvent event) {
     if (!isEmailEnabled(event)) {
       return;
@@ -227,7 +229,7 @@ public class EmailEventListener {
   }
 
   @Async("emailTaskExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handleExtensionRequestReceived(ExtensionRequestReceivedEmailEvent event) {
     if (!isEmailEnabled(event)) {
       return;
@@ -248,7 +250,7 @@ public class EmailEventListener {
   }
 
   @Async("emailTaskExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handleExtensionDecision(ExtensionDecisionEmailEvent event) {
     sendEmail(
         event,
@@ -265,7 +267,7 @@ public class EmailEventListener {
   }
 
   @Async("emailTaskExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handleAccountReactivated(AccountReactivatedEmailEvent event) {
     sendEmail(
         event,
@@ -275,7 +277,7 @@ public class EmailEventListener {
   }
 
   @Async("emailTaskExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handlePasswordResetRequested(PasswordResetRequestedEmailEvent event) {
     sendEmail(
         event,
@@ -289,7 +291,7 @@ public class EmailEventListener {
   }
 
   @Async("emailTaskExecutor")
-  @EventListener
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handlePasswordResetCompleted(PasswordResetCompletedEmailEvent event) {
     if (!isEmailEnabled(event)) {
       return;

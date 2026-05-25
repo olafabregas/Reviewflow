@@ -557,6 +557,7 @@ public class GradeCalculationService {
     return assignment.getMaxScore();
   }
 
+  @Transactional(readOnly = true)
   private ClassRosterDto getCachedOrBuildRoster(Long courseId) {
     Cache cache = cacheManager.getCache(CacheNames.CACHE_CLASS_STATISTICS);
     if (cache == null) {
@@ -879,15 +880,14 @@ public class GradeCalculationService {
     }
   }
 
-  public void evictCourseGradeCaches(Long courseId) {
-    Cache gradeOverviewCache = cacheManager.getCache(CacheNames.CACHE_GRADE_OVERVIEW);
-    if (gradeOverviewCache != null) {
-      gradeOverviewCache.clear();
-    }
-
-    Cache classStatsCache = cacheManager.getCache(CacheNames.CACHE_CLASS_STATISTICS);
-    if (classStatsCache != null) {
-      classStatsCache.evict(courseId);
-    }
-  }
+  @org.springframework.cache.annotation.Caching(
+      evict = {
+        @org.springframework.cache.annotation.CacheEvict(
+            value = CacheNames.CACHE_GRADE_OVERVIEW,
+            allEntries = true),
+        @org.springframework.cache.annotation.CacheEvict(
+            value = CacheNames.CACHE_CLASS_STATISTICS,
+            key = "#courseId")
+      })
+  public void evictCourseGradeCaches(Long courseId) {}
 }

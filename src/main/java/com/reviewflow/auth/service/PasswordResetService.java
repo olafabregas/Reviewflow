@@ -4,6 +4,7 @@ import com.reviewflow.admin.service.AuditService;
 import com.reviewflow.auth.repository.PasswordResetTokenRepository;
 import com.reviewflow.auth.repository.RefreshTokenRepository;
 import com.reviewflow.infrastructure.email.event.PasswordResetCompletedEmailEvent;
+import com.reviewflow.infrastructure.security.TokenVersionInvalidatedEvent;
 import com.reviewflow.infrastructure.email.event.PasswordResetRequestedEmailEvent;
 import com.reviewflow.shared.domain.PasswordResetToken;
 import com.reviewflow.shared.domain.User;
@@ -43,7 +44,6 @@ public class PasswordResetService {
   private final RefreshTokenRepository refreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
   private final PasswordPolicyService passwordPolicyService;
-  private final TokenVersionService tokenVersionService;
   private final UserDetailsCacheService userDetailsCacheService;
   private final AuditService auditService;
   private final ApplicationEventPublisher eventPublisher;
@@ -109,7 +109,7 @@ public class PasswordResetService {
     eventPublisher.publishEvent(
         new PasswordResetRequestedEmailEvent(user.getEmail(), user.getFirstName(), resetUrl));
 
-    auditService.log(
+    auditService.logSecurityEvent(
         user.getId(),
         "PASSWORD_RESET_REQUESTED",
         "User",
@@ -155,7 +155,7 @@ public class PasswordResetService {
 
     refreshTokenRepository.revokeAllForUser(user.getId());
     userRepository.incrementTokenVersion(user.getId());
-    tokenVersionService.invalidate(user.getId());
+    eventPublisher.publishEvent(new TokenVersionInvalidatedEvent(user.getId()));
     userDetailsCacheService.evict(user.getEmail());
 
     eventPublisher.publishEvent(

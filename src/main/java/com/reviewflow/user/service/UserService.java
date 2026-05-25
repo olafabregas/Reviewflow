@@ -16,7 +16,8 @@ import com.reviewflow.infrastructure.storage.EXIFStripperService;
 import com.reviewflow.infrastructure.storage.FileSecurityValidator;
 import com.reviewflow.auth.service.PasswordPolicyService;
 import com.reviewflow.infrastructure.config.ValidationConfig;
-import com.reviewflow.auth.service.TokenVersionService;
+import com.reviewflow.infrastructure.security.TokenVersionInvalidatedEvent;
+import com.reviewflow.user.event.AvatarOrphanedEvent;
 import com.reviewflow.auth.repository.RefreshTokenRepository;
 import com.reviewflow.team.repository.TeamMemberRepository;
 import com.reviewflow.user.repository.UserRepository;
@@ -53,7 +54,6 @@ public class UserService {
 
   private final UserRepository userRepository;
   private final RefreshTokenRepository refreshTokenRepository;
-  private final TokenVersionService tokenVersionService;
   private final PasswordEncoder passwordEncoder;
   private final TeamMemberRepository teamMemberRepository;
   private final CourseEnrollmentRepository courseEnrollmentRepository;
@@ -195,6 +195,10 @@ public class UserService {
     // added to avatar uploads, ClamAV must be added.
     // Reviewed: 2026-05-18 | Accepted by: Roqeeb Olamide Ayorinde
     User user = getUserById(userId);
+    String oldKey =
+        user.getAvatarUrl() != null && !user.getAvatarUrl().isBlank()
+            ? deriveAvatarKey(userId, user.getAvatarUrl())
+            : null;
 
     ValidationConfig config =
         new ValidationConfig(
@@ -227,6 +231,10 @@ public class UserService {
     userRepository.save(user);
     auditService.log(userId, "AVATAR_UPLOADED", "User", userId, "avatarKey=" + key, ipAddress);
 
+    if (oldKey != null && !oldKey.equals(key)) {
+      eventPublisher.publishEvent(new AvatarOrphanedEvent(oldKey, "avatar_replaced"));
+    }
+
     return toAuthUserResponse(user);
   }
 
@@ -243,11 +251,7 @@ public class UserService {
     userRepository.save(user);
 
     String key = deriveAvatarKey(userId, previousAvatarUrl);
-    try {
-      storageService.delete(key);
-    } catch (RuntimeException ex) {
-      log.warn("Avatar delete from storage failed for user {} and key {}", userId, key, ex);
-    }
+    eventPublisher.publishEvent(new AvatarOrphanedEvent(key, "avatar_deleted"));
 
     auditService.log(userId, "AVATAR_DELETED", "User", userId, "avatarKey=" + key, ipAddress);
     return toAuthUserResponse(user);
@@ -266,12 +270,7 @@ public class UserService {
     userRepository.save(user);
 
     String key = deriveAvatarKey(targetUserId, previousAvatarUrl);
-    try {
-      storageService.delete(key);
-    } catch (RuntimeException ex) {
-      log.warn(
-          "Admin avatar delete from storage failed for user {} and key {}", targetUserId, key, ex);
-    }
+    eventPublisher.publishEvent(new AvatarOrphanedEvent(key, "avatar_deleted"));
 
     auditService.log(
         adminUserId, "ADMIN_AVATAR_REMOVED", "User", targetUserId, "avatarKey=" + key, ipAddress);
@@ -346,7 +345,7 @@ public class UserService {
     // invalidation
     int revokedCount = refreshTokenRepository.revokeAllForUser(id);
     userRepository.incrementTokenVersion(id);
-    tokenVersionService.invalidate(id);
+    eventPublisher.publishEvent(new TokenVersionInvalidatedEvent(id));
 
     adminStatsService.evictStats();
 

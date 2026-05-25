@@ -4,6 +4,7 @@ import com.reviewflow.admin.service.AuditService;
 import com.reviewflow.auth.dto.response.SessionEntryResponse;
 import com.reviewflow.auth.dto.response.SessionListResponse;
 import com.reviewflow.auth.repository.RefreshTokenRepository;
+import com.reviewflow.infrastructure.security.TokenVersionInvalidatedEvent;
 import com.reviewflow.infrastructure.websocket.WebSocketUserEventService;
 import com.reviewflow.shared.domain.RefreshToken;
 import com.reviewflow.shared.exception.ResourceNotFoundException;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,8 +29,8 @@ public class SessionService {
   private final RefreshTokenRepository refreshTokenRepository;
   private final HashidService hashidService;
   private final AuditService auditService;
-  private final TokenVersionService tokenVersionService;
   private final UserRepository userRepository;
+  private final ApplicationEventPublisher eventPublisher;
   private final WebSocketUserEventService webSocketUserEventService;
 
   public SessionListResponse listSessions(Long userId, String refreshCookieValue) {
@@ -110,7 +112,7 @@ public class SessionService {
   public void logoutAll(Long userId) {
     refreshTokenRepository.revokeAllForUser(userId);
     userRepository.incrementTokenVersion(userId);
-    tokenVersionService.invalidate(userId);
+    eventPublisher.publishEvent(new TokenVersionInvalidatedEvent(userId));
     auditService.log(
         userId, "USER_LOGOUT_ALL", "User", userId, "All sessions revoked by user", null);
     webSocketUserEventService.notifySessionsRevoked(userId);
