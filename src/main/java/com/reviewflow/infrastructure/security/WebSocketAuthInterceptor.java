@@ -4,10 +4,13 @@ import com.reviewflow.auth.service.TokenVersionService;
 import com.reviewflow.auth.service.WsTicketService;
 import com.reviewflow.auth.service.WsTicketService.WsTicketPayload;
 import com.reviewflow.infrastructure.websocket.WebSocketSessionRegistry;
+import com.reviewflow.infrastructure.websocket.WebSocketTransportTrackingDecorator;
 import com.reviewflow.shared.domain.User;
 import com.reviewflow.user.repository.UserRepository;
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
+import org.springframework.web.socket.WebSocketSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
@@ -124,12 +127,25 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
           new UsernamePasswordAuthenticationToken(
               userDetails, null, userDetails.getAuthorities());
       accessor.setUser(auth);
-      webSocketSessionRegistry.register(user.getId(), accessor.getSessionId());
+      String stompSessionId = accessor.getSessionId();
+      webSocketSessionRegistry.register(user.getId(), stompSessionId);
+      registerTransportSession(accessor, stompSessionId);
       log.debug("WebSocket CONNECT authenticated via ticket for userId={}", user.getId());
       return message;
     } catch (Exception e) {
       log.warn("WebSocket CONNECT rejected — {}", e.getMessage());
       return null;
+    }
+  }
+
+  private void registerTransportSession(StompHeaderAccessor accessor, String stompSessionId) {
+    Map<String, Object> attrs = accessor.getSessionAttributes();
+    if (attrs == null) {
+      return;
+    }
+    Object transport = attrs.get(WebSocketTransportTrackingDecorator.TRANSPORT_SESSION_KEY);
+    if (transport instanceof WebSocketSession wsSession) {
+      webSocketSessionRegistry.registerTransport(stompSessionId, wsSession);
     }
   }
 
