@@ -57,6 +57,9 @@ class JwtAuthenticationFilterTest {
 
   @BeforeEach
   void setUp() {
+    org.springframework.test.util.ReflectionTestUtils.setField(filter, "allowBearerHeader", true);
+    org.springframework.test.util.ReflectionTestUtils.setField(
+        filter, "allowLegacyTokensWithoutKid", true);
     when(ipAddressExtractor.extract(request)).thenReturn("127.0.0.1");
     when(rateLimitService.probe("127.0.0.1", AUTH_JWT_FAILURE, null))
         .thenReturn(RateLimitTestFixtures.allowed(AUTH_JWT_FAILURE));

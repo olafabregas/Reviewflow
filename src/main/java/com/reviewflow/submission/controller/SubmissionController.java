@@ -12,9 +12,12 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -32,6 +35,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/v1/submissions")
 @RequiredArgsConstructor
+@Validated
 @Tag(
     name = "Submissions",
     description =
@@ -75,7 +79,10 @@ public class SubmissionController {
   public ResponseEntity<ApiResponse<SubmissionResponse>> upload(
       @RequestParam(required = false) String teamId,
       @RequestParam String assignmentId,
-      @RequestParam(required = false) String changeNote,
+      @RequestParam
+          @NotBlank(message = "Change note is required")
+          @Size(max = 500, message = "Change note must not exceed 500 characters")
+          String changeNote,
       @RequestParam("file") MultipartFile file,
       @AuthenticationPrincipal ReviewFlowUserDetails user) {
     Long teamIdLong = teamId != null ? hashidService.decodeOrThrow(teamId) : null;

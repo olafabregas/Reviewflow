@@ -50,6 +50,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   @Value("${security.token.fingerprinting-enabled:false}")
   private boolean tokenFingerprintingEnabled;
 
+  @Value("${jwt.allow-legacy-tokens-without-kid:true}")
+  private boolean allowLegacyTokensWithoutKid;
+
+  @Value("${security.jwt.allow-bearer-header:true}")
+  private boolean allowBearerHeader;
+
   @Override
   protected void doFilterInternal(
       @NonNull HttpServletRequest request,
@@ -93,7 +99,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (jwtService.isTokenValid(token, userDetails)) {
           Integer tokenVer = jwtService.extractTokenVersion(token);
           Long userId = jwtService.extractUserId(token);
-          if (userId != null && tokenVer != null) {
+          if (userId == null || tokenVer == null) {
+            if (!allowLegacyTokensWithoutKid) {
+              log.warn("Rejecting token with missing ver or userId claim from ip={}", ip);
+              rateLimitService.consumeOnFailure(ip, AUTH_JWT_FAILURE, null);
+              httpErrorJsonWriter.writeError(
+                  response,
+                  HttpStatus.UNAUTHORIZED.value(),
+                  "INVALID_TOKEN",
+                  "Token is missing required claims");
+              return;
+            }
+            log.debug("Legacy token without ver claim — allowing (legacy mode)");
+          } else {
             int currentVer = tokenVersionService.getCurrentVersion(userId);
             if (tokenVer != currentVer) {
               throw new TokenVersionMismatchException(userId);
@@ -170,11 +188,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     if (cookieToken.isPresent()) {
       return new TokenExtraction(cookieToken, false);
     }
-    String authHeader = request.getHeader("Authorization");
-    if (authHeader != null && authHeader.startsWith("Bearer ")) {
-      String t = authHeader.substring(7);
-      if (!t.isBlank()) {
-        return new TokenExtraction(Optional.of(t), true);
+    if (allowBearerHeader) {
+      String authHeader = request.getHeader("Authorization");
+      if (authHeader != null && authHeader.startsWith("Bearer ")) {
+        String t = authHeader.substring(7);
+        if (!t.isBlank()) {
+          return new TokenExtraction(Optional.of(t), true);
+        }
       }
     }
     return new TokenExtraction(Optional.empty(), false);

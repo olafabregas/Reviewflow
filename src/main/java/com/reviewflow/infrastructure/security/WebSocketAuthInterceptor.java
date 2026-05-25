@@ -6,11 +6,13 @@ import com.reviewflow.auth.service.WsTicketService.WsTicketPayload;
 import com.reviewflow.infrastructure.websocket.WebSocketSessionRegistry;
 import com.reviewflow.shared.domain.User;
 import com.reviewflow.user.repository.UserRepository;
+import java.security.Principal;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
@@ -37,10 +39,18 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
       return message;
     }
 
-    if (!StompCommand.CONNECT.equals(accessor.getCommand())) {
-      return message;
+    StompCommand command = accessor.getCommand();
+    if (StompCommand.CONNECT.equals(command)) {
+      return handleConnect(accessor, message);
+    }
+    if (StompCommand.SUBSCRIBE.equals(command)) {
+      validateSubscribeDestination(accessor);
     }
 
+    return message;
+  }
+
+  private Message<?> handleConnect(StompHeaderAccessor accessor, Message<?> message) {
     String ticket = firstHeader(accessor, "X-Auth-Ticket", "auth-ticket");
     if (ticket != null && !ticket.isBlank()) {
       return handleTicket(ticket, accessor, message);
@@ -53,6 +63,38 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
     }
 
     log.warn("WebSocket CONNECT rejected — no X-Auth-Ticket header");
+    return null;
+  }
+
+  private void validateSubscribeDestination(StompHeaderAccessor accessor) {
+    Principal principal = accessor.getUser();
+    if (principal == null) {
+      throw new MessagingException("Not authenticated");
+    }
+
+    String destination = accessor.getDestination();
+    if (destination == null) {
+      return;
+    }
+
+    if (destination.startsWith("/user/")) {
+      String destinationUserId = extractUserIdFromDestination(destination);
+      String principalName = principal.getName();
+      if (destinationUserId != null && !principalName.equals(destinationUserId)) {
+        log.warn(
+            "WebSocket SUBSCRIBE to foreign destination: principal={} destination={}",
+            principalName,
+            destination);
+        throw new MessagingException("Cannot subscribe to another user's destination");
+      }
+    }
+  }
+
+  private static String extractUserIdFromDestination(String destination) {
+    String[] parts = destination.split("/");
+    if (parts.length >= 3) {
+      return parts[2];
+    }
     return null;
   }
 

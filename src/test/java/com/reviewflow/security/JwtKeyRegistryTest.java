@@ -24,6 +24,16 @@ class JwtKeyRegistryTest {
   }
 
   @Test
+  void constructor_withSecretShorterThan32Bytes_failsFast() {
+    JwtKeyConfigurationProperties props = baseProps();
+    props.setSecret("too-short");
+
+    assertThatThrownBy(() -> new JwtKeyRegistry(props))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("JWT_SECRET must be at least 32 bytes");
+  }
+
+  @Test
   void constructor_withDuplicateKid_failsFast() {
     JwtKeyConfigurationProperties props = baseProps();
     props.getKeys().add(key("dup", secret("a"), true));

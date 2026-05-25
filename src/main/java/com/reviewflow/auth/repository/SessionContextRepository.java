@@ -13,4 +13,6 @@ public interface SessionContextRepository extends JpaRepository<SessionContext, 
   Optional<SessionContext> findByFamily_Id(UUID familyId);
 
   List<SessionContext> findByFamily_User_IdOrderByCreatedAtContext(Long userId);
+
+  void deleteByFamily_Id(UUID familyId);
 }

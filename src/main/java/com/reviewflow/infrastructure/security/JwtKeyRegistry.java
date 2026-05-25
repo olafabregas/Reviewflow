@@ -20,9 +20,19 @@ public class JwtKeyRegistry {
 
   public JwtKeyRegistry(JwtKeyConfigurationProperties props) {
     if (props.getSecret() == null || props.getSecret().isBlank()) {
-      throw new IllegalStateException("jwt.secret must be set");
+      throw new IllegalStateException(
+          "JWT_SECRET must be set (REVIEWFLOW_JWT_SECRET env var)");
     }
-    this.legacyKey = Keys.hmacShaKeyFor(props.getSecret().getBytes(StandardCharsets.UTF_8));
+    byte[] secretBytes = props.getSecret().getBytes(StandardCharsets.UTF_8);
+    if (secretBytes.length < 32) {
+      throw new IllegalStateException(
+          "JWT_SECRET must be at least 32 bytes (256 bits) for HS256. "
+              + "Current length: "
+              + secretBytes.length
+              + " bytes. "
+              + "Generate a secure secret with: openssl rand -base64 32");
+    }
+    this.legacyKey = Keys.hmacShaKeyFor(secretBytes);
     this.allowLegacyTokensWithoutKid = props.isAllowLegacyTokensWithoutKid();
 
     String chosenActive = null;
@@ -35,10 +45,17 @@ public class JwtKeyRegistry {
         if (entry.getSecret() == null || entry.getSecret().isBlank()) {
           throw new IllegalStateException("jwt.keys[" + entry.getKid() + "].secret must be set");
         }
+        byte[] keySecretBytes = entry.getSecret().getBytes(StandardCharsets.UTF_8);
+        if (keySecretBytes.length < 32) {
+          throw new IllegalStateException(
+              "jwt.keys["
+                  + entry.getKid()
+                  + "].secret must be at least 32 bytes (256 bits) for HS256");
+        }
         if (keysByKid.containsKey(entry.getKid())) {
           throw new IllegalStateException("Duplicate jwt kid configured: " + entry.getKid());
         }
-        SecretKey k = Keys.hmacShaKeyFor(entry.getSecret().getBytes(StandardCharsets.UTF_8));
+        SecretKey k = Keys.hmacShaKeyFor(keySecretBytes);
         keysByKid.put(entry.getKid(), k);
         if (entry.isActive()) {
           chosenActive = entry.getKid();

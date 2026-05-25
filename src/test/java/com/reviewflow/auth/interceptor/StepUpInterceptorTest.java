@@ -48,6 +48,19 @@ class StepUpInterceptorTest {
   }
 
   @Test
+  void annotatedHandlerRejectsWhenUnauthenticated() throws Exception {
+    HandlerMethod handlerMethod = handlerMethod("requiresStepUp");
+    SecurityContextHolder.clearContext();
+
+    boolean allowed = stepUpInterceptor.preHandle(request, response, handlerMethod);
+
+    assertThat(allowed).isFalse();
+    org.mockito.Mockito.verify(response)
+        .setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    SecurityContextHolder.clearContext();
+  }
+
+  @Test
   void annotatedHandlerAllowsFreshStepUp() throws Exception {
     HandlerMethod handlerMethod = handlerMethod("requiresStepUp");
     SecurityContextHolder.getContext()
