@@ -33,8 +33,11 @@ public class MdcFilter extends OncePerRequestFilter {
       HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
 
-    // Generate unique trace ID for this request (allows correlating all logs for this request)
     String traceId = UUID.randomUUID().toString();
+    String incomingTraceId = request.getHeader("X-Trace-Id");
+    if (incomingTraceId != null && !incomingTraceId.isBlank()) {
+      traceId = incomingTraceId.trim();
+    }
     String requestId = UUID.randomUUID().toString();
 
     // Extract endpoint (path without query parameters)
@@ -48,6 +51,7 @@ public class MdcFilter extends OncePerRequestFilter {
     MDC.put(REQUEST_ID, requestId);
     MDC.put(ENDPOINT, endpoint);
     MDC.put(IP_ADDRESS, ipAddress);
+    response.setHeader("X-Trace-Id", traceId);
 
     try {
       // userId and role will be populated by JwtAuthenticationFilter after successful token

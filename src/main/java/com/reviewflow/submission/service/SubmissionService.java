@@ -54,7 +54,6 @@ import com.reviewflow.shared.domain.TeamMember;
 import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.domain.UserRole;
 import com.reviewflow.shared.domain.SubmissionType;
-import com.reviewflow.infrastructure.monitoring.SecurityMetrics;
 import com.reviewflow.assignment.repository.AssignmentRepository;
 import com.reviewflow.course.repository.CourseEnrollmentRepository;
 import com.reviewflow.course.repository.CourseInstructorRepository;
@@ -103,7 +102,6 @@ public class SubmissionService {
   private final FileSecurityValidator fileSecurityValidator;
   private final AdminStatsService adminStatsService;
   private final ClamAvScanService clamAvScanService;
-  private final SecurityMetrics securityMetrics;
   private final AuditService auditService;
   private final HashidService hashidService;
   private final S3Service s3Service;
@@ -187,7 +185,7 @@ public class SubmissionService {
           originalName,
           e.getMessage(),
           e);
-      securityMetrics.recordFileBlocked();
+      reviewFlowMetrics.recordBlockedFileUpload("extension");
       try {
         java.nio.file.Files.deleteIfExists(tempFile);
       } catch (IOException ex) {
@@ -196,7 +194,7 @@ public class SubmissionService {
       throw new ValidationException(
           "Failed to validate file: " + e.getMessage(), "FILE_VALIDATION_ERROR");
     } catch (MalwareDetectedException e) {
-      securityMetrics.recordFileBlocked();
+      reviewFlowMetrics.recordBlockedFileUpload("extension");
       try {
         java.nio.file.Files.deleteIfExists(tempFile);
       } catch (IOException ex) {
@@ -213,7 +211,7 @@ public class SubmissionService {
     } catch (RuntimeException e) {
       // Catch BlockedFileTypeException, InvalidMimeTypeException, InvalidFileStructureException,
       // etc.
-      securityMetrics.recordFileBlocked();
+      reviewFlowMetrics.recordBlockedFileUpload("extension");
       try {
         java.nio.file.Files.deleteIfExists(tempFile);
       } catch (IOException ex) {
@@ -331,6 +329,7 @@ public class SubmissionService {
       String relativePath =
           S3KeyBuilder.submissionKey(hashedAssignmentId, hashedOwnerId, nextVersion, originalName);
       String storedPath = uploadToStorage(relativePath, tempFile, file);
+      reviewFlowMetrics.recordSubmissionUploaded();
 
       Submission submission =
           Submission.builder()

@@ -1,5 +1,9 @@
 package com.reviewflow.infrastructure.storage;
 
+import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
+import com.reviewflow.shared.domain.ClamAvScanResult;
+import com.reviewflow.submission.exception.MalwareDetectedException;
+import fi.solita.clamav.ClamAVClient;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -8,18 +12,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
-import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
-import com.reviewflow.shared.domain.ClamAvScanResult;
-import com.reviewflow.submission.exception.MalwareDetectedException;
-
-import fi.solita.clamav.ClamAVClient;
-import lombok.extern.slf4j.Slf4j;
-
 @Slf4j
 @Service
 public class ClamAvScanService {
@@ -43,6 +39,19 @@ public class ClamAvScanService {
     } else {
       this.clamAVClient = null;
       log.info("ClamAV scanning is DISABLED");
+    }
+  }
+
+  public boolean ping() {
+    if (!clamavEnabled || clamAVClient == null) {
+      return false;
+    }
+    try {
+      clamAVClient.ping();
+      return true;
+    } catch (Exception e) {
+      log.debug("ClamAV ping failed: {}", e.getMessage());
+      return false;
     }
   }
 

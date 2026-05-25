@@ -11,8 +11,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.reviewflow.admin.service.AuditService;
+import com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics;
 import com.reviewflow.shared.domain.User;
 import com.reviewflow.shared.domain.UserRole;
+import com.reviewflow.shared.util.HashidService;
 import com.reviewflow.user.repository.UserRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -29,6 +31,8 @@ class LoginLockoutServiceTest {
 
   @Mock private UserRepository userRepository;
   @Mock private AuditService auditService;
+  @Mock private ReviewFlowMetrics metrics;
+  @Mock private HashidService hashidService;
 
   @InjectMocks private LoginLockoutService loginLockoutService;
 
@@ -115,13 +119,13 @@ class LoginLockoutServiceTest {
             .lastFailedLoginAt(Instant.now().minus(1, ChronoUnit.MINUTES))
             .build();
 
-    Instant lockedUntil = Instant.now().plus(30, ChronoUnit.MINUTES);
-    User refreshed = User.builder().id(7L).failedLoginCount(3).lockedUntil(lockedUntil).build();
-    when(userRepository.findById(7L)).thenReturn(Optional.of(refreshed));
+    when(hashidService.encode(7L)).thenReturn("user7");
 
     loginLockoutService.recordLoginFailure(user, "9.9.9.9");
 
-    verify(userRepository).lockUser(eq(7L), any(Instant.class));
+    assertEquals(3, user.getFailedLoginCount());
+    assertTrue(user.getLockedUntil().isAfter(Instant.now()));
+    verify(metrics).recordLockout();
     verify(auditService)
         .logSecurityEvent(7L, "ACCOUNT_LOCKED", "User", 7L, "Too many failed login attempts", "9.9.9.9");
   }

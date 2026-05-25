@@ -117,7 +117,7 @@ class AuthServiceTest {
     verify(userRepository).findByEmail("admin@reviewflow.com");
     verify(passwordEncoder).matches("Test@1234", "hash");
     verify(passwordPolicyService).validateLoginInputBounds("Test@1234");
-    verify(metrics).recordUserLogin();
+    verify(metrics).recordLoginResult("success");
     verify(loginLockoutService).clearFailures(user);
     verify(auditService)
         .logSecurityEvent(1L, "USER_LOGIN", "User", 1L, "Login successful", "127.0.0.1");
@@ -153,7 +153,7 @@ class AuthServiceTest {
     verify(passwordEncoder).matches("  Test@1234  ", "hash");
     verify(passwordEncoder, never()).matches("Test@1234", "hash");
     verify(passwordPolicyService).validateLoginInputBounds("  Test@1234  ");
-    verify(metrics).recordFailedLogin();
+    verify(metrics).recordLoginResult("failed");
     verify(loginLockoutService).recordLoginFailure(user, "127.0.0.1");
     verify(auditService)
         .logSecurityEvent(2L, "USER_LOGIN_FAILED", "User", 2L, "Invalid password", "127.0.0.1");

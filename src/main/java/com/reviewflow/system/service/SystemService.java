@@ -7,6 +7,11 @@ import static com.reviewflow.shared.constant.CacheNames.CACHE_UNREAD_COUNT;
 import static com.reviewflow.shared.constant.CacheNames.CACHE_USER_COURSES;
 
 import com.github.benmanes.caffeine.cache.Cache;
+import com.zaxxer.hikari.HikariDataSource;
+import com.zaxxer.hikari.HikariPoolMXBean;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import javax.sql.DataSource;
 import com.reviewflow.shared.dto.AuditLogDto;
 import com.reviewflow.shared.dto.CacheEvictResponse;
 import com.reviewflow.shared.dto.CacheStatsDto;
@@ -64,6 +69,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class SystemService {
 
   @Autowired private CacheManager cacheManager;
+
+  @Autowired private DataSource dataSource;
+
+  @Autowired private MeterRegistry meterRegistry;
 
   @Autowired private SimpMessagingTemplate messagingTemplate;
 
@@ -149,13 +158,14 @@ public class SystemService {
                       .build();
                 }
 
+                com.github.benmanes.caffeine.cache.stats.CacheStats stats = cache.stats();
                 return CacheStatsDto.builder()
                     .name(cacheName)
                     .size(cache.estimatedSize())
-                    .hitCount(0L)
-                    .missCount(0L)
-                    .hitRate(0.0)
-                    .evictionCount(0L)
+                    .hitCount(stats != null ? stats.hitCount() : 0L)
+                    .missCount(stats != null ? stats.missCount() : 0L)
+                    .hitRate(stats != null ? safeRate(stats.hitRate()) : 0.0)
+                    .evictionCount(stats != null ? stats.evictionCount() : 0L)
                     .lastEvictedAt(
                         lastEvictionTime.getOrDefault(cacheName, Instant.EPOCH).toString())
                     .build();
@@ -418,22 +428,11 @@ public class SystemService {
                       .cpuUsage(cpuUsage)
                       .threadCount(threadCount)
                       .build())
-              .db(
-                  SystemMetricsDto.DbMetrics.builder()
-                      .activeConnections(0)
-                      .idleConnections(0)
-                      .maxConnections(10)
-                      .build())
-              .cache(
-                  SystemMetricsDto.CacheMetrics.builder()
-                      .adminStatsHitRate(0.0)
-                      .unreadCountHitRate(0.0)
-                      .userCoursesHitRate(0.0)
-                      .assignmentDetailHitRate(0.0)
-                      .build())
+              .db(buildDbMetrics())
+              .cache(buildCacheMetrics())
               .uptimeSeconds(
                   java.lang.management.ManagementFactory.getRuntimeMXBean().getUptime() / 1000)
-              .recentSecurityEvents(0)
+              .recentSecurityEvents(getRecentSecurityEvents())
               .timestamp(
                   Instant.now()
                       .atZone(ZoneId.systemDefault())
@@ -456,6 +455,68 @@ public class SystemService {
       log.debug("System metrics pushed to {} SYSTEM_ADMIN users", systemAdmins.size());
     } catch (Exception e) {
       log.error("Error collecting and pushing system metrics", e);
+    }
+  }
+
+  private SystemMetricsDto.DbMetrics buildDbMetrics() {
+    HikariPoolMXBean pool = getHikariMXBean();
+    int active = pool != null ? pool.getActiveConnections() : -1;
+    int idle = pool != null ? pool.getIdleConnections() : -1;
+    int max = pool != null ? pool.getTotalConnections() : -1;
+    return SystemMetricsDto.DbMetrics.builder()
+        .activeConnections(active)
+        .idleConnections(idle)
+        .maxConnections(max)
+        .build();
+  }
+
+  private SystemMetricsDto.CacheMetrics buildCacheMetrics() {
+    return SystemMetricsDto.CacheMetrics.builder()
+        .adminStatsHitRate(safeRate(getCacheHitRate(CACHE_ADMIN_STATS)))
+        .unreadCountHitRate(safeRate(getCacheHitRate(CACHE_UNREAD_COUNT)))
+        .userCoursesHitRate(safeRate(getCacheHitRate(CACHE_USER_COURSES)))
+        .assignmentDetailHitRate(safeRate(getCacheHitRate(CACHE_ASSIGNMENT)))
+        .build();
+  }
+
+  private HikariPoolMXBean getHikariMXBean() {
+    if (dataSource instanceof HikariDataSource hikari) {
+      return hikari.getHikariPoolMXBean();
+    }
+    return null;
+  }
+
+  private double getCacheHitRate(String cacheName) {
+    org.springframework.cache.Cache cache = cacheManager.getCache(cacheName);
+    if (cache == null) {
+      return -1.0;
+    }
+    Object nativeCache = cache.getNativeCache();
+    if (nativeCache instanceof Cache<?, ?> caffeine) {
+      com.github.benmanes.caffeine.cache.stats.CacheStats stats = caffeine.stats();
+      return stats != null ? stats.hitRate() : -1.0;
+    }
+    return -1.0;
+  }
+
+  private double safeRate(double rate) {
+    if (rate < 0) {
+      return rate;
+    }
+    return Double.isNaN(rate) || Double.isInfinite(rate) ? 0.0 : rate;
+  }
+
+  private int getRecentSecurityEvents() {
+    try {
+      Counter failedLogins =
+          meterRegistry.find("reviewflow.security.login").tag("result", "failed").counter();
+      Counter lockouts = meterRegistry.find("reviewflow.security.lockout").counter();
+      double total =
+          (failedLogins != null ? failedLogins.count() : 0)
+              + (lockouts != null ? lockouts.count() : 0);
+      return (int) Math.round(total);
+    } catch (Exception e) {
+      return -1;
     }
   }
 

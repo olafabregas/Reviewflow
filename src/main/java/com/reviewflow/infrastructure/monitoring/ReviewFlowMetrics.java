@@ -225,25 +225,55 @@ public class ReviewFlowMetrics {
   }
 
   // ──── LOGIN METRICS ────────────────────────────────────────────
+  public void recordLoginResult(String result) {
+    switch (result) {
+      case "success" -> loginSuccessCounter.increment();
+      case "failed" -> loginFailedCounter.increment();
+      case "rate_limited" -> loginRateLimitedCounter.increment();
+      default ->
+          meterRegistry.counter("reviewflow.security.login", "result", result).increment();
+    }
+  }
+
   public void recordUserLogin() {
-    loginSuccessCounter.increment();
+    recordLoginResult("success");
   }
 
   public void recordFailedLogin() {
-    loginFailedCounter.increment();
+    recordLoginResult("failed");
   }
 
   public void recordLoginRateLimited() {
-    loginRateLimitedCounter.increment();
+    recordLoginResult("rate_limited");
+  }
+
+  public void recordLockout() {
+    meterRegistry.counter("reviewflow.security.lockout").increment();
   }
 
   // ──── TOKEN METRICS ────────────────────────────────────────────
+  public void recordTokenValidation(String result) {
+    meterRegistry.counter("reviewflow.security.token", "result", result).increment();
+  }
+
   public void recordTokenRateLimited() {
-    tokenRateLimitedCounter.increment();
+    recordTokenValidation("rate_limited");
   }
 
   public void recordTokenFingerprintMismatch() {
-    tokenFingerprintMismatchCounter.increment();
+    recordTokenValidation("fingerprint_mismatch");
+  }
+
+  public void recordAuthTokenFromCookie() {
+    meterRegistry
+        .counter("reviewflow.security.auth_token_source", "source", "cookie")
+        .increment();
+  }
+
+  public void recordAuthTokenFromBearer() {
+    meterRegistry
+        .counter("reviewflow.security.auth_token_source", "source", "bearer")
+        .increment();
   }
 
   // ──── FILE UPLOAD SECURITY ────────────────────────────────────
@@ -298,7 +328,7 @@ public class ReviewFlowMetrics {
 
   // ──── EMAIL DELIVERY ───────────────────────────────────────────
   public void recordEmailSent(String eventType) {
-    emailSentCounter.increment();
+    meterRegistry.counter("reviewflow.email.sent", "type", eventType).increment();
   }
 
   public void recordEmailFailed(String eventType) {
@@ -307,7 +337,7 @@ public class ReviewFlowMetrics {
 
   // ──── NOTIFICATIONS ───────────────────────────────────────────
   public void recordNotificationSent(String type) {
-    notificationSentCounter.increment();
+    meterRegistry.counter("reviewflow.notifications.sent", "type", type).increment();
   }
 
   // ──── CACHE OPERATIONS ────────────────────────────────────────

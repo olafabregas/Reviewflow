@@ -23,7 +23,6 @@ import com.reviewflow.shared.domain.*;
 import com.reviewflow.shared.domain.Course;
 import com.reviewflow.shared.domain.SubmissionType;
 import com.reviewflow.shared.domain.UserRole;
-import com.reviewflow.infrastructure.monitoring.SecurityMetrics;
 import com.reviewflow.extension.repository.ExtensionRequestRepository;
 import com.reviewflow.grading.repository.*;
 import com.reviewflow.assignment.repository.AssignmentRepository;
@@ -77,11 +76,8 @@ class SubmissionServicePreviewTest {
   @Mock private AdminStatsService adminStatsService;
 
   @Mock private ClamAvScanService clamAvScanService;
-
-
-  @Mock private SecurityMetrics securityMetrics;
-
   @Mock private AuditService auditService;
+  @Mock private com.reviewflow.infrastructure.monitoring.ReviewFlowMetrics reviewFlowMetrics;
 
   @InjectMocks private SubmissionService submissionService;
 
