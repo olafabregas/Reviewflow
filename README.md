@@ -1,8 +1,10 @@
 # ReviewFlow
 
-> A university project submission and evaluation platform built for real academic workflows.
+> A production-grade university project submission and peer evaluation platform built for real academic workflows.
 
-**Status:** Backend through PRD-13, PRD-17 (discussions), PRD-18 (messaging), PRD-19–21 (Redis, rate limits, async jobs) · PRD-14 OAuth and PRD-16 content delivery not shipped · Frontend not started
+**Status:** Backend complete (PRDs 1–18) · Infrastructure live on AWS · Frontend architecture locked, implementation not started
+
+**Domain:** [reviewflowlms.com](https://reviewflowlms.com) · **Staging:** [staging.reviewflowlms.com](https://staging.reviewflowlms.com)
 
 **Live demo:** Coming soon
 
@@ -10,130 +12,190 @@
 
 ## What It Is
 
-ReviewFlow is a full-stack web application that handles the end-to-end lifecycle of university project submissions: team formation, file submission, rubric-based evaluation, and feedback delivery. Three roles — Student, Instructor, and Admin — each have distinct workflows and permission boundaries enforced at every layer of the stack.
-
-It covers security hardening, caching strategy, real-time notifications, ID obfuscation, PDF generation, and a multi-stage file validation pipeline.
+ReviewFlow is a full-stack LMS handling the end-to-end lifecycle of university academic assessments — team formation, file submission, rubric-based evaluation, grade management, real-time notifications, course messaging, and discussion forums. Four roles — Student, Instructor, Admin, and System Admin — each have distinct workflows and permission boundaries enforced at every layer of the stack.
 
 ---
 
 ## Tech Stack
 
-| Layer            | Technology                       | Notes                                       |
-| ---------------- | -------------------------------- | ------------------------------------------- |
-| Backend          | Spring Boot 4, Java 21           |                                             |
-| Database         | MySQL 8                          | Flyway **V1–V34** (see `orchestration/MASTER_PROJECT_SUMMARY.md` §3) |
-| Auth             | JWT in HTTP-only cookies         | Refresh rotation, token fingerprinting      |
-| File storage     | AWS S3                           | Pre-signed URLs                             |
-| Real-time        | WebSocket — STOMP over SockJS    |                                             |
-| Caching / Redis  | Caffeine + Redis 7               | Compose **redis**; rate limits; optional `auth.token-version.store=redis` |
-| File security    | `FileSecurityValidator` + ClamAV | Multi-gate validation; ClamAV optional (not in Compose) |
-| ID obfuscation   | Hashids                          | 8-char opaque IDs on all external endpoints |
-| PDF — reports    | iText 8                          | `evaluation/service/PdfGenerationService` |
-| PDF — validation | OpenPDF                          | Upload structural checks in file-security pipeline |
-| API docs         | SpringDoc OpenAPI / Swagger UI   |                                             |
-| Containerization | Docker + Docker Compose          |                                             |
-| Frontend         | React                            | Not started                                 |
+| Layer | Technology | Notes |
+|---|---|---|
+| Backend | Spring Boot 4, Java 21 | Port 8081 (staging) / 8082 (prod) |
+| Database | MySQL 8 | Flyway V1–V27, 20+ tables |
+| Auth | JWT in HTTP-only cookies | Refresh rotation, token fingerprinting, SameSite=Strict |
+| File storage | AWS S3 | `reviewflow-storage`, `ca-central-1`, pre-signed URLs for submissions/PDFs |
+| Real-time | WebSocket — STOMP over SockJS | `/ws` endpoint, user-scoped queues |
+| App caching | Caffeine | 13 Spring @Cacheable caches — per-JVM, Redis-ready |
+| Distributed state | Redis 7 | Rate limiting (Bucket4j), grade aggregates, job state, import locks, OAuth state, token versions |
+| File security | `FileSecurityValidator` | 3-stage pipeline (extension → MIME → size) |
+| ID obfuscation | Hashids | 8-char opaque IDs on all external endpoints |
+| PDF generation | OpenPDF | Evaluation report export |
+| Email | JavaMailSender + Resend SMTP | `noreply@reviewflowlms.com`, Thymeleaf HTML templates, async delivery |
+| Logging | Logback + logstash-logback-encoder | JSON structured logs, MDC correlation, X-Trace-Id |
+| Monitoring | AWS CloudWatch | Log groups, 10 alarms, SNS alerting, dashboard |
+| API docs | SpringDoc OpenAPI / Swagger UI | `/swagger-ui/index.html` |
+| Containerisation | Docker + Docker Compose | MySQL + Redis + App |
+| Infrastructure | Terraform | 6 modules, S3 state backend, DynamoDB locking |
+| CI/CD | GitHub Actions | ci.yml · cd.yml · nightly.yml |
+| DNS / TLS | Cloudflare | `reviewflowlms.com`, SPF/DKIM/DMARC configured |
+| Frontend | React 18 + Vite + TypeScript | Not started — architecture locked |
+
+---
+
+## System Architecture
+
+![ReviewFlow System Architecture](ARCHITECTURE_IMAGE_URL_HERE)
+
+```
+[Client — React SPA]
+        ↓  HTTP-only cookies · WebSocket upgrade
+[Security Layer — JWT Filter · Token Fingerprinting · Rate Limiter (Redis) · Security Headers]
+        ↓
+[REST API — 98 endpoints across 17 modules]
+  Auth · Courses · Assignments · Assignment Groups · Modules
+  Teams · Submissions · Evaluations · Instructor Scores · Grade Overview
+  Discussions · Messaging · Notifications · Announcements · Extensions · Admin · System
+        ↓
+[Service Layer]
+  Security:   FileSecurityValidator · HashidService · AuditService
+  Business:   CourseService · AssignmentService · TeamService · SubmissionService
+              EvaluationService · GradeCalculationService · GradeAggregateService
+              DiscussionService · MessagingService · AsyncJobService · OAuthService
+  Async:      NotificationEventListener · EmailEventListener · Schedulers
+        ↓                              ↓
+[Infrastructure]               [Cache Layer]
+  MySQL 8  → primary DB          Caffeine  → 13 Spring @Cacheable caches (per-JVM)
+  AWS S3   → file storage        Redis 7   → rate limits · grade blobs · job state
+  Redis 7  → distributed state             import locks · OAuth state · token versions
+  WebSocket → real-time push
+  Resend   → async email
+  CloudWatch → logs + alarms
+```
+
+### Cache Architecture
+
+**Two distinct systems — different concerns, different owners:**
+
+| Layer | Technology | What It Owns |
+|---|---|---|
+| App caches | Caffeine | adminStats, unreadCount, userCourses, assignmentDetail, courseGradeGroups, courseModules, gradeOverview, classStatistics, courseMaterials, courseDiscussions, discussionParticipation, csvImports, oauthState |
+| Distributed state | Redis 7 | Rate limit buckets, grade aggregate blobs, CSV job progress, import locks, OAuth CSRF state, token version store, messaging pub/sub (optional) |
+
+Grade overviews use **both** — Caffeine wraps the method via `@Cacheable`, Redis stores the computed grade blob inside that method via `GradeAggregateService`.
+
+### S3 Key Structure
+
+```
+reviewflow-storage/
+├── submissions/{hashedAssignmentId}/{hashedTeamOrStudentId}/v{n}/{filename}
+├── pdfs/{hashedEvaluationId}/report.pdf
+├── avatars/{hashedUserId}/avatar.{ext}        ← fixed URL + ?v= cache-bust, zero SDK calls at read
+├── materials/{hashedCourseId}/{hashedMaterialId}/{filename}
+└── messages/{hashedConversationId}/{hashedMessageId}/{filename}
+```
+
+### Async Thread Pools
+
+| Pool | Core/Max | Used by |
+|---|---|---|
+| `notificationTaskExecutor` | 2/10 | `NotificationEventListener` |
+| `emailTaskExecutor` | 2/10 | `EmailEventListener` |
+| Spring `@Scheduled` | — | `DueDateReminderScheduler`, `TokenCleanupScheduler` |
 
 ---
 
 ## Features
 
 ### Student
-
 - Enroll in courses and browse published assignments
 - Form or join teams — invite teammates, accept or decline invitations
 - Upload project submissions (ZIP/PDF) with automatic version tracking
 - View rubric-based evaluations and instructor feedback once published
 - Download evaluation reports as PDF
-- Real-time notifications for invites, new submissions, and published grades
+- Real-time notifications for invites, submissions, and published grades
+- Course discussions and direct/team messaging
 
 ### Instructor
-
-- Create and publish assignments with custom rubric criteria
+- Create and publish assignments with custom rubric criteria and weighted groups
 - Lock teams at a configurable deadline
-- Grade team submissions using per-criterion scoring with comments
-- Save evaluations as drafts — students see nothing until explicitly published
+- Grade submissions using per-criterion scoring — draft/publish lifecycle
+- Direct score entry or bulk CSV upload with dry-run preview
 - Generate and deliver PDF evaluation reports
-- Bulk-enroll students into courses
+- Manage course modules, materials, announcements, and extension requests
 
 ### Admin
-
-- Full user management — create, deactivate, and reactivate accounts
+- Full user management — create, deactivate, reactivate accounts
 - Platform-wide statistics: users, submissions, storage usage, role breakdown
 - Audit log of all significant write actions across the system
 - Course and instructor assignment management
 
----
-
-## System Architecture
-
-![ReviewFlow System Architecture](https://res.cloudinary.com/dwij0smbq/image/upload/v1773799191/diagram-export-3-17-2026-9_56_37-PM_s5fytp.png)
-
-```
-[Client (React SPA)]
-        ↓
-[Security Layer — JWT Filter · Rate Limiter · Token Fingerprinting]
-        ↓
-[REST API Layer (Spring Boot · ~26 @RestController classes · feature packages)]
-        ↓
-[Service Layer]
-  ├── CourseService          ├── SubmissionService
-  ├── AssignmentService      ├── EvaluationService
-  ├── TeamService            ├── NotificationService
-  ├── AdminStatsService      └── AuthService
-        ↓
-[Infrastructure Layer]
-        ├── MySQL 8 (Flyway V1–V34)
-        ├── AWS S3 (pre-signed URLs)
-        ├── Redis + Caffeine caches
-        └── WebSocket (STOMP over SockJS)
-```
-
-> System flows: [ARCHITECTURE.md](./ARCHITECTURE.md) · Decisions: [DECISIONS.md](./DECISIONS.md)  
-> **Ship state & PRD status:** [orchestration/MASTER_PROJECT_SUMMARY.md](./orchestration/MASTER_PROJECT_SUMMARY.md) · **Doc map for agents:** [orchestration/DOCUMENTATION_MAP.md](./orchestration/DOCUMENTATION_MAP.md)
+### System Admin
+- Real-time system dashboard (JVM, DB pool, cache stats, security events)
+- Force logout any user, unlock teams, reopen evaluations
+- Cache management with eviction controls
+- Safe config view — secrets never exposed
+- Max 5 accounts — DB seed only, never via API
 
 ---
 
 ## API Overview
 
-REST surface is organised by **feature packages** (~26 `@RestController` classes — re-count with `grep` when documenting). Full OpenAPI at `http://localhost:8081/swagger-ui/index.html` when running locally (`/v3/api-docs`).
+**98 REST endpoints across 17 modules.** Full OpenAPI at `/swagger-ui/index.html` when running locally.
 
-| Module            | Endpoints                                         |
-| ----------------- | ------------------------------------------------- |
-| Auth              | Login, logout, refresh, `/me`, WebSocket token    |
-| Courses           | CRUD, enrollment, student roster                  |
-| Assignments       | CRUD, rubric management, global feed              |
-| Assignment Groups | Create/list/update/delete groups, move assignment |
-| Modules           | Create/list/update/delete/reorder, assign module  |
-| Teams             | Create, invite, respond, lock, update             |
-| Submissions       | Upload, version history, download, student view   |
-| Evaluations       | Create, score, publish, draft management          |
-| Instructor Scores | Draft/publish/reopen, CSV dry-run + commit        |
-| Grade Overview    | Student overview and roster analytics             |
-| Evaluations / PDF | Rubric scoring, publish, iText report generation  |
-| Discussions       | Course discussions (PRD-17)                       |
-| Messaging         | Course-scoped conversations (PRD-18)              |
-| Notifications     | List, mark read, unread count, delete             |
-| Announcements     | Course and platform announcements                 |
-| Extensions        | Request, approve/deny assignment extensions       |
-| Admin             | User management, stats, audit log                 |
+| Module | Key Endpoints |
+|---|---|
+| Auth | Login, logout, refresh, `/me`, WebSocket token |
+| Courses | CRUD, enrollment, bulk enroll, roster |
+| Assignments | CRUD, rubric management, global feed, submission type |
+| Assignment Groups | Create/list/update/delete, move assignment to group |
+| Modules | Create/list/update/delete/reorder, assign/unassign |
+| Teams | Create, invite, respond, lock, update |
+| Submissions | Upload (INDIVIDUAL/TEAM), version history, download, preview |
+| Evaluations | Create, score, publish, draft gate, PDF generate/download |
+| Instructor Scores | Create/update/publish/reopen, bulk CSV dry-run + commit |
+| Grade Overview | Student overview, per-student instructor view, class roster/statistics |
+| Discussions | Create prompt, post, reply, deadline enforcement |
+| Messaging | Direct + team conversations, cursor-based pagination, attachments |
+| Notifications | List, mark read, unread count, delete, mark all read |
+| Announcements | Create, publish, delete, list by course, platform-wide |
+| Extensions | Request, respond (approve/deny), list by assignment/student |
+| Admin | User management, stats, audit log |
+| System | Dashboard, cache stats/evict, config view, security events, force logout |
+
+All responses follow the standard envelope:
+```json
+{ "success": true, "data": { ... }, "timestamp": "..." }
+{ "success": false, "error": { "code": "...", "message": "..." }, "timestamp": "..." }
+```
+
+All external IDs are Hashid-encoded 8-character strings. Raw integers never appear in the API.
 
 ---
 
-## Project Structure
+## Roles & Permissions
 
-Package-by-feature under `src/main/java/com/reviewflow/` (see [orchestration/REFACTOR_STRATEGY.md](./orchestration/REFACTOR_STRATEGY.md)):
+| Role | Description | Created by |
+|---|---|---|
+| `STUDENT` | Enroll, submit, view own grades, team formation, messaging | Admin |
+| `INSTRUCTOR` | Create assignments, grade, manage own courses, discussions | Admin |
+| `ADMIN` | Academic administration — users, courses, announcements | SYSTEM_ADMIN or seed |
+| `SYSTEM_ADMIN` | Platform operations — infrastructure, overrides, monitoring | DB seed only — max 5 |
+
+**Role hierarchy:** `SYSTEM_ADMIN > ADMIN > INSTRUCTOR > STUDENT`
+
+---
+
+## Infrastructure
 
 ```
-src/main/java/com/reviewflow/
-├── auth/            ├── course/          ├── assignment/
-├── team/            ├── submission/      ├── evaluation/   (incl. PdfGenerationService)
-├── grading/         ├── discussion/      ├── messaging/
-├── notification/    ├── announcement/    ├── extension/
-├── admin/           ├── system/          ├── user/
-├── config/          # RedisConfig, MessagingRedisConfig
-├── infrastructure/  # security, storage, email, ratelimit, jobs, scheduling, …
-└── shared/          # domain entities, GlobalExceptionHandler, util
+Cloud:      AWS ca-central-1
+EC2:        t3.micro (free tier) — t3.small at first client
+S3:         reviewflow-storage (encrypted, versioned, public access blocked)
+ECR:        797795454732.dkr.ecr.ca-central-1.amazonaws.com/reviewflow
+CloudWatch: /reviewflow/application (30d) + /reviewflow/security (90d)
+Terraform:  6 modules — ec2, iam, s3, ecr, security-groups, cloudwatch
+            State: reviewflow-terraform-state-ca + reviewflow-terraform-locks
+DNS/TLS:    Cloudflare — reviewflowlms.com
 ```
 
 ---
@@ -141,10 +203,8 @@ src/main/java/com/reviewflow/
 ## Running Locally
 
 ### Prerequisites
-
 - Java 21+
-- Docker (for MySQL, Mailhog, Redis)
-- AWS credentials (or LocalStack for local S3)
+- Docker Desktop
 
 ### 1. Clone and configure
 
@@ -152,14 +212,16 @@ src/main/java/com/reviewflow/
 git clone https://github.com/olafabregas/Reviewflow.git
 cd Reviewflow
 cp .env.example .env
+# Fill in all values — see .env.example for required variables
 ```
-
-Edit `.env` with your values — see `.env.example` for all required variables.
 
 ### 2. Start dependencies
 
 ```bash
-docker compose up -d mysql mailhog redis
+docker compose up -d mysql redis mailhog
+# mysql  — primary database (port 3306)
+# redis  — rate limiting + distributed state (port 6379)
+# mailhog — local email catcher at localhost:8025
 ```
 
 ### 3. Start the backend
@@ -168,22 +230,50 @@ docker compose up -d mysql mailhog redis
 ./mvnw spring-boot:run
 ```
 
-Flyway migrations run automatically on startup. To seed development data:
+Flyway migrations run automatically on startup.
 
-```bash
-mysql -u root -p reviewflow_dev < src/main/resources/db/seed/seed.sql
-```
-
-API: `http://localhost:8081/api/v1`  
-Swagger UI: `http://localhost:8081/swagger-ui/index.html`
+- API: `http://localhost:8081/api/v1`
+- Swagger UI: `http://localhost:8081/swagger-ui/index.html`
+- Mailhog: `http://localhost:8025`
 
 ---
 
-## What’s Next
+## CI/CD Pipeline
 
-- [ ] React frontend (15 screens across 3 roles)
-- [ ] Docker Compose production config
-- [ ] VPS deployment
+Three GitHub Actions workflows:
+
+| Workflow | Trigger | What it does |
+|---|---|---|
+| `ci.yml` | Every push + every PR to main | Compile → unit tests → integration tests (MySQL container) → JaCoCo coverage PR comment → OWASP scan → Docker build check |
+| `cd.yml` | Merge to main + manual dispatch | Full test suite → ECR push → staging deploy with health check + rollback → manual approval gate → prod deploy |
+| `nightly.yml` | 2am UTC daily | Full OWASP scan · Full Postman suite against staging · ECR image cleanup |
+
+---
+
+## Project Structure
+
+```
+src/main/java/com/reviewflow/
+├── auth/            ├── course/          ├── assignment/
+├── team/            ├── submission/      ├── evaluation/
+├── grading/         ├── discussion/      ├── messaging/
+├── notification/    ├── announcement/    ├── extension/
+├── admin/           ├── system/          ├── user/
+├── config/          # CacheConfig, RedisConfig, AsyncConfig, SecurityConfig
+├── infrastructure/  # security, storage, email, ratelimit, jobs, scheduling
+└── shared/          # entities, GlobalExceptionHandler, HashidService, utils
+```
+
+---
+
+## What's Next
+
+- [ ] React frontend (15+ screens across 4 roles)
+- [ ] PRD-19 — Security Headers (written, agent-ready)
+- [ ] PRD-20 — Resend Email integration (written, agent-ready)
+- [ ] PRD-21 — Sentry error tracking (planned)
+- [ ] PRD-22 — Account deletion / GDPR (planned)
+- [ ] EC2 production deployment
 - [ ] Live demo
 
 ---
@@ -197,7 +287,6 @@ This project is licensed under the [MIT License](./LICENSE).
 ## Contributing
 
 This project is currently in active development and not open for contributions.
-
 Feel free to fork it or open an issue if you spot something worth discussing.
 
 ---
