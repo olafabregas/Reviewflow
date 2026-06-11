@@ -1,0 +1,46 @@
+# ─────────────────────────────────────────────────────────────
+# ReviewFlow — MySQL Production Config
+# Tuned for t3.micro (2GB RAM total)
+# MySQL budget: ~400MB
+# ─────────────────────────────────────────────────────────────
+
+[mysqld]
+
+# ── Character set ──────────────────────────────────────────────
+character-set-server  = utf8mb4
+collation-server      = utf8mb4_unicode_ci
+
+# ── InnoDB memory ──────────────────────────────────────────────
+innodb_buffer_pool_size         = 256M  # slightly more than staging
+innodb_buffer_pool_instances    = 1
+innodb_log_file_size            = 64M
+innodb_flush_log_at_trx_commit  = 1    # full ACID — required for prod
+innodb_flush_method             = O_DIRECT
+
+# ── Connection limits ──────────────────────────────────────────
+max_connections        = 100
+max_connect_errors     = 10000
+wait_timeout           = 600
+interactive_timeout    = 600
+
+# ── Slow query log ────────────────────────────────────────────
+slow_query_log         = 1
+slow_query_log_file    = /var/lib/mysql/slow-queries.log
+long_query_time        = 1     # tighter threshold in prod
+
+# ── Binary logging ────────────────────────────────────────────
+# Enable for production — required for point-in-time recovery
+# and replication if you add a read replica later
+log_bin                = mysql-bin
+binlog_format          = ROW
+binlog_expire_logs_seconds = 604800  # 7 days retention
+max_binlog_size        = 100M
+
+# ── Performance schema ────────────────────────────────────────
+performance_schema = OFF   # saves memory on t3.micro
+
+# ── Error log ─────────────────────────────────────────────────
+log_error = /var/lib/mysql/error.log
+
+[client]
+default-character-set = utf8mb4

@@ -1,0 +1,24 @@
+.git
+.github
+.idea
+.vscode
+target/
+!target/reviewflow-backend-*.jar
+storage/
+.venv
+*.md
+!README.md
+postman/
+terraform/
+orchestration/
+CICD Pipeline/
+cp.txt
+*.log
+.env
+*.env
+!/.env.example
+application-local.properties
+src/main/resources/db/seed/
+controller_specs/
+docs/
+.mvn/wrapper/maven-wrapper.jar

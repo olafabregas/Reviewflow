@@ -26,6 +26,7 @@
         <springdoc.version>2.5.0</springdoc.version>
         <testcontainers.version>1.19.8</testcontainers.version>
         <mockito.version>5.20.0</mockito.version>
+        <dependency-check.skip>true</dependency-check.skip>
     </properties>
 
     <dependencies>
@@ -411,6 +412,19 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>dependency-check-maven</artifactId>
+                <version>11.1.0</version>
+                <configuration>
+                    <skip>${dependency-check.skip}</skip>
+                    <failBuildOnCVSS>7</failBuildOnCVSS>
+                    <suppressionFiles>
+                        <suppressionFile>${project.basedir}/.github/owasp-suppressions.xml</suppressionFile>
+                    </suppressionFiles>
+                </configuration>
             </plugin>
 
             <plugin>
