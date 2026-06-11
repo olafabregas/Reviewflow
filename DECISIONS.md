@@ -1,8 +1,8 @@
 # ReviewFlow — Design Decisions
 
-This document captures the reasoning behind key architectural choices in ReviewFlow — not just what was built, but why, and what was accepted in return.
+This document captures the reasoning behind key architectural choices — not just what was built, but why, and what was accepted in return.
 
-For system flows and diagrams see [ARCHITECTURE.md](./ARCHITECTURE.md).  
+For system flows see [ARCHITECTURE.md](./ARCHITECTURE.md).
 For the project overview see [README.md](./README.md).
 
 ---
@@ -10,44 +10,48 @@ For the project overview see [README.md](./README.md).
 ## Contents
 
 1. [Monolith first, microservices boundaries defined](#1-monolith-first-microservices-boundaries-defined)
-1. [HTTP-only cookies over Authorization header](#2-http-only-cookies-over-authorization-header)
-1. [Token fingerprinting for stolen token rejection](#3-token-fingerprinting-for-stolen-token-rejection)
-1. [Hashids over UUIDs for external IDs](#4-hashids-over-uuids-for-external-ids)
-1. [Caffeine over Redis at current scale](#5-caffeine-over-redis-at-current-scale)
-1. [Event-driven async notifications](#6-event-driven-async-notifications)
-1. [ClamAV fail-open locally, fail-closed in production](#7-clamav-fail-open-locally-fail-closed-in-production)
-1. [Draft/publish lifecycle for evaluations](#8-draftpublish-lifecycle-for-evaluations)
-1. [Versioned submissions — no overwrite](#9-versioned-submissions--no-overwrite)
-1. [Submission type stored as explicit state](#10-submission-type-stored-as-explicit-state)
-1. [Event-driven email delivery decoupled from WebSocket](#11-event-driven-email-delivery-decoupled-from-websocket)
-1. [Announcement draft/publish before broadcast](#12-announcement-draftpublish-before-broadcast)
-1. [S3 presigned URLs for direct client access](#13-s3-presigned-urls-for-direct-client-access)
-1. [CSV in-memory generation at current scale](#14-csv-in-memory-generation-at-current-scale)
-1. [Structured JSON logging to CloudWatch](#15-structured-json-logging-to-cloudwatch)
-1. [Two-role hierarchy with role layers](#16-two-role-hierarchy-with-role-layers)
-1. [Fixed 5-account ceiling for system administration](#17-fixed-5-account-ceiling-for-system-administration)
-1. [Cache eviction throttle with 60-second window](#18-cache-eviction-throttle-with-60-second-window)
-1. [WebSocket push for real-time metrics delivery](#19-websocket-push-for-real-time-metrics-delivery)
+2. [HTTP-only cookies over Authorization header](#2-http-only-cookies-over-authorization-header)
+3. [Token fingerprinting for stolen token rejection](#3-token-fingerprinting-for-stolen-token-rejection)
+4. [Hashids over UUIDs for external IDs](#4-hashids-over-uuids-for-external-ids)
+5. [Caffeine for app caches, Redis for distributed state](#5-caffeine-for-app-caches-redis-for-distributed-state)
+6. [ClamAV removed from validation pipeline](#6-clamav-removed-from-validation-pipeline)
+7. [Event-driven async notifications](#7-event-driven-async-notifications)
+8. [Draft/publish lifecycle for evaluations](#8-draftpublish-lifecycle-for-evaluations)
+9. [Versioned submissions — no overwrite](#9-versioned-submissions--no-overwrite)
+10. [Submission type stored as explicit state](#10-submission-type-stored-as-explicit-state)
+11. [Event-driven email delivery decoupled from WebSocket](#11-event-driven-email-delivery-decoupled-from-websocket)
+12. [Resend SMTP relay over AWS SES and Java SDK](#12-resend-smtp-relay-over-aws-ses-and-java-sdk)
+13. [Announcement draft/publish before broadcast](#13-announcement-draftpublish-before-broadcast)
+14. [Avatar URLs stored as fixed URLs — no presign at read time](#14-avatar-urls-stored-as-fixed-urls--no-presign-at-read-time)
+15. [CSV in-memory generation at current scale](#15-csv-in-memory-generation-at-current-scale)
+16. [Structured JSON logging to CloudWatch](#16-structured-json-logging-to-cloudwatch)
+17. [Four-role hierarchy — SYSTEM_ADMIN separate from ADMIN](#17-four-role-hierarchy--system_admin-separate-from-admin)
+18. [Fixed 5-account ceiling for SYSTEM_ADMIN](#18-fixed-5-account-ceiling-for-system_admin)
+19. [Cache eviction throttle with 60-second window](#19-cache-eviction-throttle-with-60-second-window)
+20. [WebSocket push for real-time metrics delivery](#20-websocket-push-for-real-time-metrics-delivery)
+21. [Terraform over CDK and CloudFormation](#21-terraform-over-cdk-and-cloudformation)
+22. [Multi-stage Dockerfile — builder + runtime stages](#22-multi-stage-dockerfile--builder--runtime-stages)
+23. [GitHub Actions over other CI/CD platforms](#23-github-actions-over-other-cicd-platforms)
+24. [Docker image to ECR over JAR-direct-SSH deployment](#24-docker-image-to-ecr-over-jar-direct-ssh-deployment)
+25. [INDIVIDUAL as default submission_type](#25-individual-as-default-submission_type)
 
 ---
 
 ## 1. Monolith first, microservices boundaries defined
 
-**Decision:** Single Spring Boot deployment. Services are logically separated by domain but deployed as one unit.
+**Decision:** Single Spring Boot deployment. Services are logically separated by domain package but deployed as one unit.
 
 **Why:**
-
 - Fast iteration — no inter-service networking, no distributed transaction overhead
-- Simple operations — one deployment, one database, full ACID guarantees across all operations
-- At university scale (hundreds of users, one institution), microservices would be pure overhead
+- Full ACID guarantees across all operations — grade publish, team formation, submission upload all share one DB connection
+- At university scale (hundreds of users, single institution), microservices would be pure operational overhead
 
 **Accepted tradeoffs:**
+- Cannot independently scale file upload throughput vs API requests vs notification delivery
+- One failure domain — a crash takes down everything
+- WebSocket requires sticky sessions or Redis pub/sub before horizontal scaling
 
-- Cannot independently scale file upload throughput, API requests, and notification delivery
-- One deployment unit means one failure domain — a crash takes down everything
-- WebSocket requires sticky sessions before horizontal scaling is viable
-
-**Mitigation:** Service boundaries are already defined in the codebase. Extraction to independent services is a deployment decision, not a refactoring effort. See [ARCHITECTURE.md — Evolution Path](./ARCHITECTURE.md#12-architecture-evolution-path) for the extraction plan.
+**Mitigation:** Service boundaries are already defined by package structure. Extraction is a deployment decision, not a refactor.
 
 ---
 
@@ -56,416 +60,356 @@ For the project overview see [README.md](./README.md).
 **Decision:** JWT stored in `HttpOnly; Secure; SameSite=Strict` cookies, not in `localStorage` or `Authorization` headers.
 
 **Why:**
-
-- `localStorage` is accessible to JavaScript — any XSS vulnerability exposes the token
-- HTTP-only cookies cannot be read by JavaScript under any circumstances — XSS cannot steal them
-- `SameSite=Strict` prevents cookies from being sent on cross-origin requests, which eliminates the CSRF concern traditionally associated with cookie-based auth
+- `localStorage` is accessible to JavaScript — any XSS vulnerability exposes the token entirely
+- HTTP-only cookies cannot be read by JavaScript under any circumstances
+- `SameSite=Strict` prevents cookies from being sent on cross-origin requests, eliminating the CSRF concern traditionally associated with cookie auth
 
 **Accepted tradeoffs:**
-
 - Mobile clients and non-browser consumers need a different auth flow
-- Concurrent refresh requests can create a brief race window — mitigated by refresh token rotation (see Decision 3)
-- More complex CORS configuration required — credentials must be explicitly allowed
+- More complex CORS configuration — credentials must be explicitly allowed
+- Concurrent refresh requests require careful rotation logic
 
 ---
 
 ## 3. Token fingerprinting for stolen token rejection
 
-**Decision:** A fingerprint hash derived from the request’s `User-Agent` and IP address is embedded as a claim in the JWT. Every authenticated request recomputes the fingerprint and compares it against the claim — a mismatch returns `401 INVALID_FINGERPRINT`.
+**Decision:** A fingerprint hash derived from `User-Agent` and IP is embedded as a JWT claim. Every authenticated request recomputes and compares — mismatch returns `401 INVALID_FINGERPRINT`.
 
 **Why:**
-
-- Even with HTTP-only cookies, a cookie can theoretically be extracted via network interception or a browser vulnerability
-- Without fingerprinting, a stolen cookie is valid on any device until it expires
-- With fingerprinting, a stolen cookie is invalid the moment it is used from a different device or network context
+- Even with HTTP-only cookies, a cookie could theoretically be extracted via network interception
+- Without fingerprinting, a stolen cookie is valid on any device until expiry
+- With fingerprinting, a stolen cookie is immediately invalid on any other device or network
 
 **Accepted tradeoffs:**
-
-- Users on dynamic IP addresses (mobile networks, VPNs) may experience unexpected logouts — fingerprint includes IP, which changes
-- Disabled in local/dev profile to avoid friction during development
-- User-Agent can be spoofed — this is a deterrent layer, not a cryptographic guarantee
+- Users on dynamic IPs (mobile, VPN) may experience unexpected logouts
+- Disabled in local/dev profile to avoid friction
+- User-Agent can be spoofed — this is a deterrent layer, not cryptographic proof
 
 ---
 
 ## 4. Hashids over UUIDs for external IDs
 
-**Decision:** Internal primary keys are `BIGINT` (fast joins, compact indexes). All external-facing IDs are encoded to 8-character opaque strings using Hashids before leaving the API layer.
+**Decision:** Internal PKs are `BIGINT`. All external-facing IDs are encoded to 8-character opaque strings using Hashids.
 
 **Why:**
+- Sequential integers leak record counts and enable enumeration attacks
+- UUIDs are 36 characters, random, and not reversible
+- Hashids are short, deterministic, reversible — no storage overhead, no schema change
 
-- Sequential integers in a public API leak record counts and enable enumeration attacks (`GET /submissions/1`, `/2`, `/3`)
-- UUIDs solve the enumeration problem but are 36 characters, random, and not sortable
-- Hashids produce short, deterministic, reversible opaque strings — no storage overhead, no schema change, and the salt is the only secret
-
-```
-External:  GET /evaluations/k3N9mQ2p
-                                ↓ HashidService.decodeOrThrow()
-Internal:  SELECT * FROM evaluations WHERE id = 47391
-```
+**Critical rule:** The Hashids salt must never change after first deployment. Changing it invalidates every external ID ever issued — all links, bookmarks, and API integrations break permanently.
 
 **Accepted tradeoffs:**
-
-- The salt must never change after first deployment — changing it invalidates all existing external IDs permanently
-- Hashids are reversible if the salt is leaked — they are obfuscation, not encryption
-- A separate `HashidService.encode/decode` call is required at every controller boundary
+- Salt must be protected as a secret
+- Hashids are obfuscation, not encryption — reversible if salt leaks
+- Extra `HashidService.encode/decode` call at every controller boundary
 
 ---
 
-## 5. Caffeine over Redis at current scale
+## 5. Caffeine for app caches, Redis for distributed state
 
-**Decision:** In-memory Caffeine cache for all four caches. No Redis.
+**Decision:** Two separate caching layers with distinct responsibilities. Caffeine owns Spring `@Cacheable` app caches. Redis owns distributed/shared state.
 
-**Why:**
+**What Caffeine owns (per-JVM, in-process):**
+All 13 Spring `@Cacheable` caches — adminStats, unreadCount, userCourses, assignmentDetail, courseGradeGroups, courseModules, gradeOverview, classStatistics, courseMaterials, courseDiscussions, discussionParticipation, csvImports, oauthState.
 
-- At single-node, single-institution scale, Redis adds operational complexity with no performance benefit
-- Caffeine benchmarks faster than Redis for single-node use — no network round-trip
-- The Spring Cache abstraction means the entire switch to Redis requires changing only `CacheConfig` — no `@Cacheable` or `@CacheEvict` annotations change anywhere
+**What Redis owns (distributed, always-on):**
+Rate limiting (Bucket4j), grade aggregate blobs, CSV job state, import locks, OAuth CSRF state, token version store (conditional), messaging pub/sub (optional).
 
-**Accepted tradeoffs:**
+**The gray area — grade overviews use both:**
+Caffeine wraps the method via `@Cacheable`. Redis stores the computed grade blob inside that method via `GradeAggregateService`. This is not L1/L2 — they serve different purposes on different call paths.
 
-- Cache is not shared across nodes — irrelevant until horizontal scaling
-- Cache is lost on restart — acceptable given TTLs of 30 seconds to 10 minutes
-- Rate limiting is also per-instance — no global rate limit enforcement across nodes
+**Why not Redis for everything:**
+Caffeine is faster for single-node reads (no network round-trip). The Spring Cache abstraction means swapping Caffeine for Redis on app caches is a `CacheConfig` change — no annotation changes anywhere.
 
-**The line to Redis:** The moment horizontal scaling is needed — either for WebSocket (which requires a shared broker) or for cache consistency — Redis gets added and Caffeine is swapped out. The code is already written for that transition.
+**Why Redis was added:**
+Rate limiting must be shared across instances — per-instance in-memory buckets would allow the same IP to be rate-limited separately on each node. Grade aggregates are expensive to recompute — storing them in Redis means any instance can serve the cached result. CSV job state must survive instance restarts.
 
----
-
-## 6. Event-driven async notifications
-
-**Decision:** Services publish Spring `ApplicationEvent`s on write operations. `NotificationEventListener` handles DB persistence and WebSocket delivery on a separate thread pool — never on the calling thread.
-
-**Why:**
-
-- A file upload or grade publication should not be slowed down by notification delivery
-- Decoupling write operations from notification side-effects makes each service’s responsibility clear
-- DB-first persistence means a notification is never lost, even if WebSocket delivery fails
-
-**Accepted tradeoffs:**
-
-- Users may not receive critical updates immediately — WebSocket delivery is best-effort
-- System state and user perception can briefly diverge (within the 30-second `unreadCount` cache TTL)
-- Debugging is harder — a notification failure is invisible to the thread that triggered it
-
-**The guarantee:** The DB write for the notification always succeeds before the WebSocket push is attempted. If the push fails, the notification is still in the database and the client recovers it on reconnect.
+**Previous decision (outdated):** DECISIONS.md previously stated "no Redis for caches." This was accurate when written but Redis was later added for the above concerns without migrating `CacheConfig` to `RedisCacheManager`. The mental model is: Caffeine = Spring Cache layer, Redis = shared infrastructure state.
 
 ---
 
-## 7. ClamAV fail-open locally, fail-closed in production
+## 6. ClamAV removed from validation pipeline
 
-**Decision:** If ClamAV is unavailable, file uploads proceed in local/dev profile and are rejected in production.
+**Decision:** ClamAV was removed entirely from the file validation pipeline. The pipeline is now 3 stages: extension whitelist → MIME verification → size limit.
 
 **Why:**
-
-- Requiring ClamAV to be running for every local development session would create constant friction
-- In production, an unavailable ClamAV scanner means the security guarantee cannot be upheld — uploads must be blocked
+- ClamAV requires a dedicated service running alongside the application — a Docker container, socket connection, and scan latency added to every file upload
+- On a t3.micro with 2GB RAM, running ClamAV alongside Spring Boot and MySQL created memory pressure
+- ReviewFlow's users are authenticated and known — the threat model for a university platform is materially different from a public file hosting service
+- MIME verification already catches the most common attack vectors (MIME spoofing, renamed executables)
 
 **Accepted tradeoffs:**
+- No virus scanning — known risk, documented and accepted
+- A malicious authenticated user could upload malware that another user downloads
+- Mitigation: pre-signed URL downloads mean files are served directly from S3 to the browser — the application server is never in the download path
 
-- A developer who forgets to start ClamAV locally will not notice — files that would be rejected in production pass through silently
-- This creates a potential gap between local behavior and production behavior
-- Mitigated by keeping ClamAV in `docker compose` — `docker compose up -d clamav` is one command
+**Re-enablement path:** ClamAV infrastructure code and profile-based configuration were retained. To re-enable: add `clamav` service to Docker Compose and set `clamav.enabled=true` in the prod profile. The pipeline will activate immediately with fail-closed behaviour.
 
-**Profile configuration:**
+---
 
-| Profile | ClamAV unavailable            |
-| ------- | ----------------------------- |
-| `local` | Upload proceeds (fail-open)   |
-| `prod`  | Upload rejected (fail-closed) |
+## 7. Event-driven async notifications
+
+**Decision:** Services publish Spring `ApplicationEvent`s. `NotificationEventListener` handles DB persistence and WebSocket delivery on a separate thread pool — never on the calling thread.
+
+**Why:**
+- A file upload should not be slowed down by notification delivery
+- DB-first persistence means a notification is never lost even if WebSocket delivery fails
+- Decoupling write operations from notification side-effects makes each service's responsibility clear
+
+**The guarantee:** DB write for the notification always succeeds before WebSocket push is attempted. If the push fails, the notification exists in the database and the client recovers it on reconnect.
+
+**Accepted tradeoffs:**
+- Users may not receive notifications immediately — WebSocket is best-effort
+- System state and user perception can briefly diverge (within 30-second `unreadCount` TTL)
+- Debugging is harder — notification failures are invisible to the triggering thread
 
 ---
 
 ## 8. Draft/publish lifecycle for evaluations
 
-**Decision:** Evaluations are created as `is_draft=true` and are completely invisible to students. A draft evaluation returns `404`, not `403`, when requested by a student.
+**Decision:** Evaluations are created as `is_draft=true` and return `404` (not `403`) to students until published.
 
 **Why:**
+- `403` would tell the student "this evaluation exists but you can't see it" — revealing information before the instructor is ready
+- `404` reveals nothing — from the student's perspective, the evaluation does not exist yet
+- Instructors need time to save, score, and review before students see anything
 
-- Returning `403` would tell the student “this evaluation exists but you can’t see it” — revealing information before the instructor is ready to publish
-- `404` reveals nothing — from the student’s perspective, the evaluation simply does not exist yet
-- Instructors need to be able to save, score, and review evaluations before students can see them — the draft state enables this without time pressure
-
-**Accepted tradeoffs:**
-
-- The distinction between “doesn’t exist” and “exists but draft” is invisible to students — this is intentional
-- Once published, an evaluation cannot be unpublished — publication is a permanent transition
+**Publication is permanent** — once published, an evaluation cannot be unpublished. The SYSTEM_ADMIN reopen flow creates a new evaluation revision with audit snapshot rather than reverting visibility.
 
 ---
 
 ## 9. Versioned submissions — no overwrite
 
-**Decision:** Every file upload creates a new submission record with an incremented `version_number`. Previous versions are retained in S3 and in the database.
+**Decision:** Every file upload creates a new submission record with an incremented `version_number`. Previous versions are retained.
 
 **Why:**
-
-- Overwriting a submission loses the audit history of what was submitted and when
-- `isLate` is computed at upload time — version history preserves when each version was submitted relative to the deadline
-- Instructors can see the full submission history, not just the latest file
-- No destructive writes means no data loss scenarios from accidental re-upload
+- Overwriting loses the audit history of what was submitted and when
+- `isLate` is computed at upload time — version history preserves the late status of each version
+- No destructive writes means no data loss from accidental re-upload
 
 **Accepted tradeoffs:**
-
-- S3 storage grows with every version — old versions are never automatically deleted
-- Requires a `SELECT MAX(version_number)` before every upload to determine the next version
-- Students submitting many times accumulate storage costs — acceptable at current scale
+- S3 storage grows with every version
+- Requires `SELECT MAX(version_number)` before every upload
+- Old versions are never automatically deleted (S3 lifecycle transitions to STANDARD_IA after 90 days)
 
 ---
 
 ## 10. Submission type stored as explicit state
 
-**Decision:** The `submission_type` enum (INDIVIDUAL | TEAM) is stored on the `assignments` table as an explicit column, not inferred from team configuration.
+**Decision:** `submission_type` ENUM (INDIVIDUAL | TEAM | INSTRUCTOR_GRADED) stored on `assignments`, not inferred from team configuration.
 
 **Why:**
+- Prevents ambiguity when team configuration and assignment intent drift apart
+- Enables explicit state machine for downstream features
+- Immutability after submissions/teams exist prevents orphaned data
 
-- Prevents ambiguity when team formation rules and assignment intent drift apart
-- Enables explicit state machine for downstream features (export, notifications, evaluations)
-- Audit trail shows exactly when and what submission model was chosen
-
-**Accepted tradeoffs:**
-
-- Adds one column to assignments table and one migration
-- Application must guard against type/data mismatch — a team exists but assignment is INDIVIDUAL
-- Requires validation in controllers before accepting team or individual submissions
-
-**Mitigation:**
-
-- Application-level guard: all submission endpoints check assignment `submission_type` and accept/reject accordingly
-- Audit logging: type changes are logged to audit_log if permitted (blocked once submissions exist)
-- Test coverage: both INDIVIDUAL and TEAM paths tested to prevent divergence
-
-See [ARCHITECTURE.md — Dual Ownership Model](./ARCHITECTURE.md#dual-ownership-model) for query pattern details.
+**Default is INDIVIDUAL** — safer failure mode. An instructor forgetting to set the type means students submit directly rather than hitting broken team formation. See Decision 25.
 
 ---
 
 ## 11. Event-driven email delivery decoupled from WebSocket
 
-**Decision:** Email notifications are published as async events on a separate thread pool, completely independent of WebSocket delivery. Email failure never blocks or affects in-app notifications.
+**Decision:** Email runs on a completely separate thread pool (`emailTaskExecutor`) from WebSocket notification delivery (`notificationTaskExecutor`).
 
 **Why:**
+- SMTP latency (100–500ms) must not block WebSocket push or REST response
+- An SMTP outage must not affect in-app notifications
+- Fire-and-forget: email failures are logged but never propagate to the calling thread
 
-- SMTP latency (100-500ms per email) must not block WebSocket push or REST response
-- Decoupling write operations from email side-effects: grade publication returns immediately, email ships asynchronously
-- Email failures are isolated — a mail server outage does not bring down the application
-
-**Accepted tradeoffs:**
-
-- Users may not receive emails immediately — emails arrive delayed by seconds to minutes
-- Retry complexity: failed emails queued and retried with exponential backoff
-- Debugging is harder — email failures are invisible to the thread that triggered them
-
-**Mitigation:**
-
-- Dead-letter queue (DLQ) for emails exceeding retry limit
-- Admin dashboard exposes undelivered email count and last 100 failures
-- User sees "notification queued" status in UI — sets expectations for eventual delivery
-
-See [ARCHITECTURE.md — Email Event Listeners](./ARCHITECTURE.md#email-event-listeners) for architecture diagram.
+**The guarantee:** DB notification is written first. If email fails, the user still has the in-app notification via WebSocket and DB.
 
 ---
 
-## 12. Announcement draft/publish before broadcast
+## 12. Resend SMTP relay over AWS SES and Java SDK
 
-**Decision:** Announcements are created in DRAFT state and are invisible to students and most instructors. Draft announcements must be explicitly published by creator or admin before students can read them.
+**Decision:** Resend SMTP relay via `JavaMailSender`. Not AWS SES. Not the Resend Java SDK.
 
-**Why:**
+**Why over AWS SES:**
+- `reviewflowlms.com` DNS is already verified at Resend — SPF, DKIM, DMARC all configured
+- SES requires production access request (24–48hr AWS review), additional IAM setup, and separate DNS records
+- Resend is operational immediately — SES was strictly more work for equivalent outcome
 
-- Prevents accidental typos or off-topic broadcasts that reach entire courses
-- Allows review window: creator drafts, another instructor reviews, then publishes
-- Email and notifications only fire on publish — no premature broadcasts
+**Why SMTP relay over Resend SDK:**
+- The SDK would require rewriting `EmailEventListener` and all 10 `MimeMessage` constructions — high risk, tested code
+- SMTP relay keeps the entire existing stack intact — `JavaMailSender` sends through Resend's endpoint exactly as it would through any other SMTP server
+- Spring Mail abstraction is preserved — switching providers in the future is a config change
 
 **Accepted tradeoffs:**
-
-- UI complexity: additional workflow step (draft → review → publish) before announcements go live
-- Instructors may forget to publish — requires double-action to broadcast
-- History of draft announcements accumulates in database
-
-**Mitigation:**
-
-- Templates: pre-written announcement templates for common scenarios (due date changes, grading delays)
-- Scheduling UI: instructors can draft announcements and schedule publication for later
-- Publish button is high-visibility: distinct color, prominent placement in instructor dashboard
-
-See [ARCHITECTURE.md — Announcement State Machine](./ARCHITECTURE.md#announcement-state-machine) for state diagram.
+- SMTP relay does not provide per-send delivery status in code — Resend dashboard only
+- ReviewFlow's fire-and-forget architecture means per-send status provides no architectural benefit at this stage
 
 ---
 
-## 13. S3 presigned URLs for direct client access
+## 13. Announcement draft/publish before broadcast
 
-**Decision:** Files (submissions, PDFs, avatars) are accessed via presigned S3 URLs returned by the API, not streamed through the backend. Client-side rendering is fully supported.
+**Decision:** Announcements are `DRAFT` until explicitly published. No notifications fire until publish.
 
 **Why:**
+- Prevents accidental broadcasts before content is ready
+- Allows review before sending to entire course
 
-- Zero backend memory overhead — no file buffering or streaming
-- Presigned URL generation is stateless — no session tracking required
-- Browser native rendering: PDF viewers, image galleries handle display directly
-- S3 handles HTTPS, range requests, and authentication — all built-in
-
-**Accepted tradeoffs:**
-
-- Presigned URLs are longer and less readable than traditional `/api/files/{id}` endpoints
-- URLs are reversible if salt is leaked (not encrypted, but time-bounded)
-- Longer URLs can cause issues in some contexts (email, logging, shared links)
-
-**Mitigation:**
-
-- Short TTL (15 minutes): URLs are valid only long enough for a study session
-- IP fingerprinting: optional extra layer — presigned URLs valid only from originating IP
-- Upgrade path: when CloudFront is added, swap to CloudFront signed URLs without code changes
+**Semantics:** Students enrolled at publish time receive notifications. Late enrollees can read published announcements but receive no notification.
 
 ---
 
-## 14. CSV in-memory generation at current scale
+## 14. Avatar URLs stored as fixed URLs — no presign at read time
 
-**Decision:** Grade export generates CSV in memory using OpenCSV library. No streaming, no async job queue.
+**Decision:** Avatar URLs are built once on upload (`https://{bucket}.s3.{region}.amazonaws.com/avatars/{hashedUserId}/avatar.{ext}?v={epochMillis}`), persisted in `users.avatar_url`, and returned directly from the DB on every read. No S3 SDK calls at read time.
 
 **Why:**
+- A roster endpoint returning 800 members would require 800 presign SDK calls per request — unacceptable latency
+- Fixed URLs with `?v=` cache-busting achieve cache freshness without per-request SDK calls
+- `?v=` is only updated on avatar upload/replace — not on every API read
 
-- Current scale: hundreds of submissions per assignment fit in process memory (<5MB)
-- Simplicity: single controller method, no job infrastructure, response streams directly to browser
-- Deterministic: export is atomic — no race conditions between building CSV and delivery
+**Infrastructure caveat:** This works only if the `avatars/` S3 prefix is publicly readable OR `S3_PUBLIC_BASE_URL` points at CloudFront serving those objects. If the bucket is fully private with `blockPublicAccess: true` and no CDN path, the API returns URLs correctly but browsers receive `403` on image load. Verify bucket/CDN policy before deploying the frontend.
 
-**Accepted tradeoffs:**
-
-- OOM (out of memory) risk if an assignment scales to thousands of submissions
-- No streaming progress bar — users wait for entire CSV generation before download starts
-- Memory spike during export prevents other requests from using that heap
-
-**Mitigation:**
-
-- Clear max size limits: API rejects exports for assignments with >5000 submissions
-- Documented upgrade path: when scale demands, swap to async job queue + S3 upload pattern
-- Monitoring: alerts on heap pressure during exports
-
-See [ARCHITECTURE.md — Grade Export Query Optimization](./ARCHITECTURE.md#grade-export-query-optimization) for alternative approaches.
+**Upgrade path:** If avatars move to fully private objects, the options are: CloudFront signed cookies, public prefix for avatars only, or batch presign with caching. Either is additive — no application logic changes.
 
 ---
 
-## 15. Structured JSON logging to CloudWatch
+## 15. CSV in-memory generation at current scale
 
-**Decision:** All application logs are formatted as JSON (via logstash-logback-encoder) and published to AWS CloudWatch Logs. No local file logs in production.
+**Decision:** Grade export generates CSV in memory. No streaming, no async job.
 
 **Why:**
-
-- Centralized searchability: logs are queryable from AWS console
-- Container-ready: works in Docker and ECS without local file mounts
-- Structured data: log fields (user_id, course_id, action) are queryable JSON — no log parsing required
-- Retention policies: CloudWatch handles log rotation and deletion
+- Current scale: hundreds of submissions per assignment fit easily in process memory (<5MB)
+- Single controller method, no job infrastructure, response streams directly to browser
+- Atomic — no race conditions between building CSV and delivery
 
 **Accepted tradeoffs:**
+- OOM risk if assignments scale to thousands of submissions
+- No progress bar — users wait for full CSV before download starts
 
-- Hard AWS dependency: logging fails if CloudWatch is unreachable
-- Local development requires CloudWatch mock (localstack) or file fallback
-- JSON parsing overhead: negligible (<1ms per request)
-
-**Mitigation:**
-
-- Local CloudWatch emulator: `docker-compose up localstack` provides a CloudWatch mock
-- Dev profile falls back to JSON-to-console logging, no AWS credentials needed
-- Request correlation via `X-Trace-Id` header stitches logs across async flows
+**Scale limit:** API rejects exports for assignments with >5,000 submissions. Upgrade path: async job → S3 upload → download link pattern.
 
 ---
 
-## 16. Two-role hierarchy with role layers
+## 16. Structured JSON logging to CloudWatch
 
-**Decision:** Introduce a four-tier role hierarchy: SYSTEM_ADMIN > ADMIN > INSTRUCTOR > STUDENT. Spring Security role hierarchy grants permissions down the chain.
+**Decision:** All application logs formatted as JSON via logstash-logback-encoder, shipped to AWS CloudWatch Logs via CloudWatch Agent reading `/var/log/reviewflow/`.
 
 **Why:**
-
-- Separates concerns: SYSTEM_ADMIN handles platform infrastructure (metrics, cache, security)
-- ADMIN remains for academic management (users, courses, grades)
-- Prevents mission creep: program coordinators no longer have view into infrastructure metrics
-- Aligns with Blackboard/Canvas/Banner model — familiar to administrators
+- Log fields (`traceId`, `userId`, `courseId`, `action`) are queryable JSON — no log parsing required
+- `X-Trace-Id` header on every response enables instant CloudWatch Insights correlation
+- CloudWatch handles retention, rotation, and alerting natively
 
 **Accepted tradeoffs:**
-
-- Increased role complexity: four roles instead of three
-- Program coordinators lose access to infrastructure monitoring
-- Requires documentation: role boundaries not immediately obvious
-
-**Mitigation:**
-
-- Role documentation: DECISIONS.md and ARCHITECTURE.md document each role's scope
-- Runbook: operation manual includes role assignment procedures
-- Audit logging: all role changes logged to audit_log
-
-See [ARCHITECTURE.md — Role Hierarchy Diagram](./ARCHITECTURE.md#role-hierarchy-diagram) and [00_Global_Rules_and_Reference.md](./controller_specs/00_Global_Rules_and_Reference.md#role-hierarchy).
+- Hard AWS dependency — logging degrades if CloudWatch is unreachable (logs still written to file)
+- JSON encoding overhead — negligible (<1ms per request)
 
 ---
 
-## 17. Fixed 5-account ceiling for system administration
+## 17. Four-role hierarchy — SYSTEM_ADMIN separate from ADMIN
 
-**Decision:** Hard limit of 5 SYSTEM_ADMIN accounts platform-wide, enforced at both database and application layer. No API endpoint to create or delete — only Flyway migrations.
+**Decision:** Four roles: `SYSTEM_ADMIN > ADMIN > INSTRUCTOR > STUDENT`. Academic admins and platform operators are separate.
 
 **Why:**
+- An academic admin managing courses and users has no business seeing JVM metrics, cache statistics, or security events
+- Mixing responsibilities creates a security risk (over-privileged academic staff) and a UX problem
+- Aligns with Blackboard/Canvas model — familiar to university administrators
 
-- Not 1 (single point of failure if credentials compromised or forgotten)
-- Not unlimited (security and governance risk)
+**SYSTEM_ADMIN exclusive:** actuator endpoints, system dashboard, force logout, team unlock, evaluation reopen, cache management. Max 5 accounts, DB seed only — no API creation path prevents privilege escalation.
+
+---
+
+## 18. Fixed 5-account ceiling for SYSTEM_ADMIN
+
+**Decision:** Hard limit of 5 SYSTEM_ADMIN accounts, enforced at both DB and application layer.
+
+**Why:**
+- Not 1 — single point of failure if credentials are compromised or forgotten
+- Not unlimited — security and governance risk
 - 5 provides backup and redundancy without proliferation
-- Migration-based creation, not API: prevents privilege escalation bugs
-
-**Accepted tradeoffs:**
-
-- Manual account creation process with database access required
-- Exceeding 5 accounts requires direct SQL modification
-- Slower onboarding for new system administrators
-
-**Mitigation:**
-
-- Migration-based creation: all accounts logged in version control (audit trail)
-- Runbook: documents exact steps to add a SYSTEM_ADMIN via migration
-- Count enforcement: application rejects creation via API if limit is exceeded (fail-closed)
-
-**Verification references:** enforcement and role boundaries are reflected in [REVIEWFLOW_MASTER_SUMMARY (1).md](<./Features/REVIEWFLOW_MASTER_SUMMARY%20(1).md#6-roles--permissions>) and the active test-spec baseline notes in [TEST_COVERAGE_SUMMARY.md](./controller_specs/TEST_COVERAGE_SUMMARY.md).
+- Migration-based creation only — logged in version control, no API endpoint to exploit
 
 ---
 
-## 18. Cache eviction throttle with 60-second window
+## 19. Cache eviction throttle with 60-second window
 
-**Decision:** SYSTEM_ADMIN can force-evict caches (individually or all), but throttle prevents more than one eviction per cache per 60 seconds. Throttle state is in-process (not replicated).
+**Decision:** SYSTEM_ADMIN can force-evict caches, but a 60-second gate prevents more than one eviction per cache per minute.
 
 **Why:**
+- Operational recovery without a full restart
+- Prevents operator from hammering the eviction endpoint and causing thundering herd
 
-- Operational recovery: allows cache refresh without full restart
-- DoS prevention: throttle prevents operator from hammering eviction endpoint
-- Simple implementation: in-process Map<cacheName, lastEvictionTime>
-
-**Accepted tradeoffs:**
-
-- Throttle state not shared across multi-instance deployments — both instances could evict simultaneously if in the same second
-- Operator must wait 60 seconds between evictions — cannot rapid-fire recovery
-- Documented limitation: upgrade path is Redis-backed throttle once multi-instance active
-
-**Mitigation:**
-
-- Limitation documented in runbook and ARCHITECTURE.md
-- Monitoring: alerts on cache miss patterns (potential stale data trigger)
-- Redis upgrade path: when horizontal scaling is needed, throttle state moves to shared Redis
+**Limitation:** Throttle state is in-process. Multi-instance deployments could evict simultaneously. Upgrade path: Redis-backed throttle when horizontal scaling is active.
 
 ---
 
-## 19. WebSocket push for real-time metrics delivery
+## 20. WebSocket push for real-time metrics delivery
 
-**Decision:** System metrics (JVM memory, DB connections, cache stats, uptime) are pushed to subscribed SYSTEM_ADMIN clients via WebSocket every 30 seconds, plus immediately on alarm triggers.
+**Decision:** System metrics pushed to subscribed SYSTEM_ADMIN clients via WebSocket every 30 seconds plus immediately on alarm triggers.
 
 **Why:**
+- Lower latency and overhead than polling
+- Leverages existing WebSocket infrastructure
+- Immediate push on alarm triggers (cache miss spike, connection pool exhaustion) enables fast incident response
 
-- Lower latency: metrics arrive without polling
-- Lower overhead: 30-second cadence is gentle on network vs HTTP polling every 5 seconds
-- Real-time event notification: alarms (cache miss spike, connection pool exhaustion) trigger immediate push
-- STOMP integration: leverage existing WebSocket infrastructure
-
-**Accepted tradeoffs:**
-
-- Requires persistent connection: SYSTEM_ADMIN dashboard must stay open
-- Slight complexity vs stateless REST: requires subscription management
-- Multi-instance scaling requires shared metric broker (Redis pub/sub) to avoid silos
-
-**Mitigation:**
-
-- Client reconnect logic: automatic reconnection if WebSocket drops
-- STOMP subscription pattern documented in [09_Module_Admin.md](./controller_specs/08_Module_Admin.md)
-- Future: Redis pub/sub provides multi-instance metric broadcasting
-
-See [ARCHITECTURE.md — Metrics Push Architecture](./ARCHITECTURE.md#metrics-push-architecture) for complete flow diagram.
+**Limitation:** Multi-instance requires Redis pub/sub to avoid metric silos — already wired, default off.
 
 ---
+
+## 21. Terraform over CDK and CloudFormation
+
+**Decision:** Terraform (HCL) for all AWS infrastructure as code.
+
+**Why:**
+- Cloud-agnostic — mental model transfers if ReviewFlow moves to GCP or Azure
+- Largest provider ecosystem, most mature module system
+- CloudFormation is AWS-only with verbose syntax
+- CDK adds an abstraction layer that can obscure what is actually being provisioned
+- Declarative HCL is easier to review and audit than imperative CDK code
+
+**State management:** S3 backend (`reviewflow-terraform-state-ca`) + DynamoDB locking (`reviewflow-terraform-locks`) — safe for concurrent applies and state versioning.
+
+---
+
+## 22. Multi-stage Dockerfile — builder + runtime stages
+
+**Decision:** Two-stage Dockerfile. Stage 1: full JDK 21 + Maven compiles the JAR. Stage 2: JRE-only runtime copies the JAR in.
+
+**Why:**
+- Image size: ~600MB (single-stage) → ~250MB (multi-stage) — 60% reduction
+- Source code never appears in the deployed image — reduced attack surface
+- Maven toolchain not present in production — smaller dependency footprint
+- Layer caching: Maven dependency layer changes rarely — cached between builds
+
+---
+
+## 23. GitHub Actions over other CI/CD platforms
+
+**Decision:** GitHub Actions for all CI/CD pipelines.
+
+**Why:**
+- Code already lives in GitHub — zero additional integration
+- 2,000 free minutes/month on Linux runners is sufficient for ReviewFlow's build cadence
+- Native GitHub integration: PR comments for JaCoCo coverage, GitHub Environments for manual approval gates, GitHub Secrets for credential management
+- No additional platform to manage, authenticate, or pay for
+
+---
+
+## 24. Docker image to ECR over JAR-direct-SSH deployment
+
+**Decision:** Build Docker image → push to ECR → pull to EC2 on deploy. Not SSH + SCP of a JAR file.
+
+**Why:**
+- Every deploy is a tagged image — rollback means pulling the previous tag, not recovering a lost JAR
+- ECR provides image versioning, scanning on push (CVE detection), and lifecycle policies
+- Same image runs on staging and production — no "works on my machine" between environments
+- Migration path to ECS or Kubernetes requires zero pipeline changes — same image, different target
+
+**Accepted tradeoffs:**
+- Slightly slower deploys (~2–3 min to push image vs ~30s SCP)
+- ECR storage costs — free tier 500MB/month, image is ~250MB
+- Image build requires Docker on the GitHub Actions runner
+
+---
+
+## 25. INDIVIDUAL as default submission_type
+
+**Decision:** `submission_type` defaults to `INDIVIDUAL` when not explicitly set.
+
+**Why:**
+- Safer failure mode: an instructor who forgets to set the type gets students submitting directly — functional, if not ideal
+- If it defaulted to `TEAM`, students would hit team formation errors with no way to submit — a worse failure
+- Academic records principle: a student should always be able to submit. A broken default should not prevent submission.
