@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+  <!-- Add CVE suppressions here after review. Example:
+  <suppress>
+    <cve>CVE-2024-00000</cve>
+    <reason>Not applicable — dev-only dependency</reason>
+  </suppress>
+  -->
+</suppressions>

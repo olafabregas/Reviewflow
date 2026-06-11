@@ -1,0 +1,185 @@
+name: CI — Build & Test
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - master
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: '21'
+  JAVA_DISTRIBUTION: 'temurin'
+  MAVEN_OPTS: '-Xmx1024m'
+
+jobs:
+
+  compile:
+    name: Compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+      - run: ./mvnw compile -B -q
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: compile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+      - name: Run unit tests
+        run: ./mvnw test -B -Dspring.profiles.active=test
+        env:
+          HASHIDS_SALT: test-salt-not-real
+          JWT_SECRET: test-secret-not-real-must-be-long-enough-for-hmac
+          MAIL_FROM: noreply@reviewflowlms.com
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-results
+          path: target/surefire-reports/
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    if: github.event_name == 'pull_request'
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: testpassword
+          MYSQL_DATABASE: reviewflow_test
+          MYSQL_USER: reviewflow
+          MYSQL_PASSWORD: testpassword
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -ptestpassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+      - name: Install MySQL client
+        run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - name: Wait for MySQL
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -u root -ptestpassword --silent; then
+              echo "MySQL is ready"
+              break
+            fi
+            echo "Waiting for MySQL... attempt $i"
+            sleep 2
+          done
+      - name: Run integration tests with JaCoCo
+        run: ./mvnw verify -B -Dspring.profiles.active=test
+        env:
+          SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/reviewflow_test
+          SPRING_DATASOURCE_USERNAME: reviewflow
+          SPRING_DATASOURCE_PASSWORD: testpassword
+          SPRING_REDIS_HOST: 127.0.0.1
+          SPRING_REDIS_PORT: 6379
+          SPRING_REDIS_PASSWORD: ""
+          HASHIDS_SALT: test-salt-not-real
+          JWT_SECRET: test-secret-not-real-must-be-long-enough-for-hmac
+          MAIL_FROM: noreply@reviewflowlms.com
+          AWS_S3_BUCKET: reviewflow-test-bucket
+          AWS_REGION: ca-central-1
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
+      - uses: madrapps/jacoco-report@v1.6.1
+        if: always()
+        with:
+          paths: target/site/jacoco/jacoco.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: JaCoCo Coverage Report
+          update-comment: true
+          min-coverage-overall: 70
+          min-coverage-changed-files: 80
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: target/surefire-reports/
+
+  security-scan:
+    name: OWASP Dependency Check
+    runs-on: ubuntu-latest
+    needs: compile
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+      - name: Run OWASP dependency check
+        run: |
+          ./mvnw dependency-check:check -B \
+            -Ddependency-check.skip=false \
+            -DfailBuildOnCVSS=7 \
+            -DsuppressionFile=.github/owasp-suppressions.xml
+        continue-on-error: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: owasp-report
+          path: target/dependency-check-report.html
+
+  docker-build-check:
+    name: Docker Build (verify only)
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: reviewflow:pr-${{ github.event.pull_request.number }}
+          build-args: |
+            BUILD_VERSION=${{ github.sha }}
+            BUILD_DATE=${{ github.event.pull_request.updated_at }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

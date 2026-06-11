@@ -1,0 +1,97 @@
+name: Nightly Jobs
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+env:
+  JAVA_VERSION: '21'
+  JAVA_DISTRIBUTION: 'temurin'
+
+jobs:
+
+  owasp-full-scan:
+    name: OWASP Full Dependency Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+      - run: ./mvnw dependency-check:check -B -Ddependency-check.skip=false
+        continue-on-error: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nightly-owasp-report-${{ github.run_id }}
+          path: target/dependency-check-report.html
+          retention-days: 30
+
+  postman-smoke-tests:
+    name: Postman Full Suite (Staging)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check staging is configured
+        id: check-staging
+        run: |
+          if [ -z "${{ secrets.EC2_HOST_STAGING }}" ]; then
+            echo "Staging not configured — Postman suite skipped"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Install Newman
+        if: steps.check-staging.outputs.skip == 'false'
+        run: npm install -g newman newman-reporter-htmlextra
+      - name: Run Postman collection against staging
+        if: steps.check-staging.outputs.skip == 'false'
+        run: |
+          newman run postman/reviewflow-tests.postman_collection.json \
+            --environment postman/ReviewFlow_Test_Environments.postman_environment.json \
+            --env-var baseUrl=https://staging.reviewflowlms.com/api/v1 \
+            --reporters cli,htmlextra \
+            --reporter-htmlextra-export target/postman-report.html \
+            --bail
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.check-staging.outputs.skip == 'false'
+        with:
+          name: postman-report-${{ github.run_id }}
+          path: target/postman-report.html
+          retention-days: 14
+
+  ecr-cleanup:
+    name: ECR Image Cleanup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ca-central-1
+      - name: Clean up old staging images
+        run: |
+          IMAGES=$(aws ecr describe-images \
+            --repository-name reviewflow \
+            --query 'imageDetails[?starts_with(imageTags[0], `staging-`)] | sort_by(@, &imagePushedAt) | [*].imageDigest' \
+            --output text 2>/dev/null || echo "")
+          if [ -z "$IMAGES" ]; then
+            echo "No staging images found"
+            exit 0
+          fi
+          TOTAL=$(echo "$IMAGES" | wc -w)
+          KEEP=10
+          if [ "$TOTAL" -le "$KEEP" ]; then
+            echo "Only $TOTAL staging images — keeping all"
+            exit 0
+          fi
+          DELETE_COUNT=$((TOTAL - KEEP))
+          TO_DELETE=$(echo "$IMAGES" | tr ' ' '\n' | head -n $DELETE_COUNT)
+          echo "Deleting $DELETE_COUNT old staging images (keeping $KEEP most recent)"
+          for DIGEST in $TO_DELETE; do
+            aws ecr batch-delete-image \
+              --repository-name reviewflow \
+              --image-ids imageDigest=$DIGEST
+          done

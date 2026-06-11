@@ -1,0 +1,96 @@
+version: "3.8"
+
+# ReviewFlow — Staging Docker Compose (EC2: staging.reviewflowlms.com, port 8081)
+# See docker/DOCKER_DEPLOYMENT.md for setup.
+
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: reviewflow-mysql-staging
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: reviewflow
+      MYSQL_USER: reviewflow
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data_staging:/var/lib/mysql
+      - ./init/01_create_db.sql:/docker-entrypoint-initdb.d/01_create_db.sql:ro
+      - ./mysql/staging.cnf:/etc/mysql/conf.d/reviewflow.cnf:ro
+    networks:
+      - reviewflow-staging
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "reviewflow", "-p${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    expose:
+      - "3306"
+
+  redis:
+    image: redis:7-alpine
+    container_name: reviewflow-redis-staging
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD} --maxmemory 64mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data_staging:/data
+    networks:
+      - reviewflow-staging
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    expose:
+      - "6379"
+
+  app:
+    image: ${ECR_REGISTRY:-797795454732.dkr.ecr.ca-central-1.amazonaws.com}/reviewflow:staging-latest
+    container_name: reviewflow-app-staging
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - /opt/reviewflow/.env
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/reviewflow?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: reviewflow
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQLDialect
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8081
+      JAVA_OPTS: >-
+        -Xms256m -Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200
+        -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/./urandom
+    ports:
+      - "8081:8081"
+    volumes:
+      - /var/log/reviewflow:/var/log/reviewflow
+    networks:
+      - reviewflow-staging
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+networks:
+  reviewflow-staging:
+    driver: bridge
+    name: reviewflow-staging
+
+volumes:
+  mysql_data_staging:
+    name: reviewflow-mysql-data-staging
+  redis_data_staging:
+    name: reviewflow-redis-data-staging
