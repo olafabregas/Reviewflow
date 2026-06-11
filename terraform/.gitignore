@@ -1,0 +1,17 @@
+# Local Terraform working directory and state — never commit
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Sensitive variable files (if created locally)
+*.auto.tfvars
+secrets.tfvars
